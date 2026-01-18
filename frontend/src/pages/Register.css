@@ -1,0 +1,140 @@
+ * {
+     box-sizing: border-box;
+     font-family: "Inter", sans-serif;
+ }
+
+ .register-page {
+     display: flex;
+     min-height: 100vh;
+ }
+
+ /* LEFT */
+ .register-left {
+     width: 50%;
+     background: url("https://images.unsplash.com/photo-1551218808-94e220e084d2") center/cover no-repeat;
+     position: relative;
+     color: white;
+     padding: 48px;
+ }
+
+ .register-left .overlay {
+     position: absolute;
+     inset: 0;
+     background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+ }
+
+ .register-left .brand {
+     position: relative;
+     display: flex;
+     align-items: center;
+     gap: 12px;
+     z-index: 2;
+ }
+
+ .register-left .logo {
+     background: #37815d;
+     padding: 10px;
+     border-radius: 10px;
+ }
+
+ .register-left .intro {
+     position: absolute;
+     bottom: 60px;
+     left: 48px;
+     right: 48px;
+     z-index: 2;
+ }
+
+ .register-left h1 {
+     font-size: 36px;
+     margin-bottom: 12px;
+ }
+
+ /* RIGHT */
+ .register-right {
+     width: 50%;
+     display: flex;
+     justify-content: center;
+     align-items: center;
+     background: #f6f7f7;
+     padding: 40px;
+ }
+
+ .register-form {
+     width: 100%;
+     max-width: 420px;
+     background: white;
+     padding: 36px;
+     border-radius: 18px;
+     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+ }
+
+ .register-form h2 {
+     font-size: 28px;
+     margin-bottom: 6px;
+ }
+
+ .register-form .desc {
+     font-size: 14px;
+     color: #666;
+     margin-bottom: 20px;
+ }
+
+ .register-form input {
+     width: 100%;
+     padding: 14px;
+     margin-bottom: 14px;
+     border-radius: 12px;
+     border: 1px solid #ddd;
+     outline: none;
+ }
+
+ .register-form input:focus {
+     border-color: #37815d;
+ }
+
+ .terms {
+     display: flex;
+     gap: 8px;
+     font-size: 14px;
+     margin-bottom: 16px;
+ }
+
+ .register-form button {
+     width: 100%;
+     padding: 14px;
+     border: none;
+     border-radius: 14px;
+     background: #37815d;
+     color: white;
+     font-weight: bold;
+     cursor: pointer;
+     transition: 0.2s;
+ }
+
+ .register-form button:hover {
+     background: #2e6e50;
+ }
+
+ .login-link {
+     text-align: center;
+     margin-top: 18px;
+     font-size: 14px;
+ }
+
+ .login-link a {
+     color: #37815d;
+     font-weight: bold;
+     text-decoration: none;
+ }
+
+ /* RESPONSIVE */
+ @media (max-width: 1024px) {
+     .register-left {
+         display: none;
+     }
+
+     .register-right {
+         width: 100%;
+     }
+ }
