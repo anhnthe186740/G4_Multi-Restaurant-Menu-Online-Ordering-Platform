@@ -1,9 +1,11 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { registerApi } from "../api/authApi";
 import "./Register.css";
 
 function Register() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -15,10 +17,16 @@ function Register() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(form);
-    // gọi registerApi ở đây sau
+    try {
+      await registerApi(form);
+      alert("Đăng ký thành công");
+      // Chuyển sang trang Login
+      navigate("/login");
+    } catch (err) {
+      alert(err.response?.data?.message || "Lỗi đăng ký");
+    }
   };
 
   return (
