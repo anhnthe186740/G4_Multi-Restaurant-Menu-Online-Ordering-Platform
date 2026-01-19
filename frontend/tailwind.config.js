@@ -1,8 +1,10 @@
+/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./index.html",
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
+
   theme: {
     container: {
       center: true,
@@ -14,6 +16,7 @@ export default {
         "2xl": "6rem",
       },
     },
+
     screens: {
       sm: "640px",
       md: "768px",
@@ -21,18 +24,28 @@ export default {
       xl: "1280px",
       "2xl": "1536px",
     },
+
     extend: {
       fontFamily: {
         inter: ["Inter", "sans-serif"],
         display: ["Inter", "sans-serif"],
         playfair: ["Playfair Display", "serif"],
       },
+
+      /** 🔥 FIX QUAN TRỌNG */
       colors: {
         primary: "#37815d",
-        "background-light": "#f6f7f7",
-        "background-dark": "#151d19",
-        "card-dark": "#1e2924",
+
+        background: {
+          light: "#f6f7f7",
+          dark: "#151d19",
+        },
+
+        card: {
+          dark: "#1e2924",
+        },
       },
+
       borderRadius: {
         xs: "0.25rem",
         sm: "0.375rem",
@@ -45,5 +58,6 @@ export default {
       },
     },
   },
+
   plugins: [],
 };
