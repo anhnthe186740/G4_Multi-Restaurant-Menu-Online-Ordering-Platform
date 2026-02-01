@@ -32,17 +32,31 @@ export default {
         playfair: ["Playfair Display", "serif"],
       },
 
-      /** 🔥 FIX QUAN TRỌNG */
+      /** 🔥 CẬP NHẬT BẢNG MÀU THEO GIAO DIỆN ADMIN */
       colors: {
-        primary: "#37815d",
-
-        background: {
-          light: "#f6f7f7",
-          dark: "#151d19",
+        // Màu xanh Neon chủ đạo (giống nút Phê duyệt)
+        primary: {
+          DEFAULT: "#00c04b", 
+          hover: "#00a841",   // Màu hover đậm hơn một chút
         },
 
+        // Các màu nền
+        background: {
+          light: "#f6f7f7",
+          dark: "#02140c",    // Màu nền chính (Xanh đen rất tối)
+          paper: "#062519",   // Màu nền của Card / Header (Xanh rêu tối)
+          input: "#031a11",   // Màu nền của ô Input
+        },
+
+        // Màu viền
+        border: {
+          DEFAULT: "#e5e7eb",
+          dark: "#133827",    // Màu viền xanh tối
+        },
+        
+        // Giữ lại cấu trúc card cũ của bạn nhưng update màu
         card: {
-          dark: "#1e2924",
+          dark: "#062519",
         },
       },
 

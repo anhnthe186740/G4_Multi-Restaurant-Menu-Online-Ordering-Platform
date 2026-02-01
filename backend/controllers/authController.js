@@ -4,55 +4,53 @@ import { db } from "../config/db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secret_key_dev";
 
-/* ================= REGISTER ================= */
+/* ================= REGISTER (adjusted to new schema) ================= */
 export const register = async (req, res) => {
   try {
-    const { fullName, email, password, phone, role } = req.body;
+    const { fullName, email, password, phone, username } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Vui lòng cung cấp username, email và password" });
+    }
 
     // Check email
     const [exist] = await db.query(
-      "SELECT id FROM users WHERE email = ?",
+      "SELECT UserID FROM Users WHERE Email = ?",
       [email]
     );
     if (exist.length > 0) {
       return res.status(400).json({ message: "Email đã tồn tại" });
     }
 
-    // Get role_id
-    const [roles] = await db.query(
-      "SELECT id FROM roles WHERE role_name = ?",
-      [role]
-    );
-    if (roles.length === 0) {
-      return res.status(400).json({ message: "Role không hợp lệ" });
-    }
-
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
     await db.query(
-      `INSERT INTO users (full_name, email, password_hash, phone, role_id)
-       VALUES (?, ?, ?, ?, ?)`,
-      [fullName, email, passwordHash, phone, roles[0].id]
+      `INSERT INTO Users (Username, FullName, Email, PasswordHash, Phone, Role)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [username, fullName || null, email, passwordHash, phone || null, 'Staff']
     );
 
     res.status(201).json({ message: "Đăng ký thành công" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Lỗi server" });
+    console.error('register error:', err?.stack || err);
+    res.status(500).json({ message: err?.message || "Lỗi server" });
   }
 };
 
-/* ================= LOGIN ================= */
+/* ================= LOGIN (adjusted to new schema) ================= */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ message: "Vui lòng cung cấp email và password" });
+    }
+
     const [users] = await db.query(
-      `SELECT u.id, u.full_name, u.email, u.password_hash, r.role_name
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
-       WHERE u.email = ?`,
+      `SELECT UserID, FullName, Email, PasswordHash, Role
+       FROM Users
+       WHERE Email = ?`,
       [email]
     );
 
@@ -64,7 +62,7 @@ export const login = async (req, res) => {
 
     const user = users[0];
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(password, user.PasswordHash);
     if (!isMatch) {
       return res.status(401).json({
         message: "Email hoặc mật khẩu không đúng",
@@ -73,8 +71,8 @@ export const login = async (req, res) => {
 
     const token = jwt.sign(
       {
-        userId: user.id,
-        role: user.role_name,
+        userId: user.UserID,
+        role: user.Role,
       },
       JWT_SECRET,
       { expiresIn: "7d" }
@@ -84,14 +82,14 @@ export const login = async (req, res) => {
       message: "Đăng nhập thành công",
       token,
       user: {
-        id: user.id,
-        fullName: user.full_name,
-        email: user.email,
-        role: user.role_name,
+        id: user.UserID,
+        fullName: user.FullName,
+        email: user.Email,
+        role: user.Role,
       },
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Lỗi server" });
+    console.error('login error:', error?.stack || error);
+    res.status(500).json({ message: error?.message || "Lỗi server" });
   }
 };

@@ -6,14 +6,14 @@
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* 🔥 QUAN TRỌNG: Ép màu nền tối ngay từ đầu */
+  background-color: #02140c; 
+  color: #ffffff;
 }
 
 html {
   font-family: 'Inter', sans-serif;
-}
-
-/* Smooth scrolling */
-html {
   scroll-behavior: smooth;
 }
 
@@ -22,38 +22,26 @@ input:focus {
   outline: none;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Cập nhật theo màu Neon Green & Dark Background */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #02140c; /* Màu nền tối */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #37815d;
+  background: #00c04b; /* Màu xanh Neon chủ đạo */
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2d6749;
-}
-
-/* Dark mode scrollbar */
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-track {
-    background: #151d19;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: #37815d;
-  }
+  background: #00a841; /* Đậm hơn khi hover */
 }
 
 /* Utility classes */
 .form-input:focus {
-  border-color: #37815d !important;
-  box-shadow: 0 0 0 3px rgba(55, 129, 93, 0.1) !important;
+  border-color: #00c04b !important;
+  box-shadow: 0 0 0 3px rgba(0, 192, 75, 0.2) !important;
 }
-
