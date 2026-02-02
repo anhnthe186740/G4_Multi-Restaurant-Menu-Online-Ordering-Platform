@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
+import adminDashboardRoutes from "./routes/adminDashboard.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/admin/dashboard", adminDashboardRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
