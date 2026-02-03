@@ -199,11 +199,19 @@ export const deactivateRestaurant = async (req, res) => {
 
         const ownerID = restaurants[0].OwnerUserID;
 
+        if (!ownerID) {
+            return res.status(400).json({ message: "Cannot deactivate: This restaurant has no associated owner account." });
+        }
+
         // Soft delete: Set owner status to Inactive
-        await db.query(
+        const [result] = await db.query(
             "UPDATE Users SET Status = 'Inactive' WHERE UserID = ?",
             [ownerID]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Owner user not found" });
+        }
 
         // Optional: Log the reason in SupportTickets
         if (reason) {
@@ -237,11 +245,19 @@ export const reactivateRestaurant = async (req, res) => {
 
         const ownerID = restaurants[0].OwnerUserID;
 
+        if (!ownerID) {
+            return res.status(400).json({ message: "Cannot reactivate: This restaurant has no associated owner account." });
+        }
+
         // Reactivate: Set owner status to Active
-        await db.query(
+        const [result] = await db.query(
             "UPDATE Users SET Status = 'Active' WHERE UserID = ?",
             [ownerID]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Owner user not found" });
+        }
 
         res.json({ message: "Restaurant reactivated successfully" });
     } catch (error) {
@@ -255,9 +271,6 @@ export const forceDeleteRestaurant = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Note: CASCADE will handle deletion of branches, tables, etc.
-        // But we need to handle Users table separately
-
         // Get owner ID first
         const [restaurants] = await db.query(
             "SELECT OwnerUserID FROM Restaurants WHERE RestaurantID = ?",
@@ -270,15 +283,57 @@ export const forceDeleteRestaurant = async (req, res) => {
 
         const ownerID = restaurants[0].OwnerUserID;
 
-        // Delete restaurant (CASCADE will delete branches, tables, etc.)
+        // --- STEP 1: Deep Clean Dependencies (due to missing CASCADE in schema) ---
+
+        // 1.1 Delete Subscriptions
+        await db.query("DELETE FROM Subscriptions WHERE RestaurantID = ?", [id]);
+
+        // 1.2 Handle Orders & Invoices chain
+        const [branches] = await db.query("SELECT BranchID FROM Branches WHERE RestaurantID = ?", [id]);
+        const branchIDs = branches.map(b => b.BranchID);
+
+        if (branchIDs.length > 0) {
+            const [orders] = await db.query("SELECT OrderID FROM Orders WHERE BranchID IN (?)", [branchIDs]);
+            const orderIDs = orders.map(o => o.OrderID);
+
+            if (orderIDs.length > 0) {
+                const [invoices] = await db.query("SELECT InvoiceID FROM Invoices WHERE OrderID IN (?)", [orderIDs]);
+                const invoiceIDs = invoices.map(i => i.InvoiceID);
+
+                if (invoiceIDs.length > 0) {
+                    // Delete Transactions
+                    await db.query("DELETE FROM Transactions WHERE InvoiceID IN (?)", [invoiceIDs]);
+                    // Delete Invoices
+                    await db.query("DELETE FROM Invoices WHERE InvoiceID IN (?)", [invoiceIDs]);
+                }
+
+                // Delete Orders (OrderDetails should Cascade)
+                await db.query("DELETE FROM Orders WHERE OrderID IN (?)", [orderIDs]);
+            }
+        }
+
+        // --- STEP 2: Delete Restaurant ---
+        // This should cascade Branches, Tables, Categories, Products, Discounts
         await db.query("DELETE FROM Restaurants WHERE RestaurantID = ?", [id]);
 
-        // Delete owner user
-        await db.query("DELETE FROM Users WHERE UserID = ?", [ownerID]);
+        // --- STEP 3: Delete Owner User ---
+        if (ownerID) {
+            // Delete related SupportTickets
+            await db.query("DELETE FROM SupportTickets WHERE UserID = ?", [ownerID]);
+
+            // Delete User
+            await db.query("DELETE FROM Users WHERE UserID = ?", [ownerID]);
+        }
 
         res.json({ message: "Restaurant permanently deleted" });
     } catch (error) {
         console.error("forceDeleteRestaurant error:", error);
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({
+                message: "Cannot delete: Data integrity constraint. Related data exists in other tables (e.g., Orders, Reports).",
+                detail: error.message
+            });
+        }
         res.status(500).json({ message: error.message || "Server error" });
     }
 };
