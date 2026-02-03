@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
 import adminDashboardRoutes from "./routes/adminDashboard.js";
+import restaurantManagementRoutes from "./routes/restaurantManagement.js";
 
 dotenv.config();
 
@@ -26,17 +27,18 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
+app.use("/api/admin/restaurants", restaurantManagementRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Error:", err);
-  res.status(500).json({ 
+  res.status(500).json({
     message: "Internal server error",
-    error: err.message 
+    error: err.message
   });
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`✅ Backend running at http://localhost:${PORT}`);

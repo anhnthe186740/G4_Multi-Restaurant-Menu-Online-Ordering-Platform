@@ -6,6 +6,7 @@ import HomePage from "./pages/HomePage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminDashboard from "./pages/AdminDashboard";
+import RestaurantManagement from "./pages/RestaurantManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -44,6 +45,15 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="Admin">
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/restaurants"
+          element={
+            <ProtectedRoute requiredRole="Admin">
+              <RestaurantManagement />
             </ProtectedRoute>
           }
         />
