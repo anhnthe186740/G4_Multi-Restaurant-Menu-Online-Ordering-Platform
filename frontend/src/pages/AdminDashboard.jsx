@@ -59,19 +59,17 @@ export default function AdminDashboard() {
 
     if (loading) {
         return (
-            <AdminLayout>
-                <div className="min-h-[60vh] flex items-center justify-center">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00ff88] mx-auto mb-4"></div>
-                        <p className="text-gray-400">Đang tải dashboard...</p>
-                    </div>
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00ff88] mx-auto mb-4"></div>
+                    <p className="text-gray-400">Đang tải dashboard...</p>
                 </div>
-            </AdminLayout>
+            </div>
         );
     }
 
     return (
-        <AdminLayout>
+        <>
             {/* Refresh Button */}
             <div className="flex justify-end mb-6">
                 <button
@@ -146,6 +144,6 @@ export default function AdminDashboard() {
                 <PendingRequestsTable requests={pendingRequests} />
                 <TicketsTable tickets={tickets} />
             </div>
-        </AdminLayout>
+        </>
     );
 }

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
 import AuthLayout from "./components/layout/AuthLayout";
+import AdminLayout from "./components/admin/AdminLayout";
 
 import HomePage from "./pages/HomePage";
 import Login from "./pages/Login";
@@ -44,7 +45,9 @@ export default function App() {
           path="/admin/dashboard"
           element={
             <ProtectedRoute requiredRole="Admin">
-              <AdminDashboard />
+              <AdminLayout>
+                <AdminDashboard />
+              </AdminLayout>
             </ProtectedRoute>
           }
         />
@@ -53,7 +56,9 @@ export default function App() {
           path="/admin/restaurants"
           element={
             <ProtectedRoute requiredRole="Admin">
-              <RestaurantManagement />
+              <AdminLayout>
+                <RestaurantManagement />
+              </AdminLayout>
             </ProtectedRoute>
           }
         />
