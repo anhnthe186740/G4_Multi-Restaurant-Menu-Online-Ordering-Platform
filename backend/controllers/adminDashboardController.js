@@ -209,3 +209,32 @@ export const getExpiringSubscriptions = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+/* ================= GET PAYMENT HISTORY ================= */
+export const getPaymentHistory = async (req, res) => {
+  try {
+    // Get recent subscription payments (restaurants buying packages)
+    const [payments] = await pool.query(`
+      SELECT 
+        s.SubscriptionID,
+        r.RestaurantName,
+        u.FullName as OwnerName,
+        sp.PackageName,
+        sp.Price as Amount,
+        s.StartDate as PaymentDate,
+        s.Status,
+        s.EndDate
+      FROM Subscriptions s
+      INNER JOIN Restaurants r ON s.RestaurantID = r.RestaurantID
+      INNER JOIN Users u ON r.OwnerID = u.UserID
+      INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
+      ORDER BY s.StartDate DESC
+      LIMIT 10
+    `);
+
+    res.json(payments);
+  } catch (error) {
+    console.error("getPaymentHistory error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};

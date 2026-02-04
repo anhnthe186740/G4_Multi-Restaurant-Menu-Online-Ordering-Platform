@@ -37,3 +37,7 @@ export const getExpiringSubscriptions = () => {
   return axios.get(`${API_URL}/expiring-subscriptions`, getAuthHeaders());
 };
 
+export const getPaymentHistory = () => {
+  return axios.get(`${API_URL}/payment-history`, getAuthHeaders());
+};
+

@@ -1,54 +1,47 @@
 import AdminSidebar from './AdminSidebar';
-import { Bell, Settings } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 
 export default function AdminLayout({ children }) {
-    const location = useLocation();
-
-    // Simple breadcrumb logic based on path
-    const getBreadcrumb = () => {
-        const path = location.pathname;
-        if (path.includes('/admin/restaurants')) return 'Nền tảng / Quản lý Tài khoản Nhà hàng';
-        if (path.includes('/admin/dashboard')) return 'Nền tảng / Tổng quan';
-        if (path.includes('/admin/packages')) return 'Nền tảng / Quản lý Gói dịch vụ';
-        if (path.includes('/admin/reports')) return 'Nền tảng / Báo cáo & Thống kê';
-        if (path.includes('/admin/content')) return 'Nền tảng / Quản lý Nội dung';
-        if (path.includes('/admin/support')) return 'Nền tảng / Trung tâm Hỗ trợ';
-        return 'Nền tảng / Dashboard';
-    };
-
     return (
-        <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans flex text-sm">
+        <div className="min-h-screen bg-[#0a0f0d]">
             {/* Sidebar */}
             <AdminSidebar />
 
-            {/* Main Wrapper */}
-            <div className="ml-64 flex-1 flex flex-col min-h-screen">
+            {/* Main Content Area */}
+            <main className="ml-64 min-h-screen p-8">
+                {/* Top Bar */}
+                <div className="mb-8 flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1 max-w-2xl">
+                        <span className="text-gray-400 text-sm">Trang chủ / </span>
+                        <span className="text-white font-medium text-sm">Tổng quan</span>
 
-                {/* Top Header Bar */}
-                <header className="h-14 bg-[#0f172a] border-b border-slate-700/50 flex items-center justify-between px-6 sticky top-0 z-40">
-                    {/* Breadcrumb */}
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                        {getBreadcrumb()}
+                        {/* Search Bar */}
+                        <div className="flex-1 relative ml-6">
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm hoá đơn tại đây..."
+                                className="w-full bg-[#0f1612] border border-[#1a2b22] rounded-lg px-4 py-2 pl-10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff88]/30 transition"
+                            />
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
+                        </div>
                     </div>
 
-                    {/* Right Actions */}
+                    {/* Right Side Icons */}
                     <div className="flex items-center gap-3">
-                        <button className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors group">
-                            <Bell size={18} />
-                            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-emerald-500 rounded-full border border-[#0f172a]"></span>
+                        <button className="relative p-2 text-gray-400 hover:text-white hover:bg-[#1a2b22] rounded-lg transition">
+                            🔔
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-[#00ff88] rounded-full"></span>
                         </button>
-                        <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                            <Settings size={18} />
+                        <button className="p-2 text-gray-400 hover:text-white hover:bg-[#1a2b22] rounded-lg transition">
+                            ⚙️
                         </button>
                     </div>
-                </header>
+                </div>
 
                 {/* Page Content */}
-                <main className="flex-1 p-6 overflow-x-hidden">
+                <div className="space-y-6">
                     {children}
-                </main>
-            </div>
+                </div>
+            </main>
         </div>
     );
 }
