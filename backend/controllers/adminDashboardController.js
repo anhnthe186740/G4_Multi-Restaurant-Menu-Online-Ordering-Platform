@@ -1,72 +1,61 @@
-import { db } from "../config/db.js";
+import { db as pool } from "../config/db.js";
 
-/* ================= DASHBOARD OVERVIEW ================= */
+/* ================= GET DASHBOARD OVERVIEW ================= */
 export const getOverview = async (req, res) => {
   try {
-    // 1. Count total restaurants
-    const [totalRestaurants] = await db.query(
-      "SELECT COUNT(*) as count FROM Restaurants"
-    );
-
-    // 2. Count restaurants by status (using OwnerUserID status)
-    const [activeRestaurants] = await db.query(`
-      SELECT COUNT(*) as count 
-      FROM Restaurants r
-      INNER JOIN Users u ON r.OwnerUserID = u.UserID
-      WHERE u.Status = 'Active'
+    // Total restaurants
+    const [restaurants] = await pool.query(`
+      SELECT COUNT(*) as total FROM Restaurants
     `);
 
-    const [inactiveRestaurants] = await db.query(`
-      SELECT COUNT(*) as count 
-      FROM Restaurants r
-      INNER JOIN Users u ON r.OwnerUserID = u.UserID
-      WHERE u.Status = 'Inactive'
+    // Active subscriptions
+    const [activeSubscriptions] = await pool.query(`
+      SELECT COUNT(*) as total 
+      FROM Subscriptions 
+      WHERE Status = 'Active'
     `);
 
-    // 3. Count pending registration requests
-    const [pendingRequests] = await db.query(
-      "SELECT COUNT(*) as count FROM RegistrationRequests WHERE ApprovalStatus = 'Pending'"
-    );
-
-    // 4. Calculate total revenue from subscriptions
-    const [totalRevenue] = await db.query(`
-      SELECT COALESCE(SUM(sp.Price), 0) as total
+    // Total revenue from active subscriptions
+    const [revenue] = await pool.query(`
+      SELECT SUM(sp.Price) as total
       FROM Subscriptions s
       INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
-      WHERE s.Status = 'Active' OR s.Status = 'Expired'
+      WHERE s.Status = 'Active'
     `);
 
-    // 5. Calculate this month's revenue
-    const [monthlyRevenue] = await db.query(`
-      SELECT COALESCE(SUM(sp.Price), 0) as total
+    // Pending registration requests
+    const [pendingRequests] = await pool.query(`
+      SELECT COUNT(*) as total 
+      FROM RegistrationRequests 
+      WHERE ApprovalStatus = 'Pending'
+    `);
+
+    // Monthly revenue (current month)
+    const [monthlyRevenue] = await pool.query(`
+      SELECT SUM(sp.Price) as total
       FROM Subscriptions s
       INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
-      WHERE MONTH(s.StartDate) = MONTH(CURRENT_DATE())
+      WHERE s.Status = 'Active'
+        AND MONTH(s.StartDate) = MONTH(CURRENT_DATE())
         AND YEAR(s.StartDate) = YEAR(CURRENT_DATE())
     `);
 
-    // 6. Count active subscriptions
-    const [activeSubscriptions] = await db.query(
-      "SELECT COUNT(*) as count FROM Subscriptions WHERE Status = 'Active'"
-    );
-
-    // 7. Count subscriptions expiring soon (within 7 days)
-    const [expiringSoon] = await db.query(`
-      SELECT COUNT(*) as count 
-      FROM Subscriptions 
-      WHERE Status = 'Active' 
+    // Expiring soon (within 7 days)
+    const [expiringSoon] = await pool.query(`
+      SELECT COUNT(*) as total
+      FROM Subscriptions
+      WHERE Status = 'Active'
         AND EndDate BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
     `);
 
     res.json({
-      totalRestaurants: totalRestaurants[0].count,
-      activeRestaurants: activeRestaurants[0].count,
-      inactiveRestaurants: inactiveRestaurants[0].count,
-      pendingRequests: pendingRequests[0].count,
-      totalRevenue: parseFloat(totalRevenue[0].total),
-      monthlyRevenue: parseFloat(monthlyRevenue[0].total),
-      activeSubscriptions: activeSubscriptions[0].count,
-      expiringSoon: expiringSoon[0].count
+      totalRestaurants: restaurants[0].total || 0,
+      activeRestaurants: restaurants[0].total || 0,
+      totalRevenue: parseFloat(revenue[0].total || 0),
+      pendingRequests: pendingRequests[0].total || 0,
+      activeSubscriptions: activeSubscriptions[0].total || 0,
+      monthlyRevenue: parseFloat(monthlyRevenue[0].total || 0),
+      expiringSoon: expiringSoon[0].total || 0
     });
   } catch (error) {
     console.error("getOverview error:", error);
@@ -74,34 +63,22 @@ export const getOverview = async (req, res) => {
   }
 };
 
-/* ================= REVENUE CHART DATA ================= */
+/* ================= GET REVENUE CHART ================= */
 export const getRevenueChart = async (req, res) => {
   try {
-    // Get revenue for last 6 months
-    const [revenueData] = await db.query(`
+    const [results] = await pool.query(`
       SELECT 
         DATE_FORMAT(s.StartDate, '%Y-%m') as month,
         SUM(sp.Price) as revenue
       FROM Subscriptions s
       INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
-      WHERE s.StartDate >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
+      WHERE s.StartDate >= DATE_SUB(CURRENT_DATE(), INTERVAL 12 MONTH)
       GROUP BY DATE_FORMAT(s.StartDate, '%Y-%m')
       ORDER BY month ASC
     `);
 
-    // Format for chart
-    const labels = [];
-    const data = [];
-    
-    revenueData.forEach(row => {
-      // Convert YYYY-MM to Month name
-      const [year, month] = row.month.split('-');
-      const date = new Date(year, month - 1);
-      const monthName = date.toLocaleString('vi-VN', { month: 'short' });
-      
-      labels.push(monthName);
-      data.push(parseFloat(row.revenue));
-    });
+    const labels = results.map(r => r.month);
+    const data = results.map(r => parseFloat(r.revenue));
 
     res.json({ labels, data });
   } catch (error) {
@@ -110,14 +87,13 @@ export const getRevenueChart = async (req, res) => {
   }
 };
 
-/* ================= PACKAGE DISTRIBUTION ================= */
+/* ================= GET PACKAGE DISTRIBUTION ================= */
 export const getPackageDistribution = async (req, res) => {
   try {
-    const [packageData] = await db.query(`
+    const [results] = await pool.query(`
       SELECT 
-        sp.PackageName,
-        COUNT(s.SubscriptionID) as count,
-        SUM(sp.Price) as revenue
+        sp.PackageName as packageName,
+        COUNT(s.SubscriptionID) as count
       FROM ServicePackages sp
       LEFT JOIN Subscriptions s ON sp.PackageID = s.PackageID AND s.Status = 'Active'
       WHERE sp.IsActive = TRUE
@@ -125,29 +101,24 @@ export const getPackageDistribution = async (req, res) => {
       ORDER BY count DESC
     `);
 
-    const result = packageData.map(row => ({
-      packageName: row.PackageName,
-      count: row.count,
-      revenue: parseFloat(row.revenue || 0)
-    }));
-
-    res.json(result);
+    res.json(results);
   } catch (error) {
     console.error("getPackageDistribution error:", error);
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
-/* ================= PENDING REQUESTS ================= */
+/* ================= GET PENDING REQUESTS ================= */
 export const getPendingRequests = async (req, res) => {
   try {
-    const [requests] = await db.query(`
+    const [requests] = await pool.query(`
       SELECT 
         RequestID,
         OwnerName,
         RestaurantName,
         ContactInfo,
-        SubmissionDate
+        SubmissionDate,
+        ApprovalStatus
       FROM RegistrationRequests
       WHERE ApprovalStatus = 'Pending'
       ORDER BY SubmissionDate DESC
@@ -161,10 +132,10 @@ export const getPendingRequests = async (req, res) => {
   }
 };
 
-/* ================= RECENT SUPPORT TICKETS ================= */
+/* ================= GET RECENT TICKETS ================= */
 export const getRecentTickets = async (req, res) => {
   try {
-    const [tickets] = await db.query(`
+    const [tickets] = await pool.query(`
       SELECT 
         st.TicketID,
         st.Subject,
@@ -173,7 +144,7 @@ export const getRecentTickets = async (req, res) => {
         st.CreatedAt,
         u.FullName as userName
       FROM SupportTickets st
-      INNER JOIN Users u ON st.UserID = u.UserID
+      LEFT JOIN Users u ON st.UserID = u.UserID
       ORDER BY st.CreatedAt DESC
       LIMIT 10
     `);
@@ -185,16 +156,16 @@ export const getRecentTickets = async (req, res) => {
   }
 };
 
-/* ================= EXPIRING SUBSCRIPTIONS ================= */
+/* ================= GET EXPIRING SUBSCRIPTIONS ================= */
 export const getExpiringSubscriptions = async (req, res) => {
   try {
-    const [subscriptions] = await db.query(`
+    const [subscriptions] = await pool.query(`
       SELECT 
         s.SubscriptionID,
-        r.Name as restaurantName,
+        r.Name as RestaurantName,
         sp.PackageName,
         s.EndDate,
-        DATEDIFF(s.EndDate, CURRENT_DATE()) as daysLeft
+        DATEDIFF(s.EndDate, CURRENT_DATE()) as DaysRemaining
       FROM Subscriptions s
       INNER JOIN Restaurants r ON s.RestaurantID = r.RestaurantID
       INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
@@ -213,11 +184,10 @@ export const getExpiringSubscriptions = async (req, res) => {
 /* ================= GET PAYMENT HISTORY ================= */
 export const getPaymentHistory = async (req, res) => {
   try {
-    // Get recent subscription payments (restaurants buying packages)
     const [payments] = await pool.query(`
       SELECT 
         s.SubscriptionID,
-        r.RestaurantName,
+        r.Name as RestaurantName,
         u.FullName as OwnerName,
         sp.PackageName,
         sp.Price as Amount,
@@ -226,7 +196,7 @@ export const getPaymentHistory = async (req, res) => {
         s.EndDate
       FROM Subscriptions s
       INNER JOIN Restaurants r ON s.RestaurantID = r.RestaurantID
-      INNER JOIN Users u ON r.OwnerID = u.UserID
+      INNER JOIN Users u ON r.OwnerUserID = u.UserID
       INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
       ORDER BY s.StartDate DESC
       LIMIT 10

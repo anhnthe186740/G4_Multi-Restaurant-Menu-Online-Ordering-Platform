@@ -41,10 +41,7 @@ export default function AdminDashboard() {
         return (
             <AdminLayout>
                 <div className="min-h-[60vh] flex items-center justify-center">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00ff88] mx-auto mb-4"></div>
-                        <p className="text-gray-400">Đang tải dashboard...</p>
-                    </div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00ff88]"></div>
                 </div>
             </AdminLayout>
         );
@@ -58,14 +55,53 @@ export default function AdminDashboard() {
 
     return (
         <AdminLayout>
-            {/* Refresh Button */}
-            <div className="flex justify-end mb-6">
-                <button
-                    onClick={loadDashboardData}
-                    className="px-4 py-2 bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88] rounded-lg font-semibold transition border border-[#00ff88]/20"
-                >
-                    🔄 Làm mới
-                </button>
+            {/* Stats Cards Row */}
+            <div className="grid grid-cols-3 gap-6 mb-6">
+                {/* Total Restaurants Card */}
+                <div className="bg-[#142920] rounded-xl p-6 border border-[#1f3d2f]">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-gray-400 text-sm font-medium">Tổng nhà hàng hoạt động</span>
+                        <div className="w-10 h-10 rounded-lg bg-[#00ff88]/10 flex items-center justify-center">
+                            <span className="text-2xl">🏪</span>
+                        </div>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h2 className="text-4xl font-bold text-white">{overview?.totalRestaurants?.toLocaleString() || '0'}</h2>
+                        <span className="text-gray-500 text-sm">nhà hàng</span>
+                    </div>
+                </div>
+
+                {/* Total Revenue Card */}
+                <div className="bg-[#142920] rounded-xl p-6 border border-[#1f3d2f]">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-gray-400 text-sm font-medium">Doanh thu tháng (MRR)</span>
+                        <div className="w-10 h-10 rounded-lg bg-[#00ff88]/10 flex items-center justify-center">
+                            <span className="text-2xl">💵</span>
+                        </div>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h2 className="text-4xl font-bold text-white">
+                            {overview?.totalRevenue
+                                ? `$${overview.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                : '$0'}
+                        </h2>
+                        <span className="text-gray-500 text-sm">tổng doanh thu</span>
+                    </div>
+                </div>
+
+                {/* Pending Requests Card */}
+                <div className="bg-[#142920] rounded-xl p-6 border border-[#1f3d2f]">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-gray-400 text-sm font-medium">Yêu cầu chờ duyệt</span>
+                        <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                            <span className="text-2xl">📝</span>
+                        </div>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h2 className="text-4xl font-bold text-white">{overview?.pendingRequests || '0'}</h2>
+                        <span className="text-orange-400 text-sm font-semibold">Cần xử lý</span>
+                    </div>
+                </div>
             </div>
 
             {/* Charts and Table Row */}
