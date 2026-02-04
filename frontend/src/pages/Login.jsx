@@ -60,14 +60,14 @@ export default function Login() {
                     bg-[#062519]/80
                     backdrop-blur-md
                 ">
-                    <div className="flex items-center gap-3 font-bold text-xl tracking-tight">
+                    <Link to="/" className="flex items-center gap-3 font-bold text-xl tracking-tight hover:opacity-80 transition-opacity">
                         <div className="w-10 h-10 rounded-xl bg-[#00c04b] flex items-center justify-center shadow-lg shadow-[#00c04b]/20">
                             <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
                             </svg>
                         </div>
-                        <span className="text-white">OderEat</span>
-                    </div>
+                        <span className="text-white">RestoManager</span>
+                    </Link>
 
                     <div className="flex justify-center">
                         <Link
@@ -85,14 +85,14 @@ export default function Login() {
                         border border-[#133827]
                         shadow-[0_0_50px_rgba(0,0,0,0.5)]
                         p-6 sm:p-10 relative overflow-hidden">
-                        
+
                         {/* Top decorative line */}
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00c04b] to-transparent opacity-50"></div>
 
                         {/* Title */}
                         <div className="text-center mb-8">
                             <h1 className="text-2xl font-bold text-white">
-                                Chào mừng quay lại 
+                                Chào mừng quay lại
                             </h1>
                             <p className="mt-2 text-sm text-gray-400">
                                 Đăng nhập để quản lý hệ thống nhà hàng
@@ -150,7 +150,7 @@ export default function Login() {
                                         className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-[#2d4b3b] bg-[#031a11] checked:border-[#00c04b] checked:bg-[#00c04b] transition-all"
                                     />
                                     <svg className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 14 14" fill="none">
-                                        <path d="M3 8L6 11L11 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M3 8L6 11L11 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                 </div>
                                 <label htmlFor="remember" className="text-xs text-gray-400 cursor-pointer select-none hover:text-gray-300">

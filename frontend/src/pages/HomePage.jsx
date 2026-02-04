@@ -1,14 +1,15 @@
-import MainLayout from "../components/layout/MainLayout";
-import CategorySection from "../components/home/CategorySection";
-import PromotionSection from "../components/home/PromotionSection";
-import NearbySection from "../components/home/NearbySection";
+import HeroSection from "../components/home/HeroSection";
+import FeaturesSection from "../components/home/FeaturesSection";
+import PricingSection from "../components/home/PricingSection";
+import CTASection from "../components/home/CTASection";
 
 export default function HomePage() {
   return (
- <>
-      <CategorySection />
-      <PromotionSection />
-      <NearbySection />
-</>
+    <>
+      <HeroSection />
+      <FeaturesSection />
+      <PricingSection />
+      <CTASection />
+    </>
   );
 }
