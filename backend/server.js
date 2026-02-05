@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
 import adminDashboardRoutes from "./routes/adminDashboard.js";
+import adminServicePackageRoutes from "./routes/adminServicePackages.js";
 
 dotenv.config();
 
@@ -26,13 +27,14 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
+app.use("/api/admin/service-packages", adminServicePackageRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Error:", err);
-  res.status(500).json({ 
+  res.status(500).json({
     message: "Internal server error",
-    error: err.message 
+    error: err.message
   });
 });
 
