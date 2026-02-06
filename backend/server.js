@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
 import adminDashboardRoutes from "./routes/adminDashboard.js";
+import adminReportsRoutes from "./routes/adminReports.js";
 import restaurantManagementRoutes from "./routes/restaurantManagement.js";
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
+app.use("/api/admin", adminReportsRoutes);
 app.use("/api/admin/restaurants", restaurantManagementRoutes);
 
 // Error handling middleware
