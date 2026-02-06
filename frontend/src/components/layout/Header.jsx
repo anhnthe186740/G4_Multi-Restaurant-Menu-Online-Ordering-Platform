@@ -14,8 +14,8 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-[#eaf0ed]">
-      <div className="max-w-[1200px] mx-auto flex items-center justify-between px-6 py-3">
+    <header className="sticky top-0 z-50 bg-[#02140c]/80 backdrop-blur border-b border-white/10">
+      <div className="max-w-[1200px] mx-auto flex items-center justify-between px-6 py-4">
 
         {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl">
@@ -27,14 +27,14 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* SEARCH */}
-        <div className="flex flex-1 max-w-xl mx-8">
-          <input
-            placeholder="Tìm món ngon ngay..."
-            className="w-full h-10 rounded-xl bg-[#eaf0ed] px-4 text-sm outline-none
-              focus:ring-2 focus:ring-orange-400"
-          />
-        </div>
+        {/* NAV LINKS */}
+        <nav className="hidden md:flex items-center gap-8">
+          {['Tính năng', 'Bảng giá', 'Giải pháp', 'Liên hệ'].map((item) => (
+            <a key={item} href="#" className="text-sm font-medium text-gray-300 hover:text-white transition">
+              {item}
+            </a>
+          ))}
+        </nav>
 
         {/* ACTIONS */}
         <div className="flex items-center gap-4">

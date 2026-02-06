@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.js";
 import adminDashboardRoutes from "./routes/adminDashboard.js";
 import adminReportsRoutes from "./routes/adminReports.js";
 import restaurantManagementRoutes from "./routes/restaurantManagement.js";
+import adminServicePackageRoutes from "./routes/adminServicePackages.js";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin", adminReportsRoutes);
 app.use("/api/admin/restaurants", restaurantManagementRoutes);
+app.use("/api/admin/service-packages", adminServicePackageRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -15,12 +15,13 @@ export default function AdminSidebar() {
     const location = useLocation();
 
     const menuItems = [
-        { icon: LayoutDashboard, label: 'Tổng quan', path: '/admin/dashboard' },
-        { icon: Store, label: 'Nhà hàng', path: '/admin/restaurants' },
-        { icon: Package, label: 'Gói dịch vụ', path: '/admin/packages' },
-        { icon: BarChart2, label: 'Báo cáo', path: '/admin/reports' },
-        { icon: FileText, label: 'Nội dung', path: '/admin/content' },
-        { icon: LifeBuoy, label: 'Hỗ trợ', path: '/admin/support' },
+        { icon: '📊', label: 'Tổng quan', path: '/admin/dashboard', active: true },
+        { icon: '🏪', label: 'Nhà hàng', path: '/admin/restaurants' },
+        { icon: '📝', label: 'Đơn đăng ký', path: '/admin/requests' },
+        { icon: '📦', label: 'Gói dịch vụ', path: '/admin/service-packages' },
+        { icon: '📈', label: 'Báo cáo', path: '/admin/reports' },
+        { icon: '🎫', label: 'Hỗ trợ', path: '/admin/support' },
+        { icon: '⚙️', label: 'Cài đặt', path: '/admin/settings' },
     ];
 
     const isActive = (path) => location.pathname === path;

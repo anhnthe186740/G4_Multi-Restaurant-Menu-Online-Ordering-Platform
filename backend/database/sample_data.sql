@@ -1,10 +1,12 @@
 -- Sample data for testing Platform Admin Dashboard
 
--- 1. Insert sample service packages
-INSERT INTO ServicePackages (PackageName, Price, Duration, FeaturesDescription, IsActive) VALUES
-('Basic', 500000, 30, '1 chi nhánh, 5 nhân viên, Chức năng cơ bản', TRUE),
-('Pro', 1000000, 30, '3 chi nhánh, 20 nhân viên, Chức năng nâng cao', TRUE),
-('Enterprise', 2500000, 30, 'Không giới hạn chi nhánh và nhân viên, Tất cả tính năng', TRUE);
+-- 1. Insert sample service packages (Simplified Model)
+-- Duration is in Months
+INSERT INTO ServicePackages (PackageName, Price, Duration, Description, IsActive) VALUES
+('Gói 1 Tháng', 199000, 1, 'Gói trải nghiệm ngắn hạn', TRUE),
+('Gói 3 Tháng', 499000, 3, 'Tiết kiệm 15%', TRUE),
+('Gói 6 Tháng', 899000, 6, 'Tiết kiệm 25%', TRUE),
+('Gói 1 Năm', 1599000, 12, 'Gói phổ biến nhất - Tiết kiệm 33%', TRUE);
 
 -- 2. Insert sample admin user
 INSERT INTO Users (Username, PasswordHash, FullName, Email, Phone, Role, Status) VALUES
@@ -23,17 +25,18 @@ INSERT INTO Restaurants (OwnerUserID, Name, Logo, Description, TaxCode) VALUES
 (4, 'Pizza Italia', '/logos/pizza-italia.png', 'Pizza Ý chính gốc', '0123456791');
 
 -- 5. Insert sample subscriptions
+-- PackageID now refers to the new IDs (1: 1 Month, 2: 3 Months, 3: 6 Months, 4: 1 Year)
 INSERT INTO Subscriptions (RestaurantID, PackageID, StartDate, EndDate, Status, AutoRenew) VALUES
-(1, 2, '2026-01-01', '2026-01-31', 'Active', TRUE),
-(2, 3, '2025-12-15', '2026-01-15', 'Active', FALSE),
-(3, 1, '2026-01-10', '2026-02-10', 'Active', TRUE);
+(1, 2, '2026-01-01', '2026-03-31', 'Active', TRUE),
+(2, 4, '2025-02-15', '2026-02-15', 'Active', FALSE),
+(3, 1, '2026-01-20', '2026-02-20', 'Active', TRUE);
 
 -- More subscriptions for revenue chart (past months)
 INSERT INTO Subscriptions (RestaurantID, PackageID, StartDate, EndDate, Status, AutoRenew) VALUES
-(1, 1, '2025-09-01', '2025-09-30', 'Expired', FALSE),
-(2, 2, '2025-10-01', '2025-10-31', 'Expired', FALSE),
-(1, 2, '2025-11-01', '2025-11-30', 'Expired', FALSE),
-(3, 1, '2025-12-01', '2025-12-31', 'Expired', FALSE);
+(1, 1, '2025-09-01', '2025-10-01', 'Expired', FALSE),
+(2, 1, '2025-10-01', '2025-11-01', 'Expired', FALSE),
+(1, 1, '2025-11-01', '2025-12-01', 'Expired', FALSE),
+(3, 1, '2025-12-01', '2026-01-01', 'Expired', FALSE);
 
 -- 6. Insert pending registration requests
 INSERT INTO RegistrationRequests (OwnerName, ContactInfo, RestaurantName, ApprovalStatus, AdminNote) VALUES
@@ -44,10 +47,10 @@ INSERT INTO RegistrationRequests (OwnerName, ContactInfo, RestaurantName, Approv
 -- 7. Insert sample support tickets
 INSERT INTO SupportTickets (UserID, Subject, Description, Priority, Status) VALUES
 (2, 'Lỗi thanh toán gói dịch vụ', 'Không thể thanh toán qua VNPay', 'High', 'Open'),
-(3, 'Yêu cầu nâng cấp gói Pro', 'Muốn nâng cấp từ Basic lên Pro', 'Medium', 'InProgress'),
+(3, 'Yêu cầu nâng cấp gói', 'Muốn nâng cấp lên gói 1 Năm', 'Medium', 'InProgress'),
 (4, 'Câu hỏi về tính năng QR code', 'Cách tạo QR code cho bàn ăn', 'Low', 'Open');
 
 -- 8. Insert more subscriptions expiring soon for testing
 INSERT INTO Subscriptions (RestaurantID, PackageID, StartDate, EndDate, Status, AutoRenew) VALUES
-(1, 1, DATE_SUB(CURRENT_DATE(), INTERVAL 23 DAY), DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY), 'Active', FALSE),
-(2, 2, DATE_SUB(CURRENT_DATE(), INTERVAL 20 DAY), DATE_ADD(CURRENT_DATE(), INTERVAL 10 DAY), 'Active', TRUE);
+(1, 1, DATE_SUB(CURRENT_DATE(), INTERVAL 25 DAY), DATE_ADD(CURRENT_DATE(), INTERVAL 5 DAY), 'Active', FALSE),
+(2, 2, DATE_SUB(CURRENT_DATE(), INTERVAL 80 DAY), DATE_ADD(CURRENT_DATE(), INTERVAL 10 DAY), 'Active', TRUE);

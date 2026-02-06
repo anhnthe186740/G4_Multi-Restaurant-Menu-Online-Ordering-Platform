@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminReports from "./pages/AdminReports";
 import RestaurantManagement from "./pages/RestaurantManagement";
+import AdminServicePackages from "./pages/AdminServicePackages";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -67,6 +68,10 @@ export default function App() {
               <AdminLayout>
                 <RestaurantManagement />
               </AdminLayout>
+          path="/admin/service-packages"
+          element={
+            <ProtectedRoute requiredRole="Admin">
+              <AdminServicePackages />
             </ProtectedRoute>
           }
         />
