@@ -5,7 +5,8 @@ import {
   getPackageDistribution,
   getPendingRequests,
   getRecentTickets,
-  getExpiringSubscriptions
+  getExpiringSubscriptions,
+  getPaymentHistory
 } from "../controllers/adminDashboardController.js";
 import { authenticateToken, requireAdmin } from "../middlewares/authMiddleware.js";
 
@@ -27,5 +28,7 @@ router.get("/package-distribution", getPackageDistribution);
 router.get("/pending-requests", getPendingRequests);
 router.get("/recent-tickets", getRecentTickets);
 router.get("/expiring-subscriptions", getExpiringSubscriptions);
+router.get("/payment-history", getPaymentHistory);
 
 export default router;
+

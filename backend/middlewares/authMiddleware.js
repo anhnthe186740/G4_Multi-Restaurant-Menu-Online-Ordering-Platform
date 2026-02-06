@@ -20,6 +20,9 @@ export const authenticateToken = (req, res, next) => {
   });
 };
 
+// Export alias for consistency
+export const verifyToken = authenticateToken;
+
 /* ================= ADMIN ROLE MIDDLEWARE ================= */
 export const requireAdmin = (req, res, next) => {
   // This middleware must be used AFTER authenticateToken
@@ -28,8 +31,8 @@ export const requireAdmin = (req, res, next) => {
   }
 
   if (req.user.role !== "Admin") {
-    return res.status(403).json({ 
-      message: "Access denied. Admin role required." 
+    return res.status(403).json({
+      message: "Access denied. Admin role required."
     });
   }
 

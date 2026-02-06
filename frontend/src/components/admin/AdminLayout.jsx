@@ -1,6 +1,21 @@
 import AdminSidebar from './AdminSidebar';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function AdminLayout({ children }) {
+    const location = useLocation();
+
+    // Get page title based on current route
+    const getPageTitle = () => {
+        const path = location.pathname;
+        if (path.includes('/admin/dashboard')) return 'Tổng quan';
+        if (path.includes('/admin/restaurants')) return 'Quản lý Nhà hàng';
+        if (path.includes('/admin/packages')) return 'Quản lý Gói dịch vụ';
+        if (path.includes('/admin/reports')) return 'Báo cáo & Thống kê';
+        if (path.includes('/admin/content')) return 'Quản lý Nội dung';
+        if (path.includes('/admin/support')) return 'Hỗ trợ';
+        return 'Trang chủ';
+    };
+
     return (
         <div className="min-h-screen bg-[#0a0f0d]">
             {/* Sidebar */}
@@ -9,25 +24,17 @@ export default function AdminLayout({ children }) {
             {/* Main Content Area */}
             <main className="ml-64 min-h-screen p-8">
                 {/* Top Bar */}
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-white mb-1">
-                            Platform Admin Dashboard
-                        </h1>
-                        <p className="text-gray-400 text-sm">
-                            Quản lý và giám sát toàn bộ hệ thống
-                        </p>
-                    </div>
-
-                    {/* User Avatar & Notifications */}
-                    <div className="flex items-center gap-4">
-                        <button className="relative p-2 text-gray-400 hover:text-white hover:bg-[#1a2b22] rounded-lg transition">
-                            🔔
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-[#00ff88] rounded-full"></span>
-                        </button>
-                        <button className="p-2 text-gray-400 hover:text-white hover:bg-[#1a2b22] rounded-lg transition">
-                            ⚙️
-                        </button>
+                <div className="mb-8">
+                    {/* Dynamic Breadcrumb */}
+                    <div className="flex items-center gap-2">
+                        <Link
+                            to="/admin/dashboard"
+                            className="text-gray-400 text-sm hover:text-[#00ff88] transition"
+                        >
+                            Trang chủ
+                        </Link>
+                        <span className="text-gray-600">/</span>
+                        <span className="text-white font-medium text-sm">{getPageTitle()}</span>
                     </div>
                 </div>
 
