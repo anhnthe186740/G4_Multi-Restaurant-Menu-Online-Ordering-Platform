@@ -24,7 +24,7 @@ export default function Register() {
       console.log("Gửi request register:", form);
       const response = await registerApi(form);
       console.log("Register response:", response);
-      
+
       alert("✓ Đăng ký thành công!");
       setTimeout(() => {
         navigate("/login");
@@ -40,7 +40,7 @@ export default function Register() {
 
   return (
     <div className="relative min-h-screen bg-background-light dark:bg-background-dark flex flex-col transition-colors duration-300">
-      
+
       {/* ===== Background blobs ===== */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-20 -left-20 w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] opacity-30" />
@@ -48,29 +48,29 @@ export default function Register() {
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        
+
         {/* ===== Header ===== */}
-        <header className="flex items-center justify-between
-          px-6 py-2
-          border-b border-gray-200 dark:border-border-dark
-          bg-white/80 dark:bg-background-paper/90
-          backdrop-blur">
-          <div className="flex items-center gap-4 text-gray-900 dark:text-white">
-            <div className="w-6 h-6 text-primary">
-              <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        {/* Header */}
+        <header className="
+            flex items-center justify-between
+            px-6 py-4
+            border-b border-[#133827]
+            bg-[#062519]/80
+            backdrop-blur-md
+        ">
+          <Link to="/" className="flex items-center gap-3 font-bold text-xl tracking-tight hover:opacity-80 transition-opacity">
+            <div className="w-10 h-10 rounded-xl bg-[#00c04b] flex items-center justify-center shadow-lg shadow-[#00c04b]/20">
+              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold tracking-tight">OderEat</h2>
-          </div>
+            <span className="text-white">RestoManager</span>
+          </Link>
 
-          <div className="flex items-center gap-4">
-            <span className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 font-medium">
-              Đã có tài khoản?
-            </span>
+          <div className="flex justify-center">
             <Link
               to="/login"
-              className="min-w-[84px] h-10 px-4 rounded-xl bg-[#00c04b] text-white text-sm font-bold border border-transparent hover:bg-[#00a841] transition flex items-center justify-center shadow-sm"
+              className="h-10 px-5 rounded-lg bg-[#00c04b]/10 text-[#00c04b] text-sm font-bold border border-[#00c04b]/20 hover:bg-[#00c04b]/20 transition-all flex items-center justify-center"
             >
               Đăng nhập
             </Link>
@@ -79,20 +79,20 @@ export default function Register() {
 
         {/* ===== Main ===== */}
         <main className="flex-1 flex items-stretch justify-center">
-          
+
           {/* LEFT - IMAGE SECTION */}
           <div className="w-full md:w-1/2 relative overflow-hidden bg-background-dark items-center justify-center p-8 flex">
-            <div 
+            <div
               className="absolute inset-0 bg-cover bg-center transition-transform duration-700 opacity-60"
               style={{
                 // Bạn có thể thay đổi ảnh này nếu muốn
-                backgroundImage: "url('https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1974&auto=format&fit=crop')" 
+                backgroundImage: "url('https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1974&auto=format&fit=crop')"
               }}
             />
             {/* Gradient Overlay để hòa vào nền xanh */}
             <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/50 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-r from-background-dark/80 to-transparent" />
-            
+
             <div className="relative z-10 max-w-md text-white text-center px-4">
               <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-md border border-white/20">
                 <svg className="w-8 h-8 text-primary" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -113,7 +113,7 @@ export default function Register() {
               rounded-xl 
               shadow-[0_20px_50px_rgba(0,0,0,0.3)] 
               p-4 border border-gray-100 dark:border-border-dark">
-              
+
               {/* Title */}
               <div className="mb-8 text-center">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">
@@ -126,7 +126,7 @@ export default function Register() {
 
               {/* Form */}
               <form className="space-y-5" onSubmit={handleSubmit}>
-                
+
                 {/* Username */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
