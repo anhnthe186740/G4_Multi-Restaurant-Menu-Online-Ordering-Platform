@@ -1,21 +1,12 @@
-import { Link, useLocation } from 'react-router-dom';
-import {
-    LayoutDashboard,
-    Store,
-    FileText,
-    Package,
-    BarChart2,
-    MessageSquare,
-    Settings,
-    LifeBuoy,
-    UtensilsCrossed
-} from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { UtensilsCrossed } from 'lucide-react';
 
 export default function AdminSidebar() {
     const location = useLocation();
+    const navigate = useNavigate();
 
     const menuItems = [
-        { icon: '📊', label: 'Tổng quan', path: '/admin/dashboard', active: true },
+        { icon: '📊', label: 'Tổng quan', path: '/admin/dashboard' },
         { icon: '🏪', label: 'Nhà hàng', path: '/admin/restaurants' },
         { icon: '📝', label: 'Đơn đăng ký', path: '/admin/requests' },
         { icon: '📦', label: 'Gói dịch vụ', path: '/admin/service-packages' },
@@ -25,6 +16,20 @@ export default function AdminSidebar() {
     ];
 
     const isActive = (path) => location.pathname === path;
+
+    const handleLogout = () => {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        navigate('/login');
+    };
+
+    const userData = (() => {
+        try {
+            return JSON.parse(localStorage.getItem('user') || '{}');
+        } catch {
+            return {};
+        }
+    })();
 
     return (
         <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0f172a] border-r border-slate-700/50 flex flex-col z-50">
@@ -42,10 +47,9 @@ export default function AdminSidebar() {
             </div>
 
             {/* Navigation Menu */}
-            <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                 {menuItems.map((item, index) => {
                     const active = isActive(item.path);
-                    const Icon = item.icon;
                     return (
                         <Link
                             key={index}
@@ -53,12 +57,13 @@ export default function AdminSidebar() {
                             className={`
                                 flex items-center gap-3 px-4 py-3 rounded-lg transition-all group
                                 ${active
-                                    ? 'bg-gradient-to-r from-emerald-500/20 to-transparent text-emerald-500 border-l-4 border-emerald-500'
+                                    ? 'bg-gradient-to-r from-emerald-500/20 to-transparent text-emerald-400 border-l-4 border-emerald-500'
                                     : 'text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent'
                                 }
                             `}
                         >
-                            <Icon size={20} className={active ? 'text-emerald-500' : 'text-slate-500 group-hover:text-white transition-colors'} />
+                            {/* Render emoji as text, not as component */}
+                            <span className="text-lg w-5 text-center">{item.icon}</span>
                             <span className="font-medium text-sm">{item.label}</span>
                         </Link>
                     );
@@ -67,15 +72,18 @@ export default function AdminSidebar() {
 
             {/* User Info Footer */}
             <div className="p-4 border-t border-slate-700/50 bg-[#0f172a]">
-                <div className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                    onClick={handleLogout}
+                    title="Đăng xuất"
+                >
                     <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 font-bold text-sm border border-emerald-500/30">
-                        {JSON.parse(localStorage.getItem('user') || '{}').fullName?.[0] || 'A'}
+                        {userData.fullName?.[0]?.toUpperCase() || 'A'}
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-white text-sm font-medium truncate">
-                            {JSON.parse(localStorage.getItem('user') || '{}').fullName || 'Lê Anh Tuấn'}
+                            {userData.fullName || 'Admin'}
                         </p>
-                        <p className="text-slate-500 text-xs truncate uppercase font-semibold">Quản trị viên</p>
+                        <p className="text-slate-500 text-xs truncate uppercase font-semibold">Đăng xuất</p>
                     </div>
                 </div>
             </div>

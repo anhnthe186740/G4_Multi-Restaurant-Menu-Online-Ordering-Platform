@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "secret_key_dev";
+import dotenv from "dotenv";
+dotenv.config();
 
 /* ================= AUTH MIDDLEWARE ================= */
 export const authenticateToken = (req, res, next) => {
@@ -11,8 +11,12 @@ export const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: "Access token required" });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  // Read at runtime (not module load time) to ensure dotenv is loaded
+  const secret = process.env.JWT_SECRET || "secret_key_dev";
+
+  jwt.verify(token, secret, (err, user) => {
     if (err) {
+      console.error("JWT verify error:", err.message);
       return res.status(403).json({ message: "Invalid or expired token" });
     }
     req.user = user; // Attach user info to request
@@ -31,8 +35,10 @@ export const requireAdmin = (req, res, next) => {
   }
 
   if (req.user.role !== "Admin") {
+    console.error(`Access denied: user role is "${req.user.role}", expected "Admin"`);
     return res.status(403).json({
-      message: "Access denied. Admin role required."
+      message: "Access denied. Admin role required.",
+      yourRole: req.user.role
     });
   }
 

@@ -1,77 +1,52 @@
 import axios from "axios";
 
 const API_URL = "http://localhost:5000/api";
-// Updated port to 5000 to match backend .env
-const API_BASE_URL = "http://localhost:5000/api/admin";
-const DASHBOARD_URL = `${API_BASE_URL}/dashboard`;
-const PACKAGES_URL = `${API_BASE_URL}/service-packages`;
 
-// Set default authorization header
-const setAuthToken = () => {
+// Create a dedicated axios instance for admin APIs
+const adminAxios = axios.create({
+  baseURL: API_URL,
+});
+
+// Interceptor: tự động đính token MỚI NHẤT trước mỗi request
+adminAxios.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    config.headers["Authorization"] = `Bearer ${token}`;
   }
-};
-
-setAuthToken();
+  return config;
+});
 
 // ========== ADMIN DASHBOARD APIs ==========
-export const getDashboardOverview = () => axios.get(`${API_URL}/admin/dashboard/overview`);
-export const getRevenueChart = () => axios.get(`${API_URL}/admin/dashboard/revenue-chart`);
-export const getPackageDistribution = () => axios.get(`${API_URL}/admin/dashboard/package-distribution`);
-export const getPendingRequests = () => axios.get(`${API_URL}/admin/dashboard/pending-requests`);
-export const getRecentTickets = () => axios.get(`${API_URL}/admin/dashboard/recent-tickets`);
-export const getExpiringSubscriptions = () => axios.get(`${API_URL}/admin/dashboard/expiring-subscriptions`);
-export const getPaymentHistory = () => axios.get(`${API_URL}/admin/dashboard/payment-history`);
+export const getDashboardOverview = () => adminAxios.get("/admin/dashboard/overview");
+export const getRevenueChart = () => adminAxios.get("/admin/dashboard/revenue-chart");
+export const getPackageDistribution = () => adminAxios.get("/admin/dashboard/package-distribution");
+export const getPendingRequests = () => adminAxios.get("/admin/dashboard/pending-requests");
+export const getRecentTickets = () => adminAxios.get("/admin/dashboard/recent-tickets");
+export const getExpiringSubscriptions = () => adminAxios.get("/admin/dashboard/expiring-subscriptions");
+export const getPaymentHistory = () => adminAxios.get("/admin/dashboard/payment-history");
 
 // ========== ADMIN REPORTS APIs ==========
-export const getAllReports = (params) => axios.get(`${API_URL}/admin/reports`, { params });
-export const getReportStats = () => axios.get(`${API_URL}/admin/reports/stats`);
-export const getReportById = (id) => axios.get(`${API_URL}/admin/reports/${id}`);
-export const updateReportStatus = (id, data) => axios.put(`${API_URL}/admin/reports/${id}/status`, data);
-export const addReportResponse = (id, data) => axios.post(`${API_URL}/admin/reports/${id}/response`, data);
+export const getAllReports = (params) => adminAxios.get("/admin/reports", { params });
+export const getReportStats = () => adminAxios.get("/admin/reports/stats");
+export const getReportById = (id) => adminAxios.get(`/admin/reports/${id}`);
+export const updateReportStatus = (id, data) => adminAxios.put(`/admin/reports/${id}/status`, data);
+export const addReportResponse = (id, data) => adminAxios.post(`/admin/reports/${id}/response`, data);
 
 // ========== ADMIN RESTAURANT MANAGEMENT APIs ==========
-export const getAllRestaurants = () => axios.get(`${API_URL}/admin/restaurants`);
-export const getRestaurantById = (id) => axios.get(`${API_URL}/admin/restaurants/${id}`);
-export const updateRestaurantStatus = (id, status) => 
-  axios.patch(`${API_URL}/admin/restaurants/${id}/status`, { status });
-export const getRestaurantStatistics = () => axios.get(`${API_URL}/admin/restaurants/statistics`);
+export const getAllRestaurants = () => adminAxios.get("/admin/restaurants");
+export const getRestaurantById = (id) => adminAxios.get(`/admin/restaurants/${id}`);
+export const updateRestaurantStatus = (id, status) =>
+  adminAxios.patch(`/admin/restaurants/${id}/status`, { status });
+export const getRestaurantStatistics = () => adminAxios.get("/admin/restaurants/statistics");
 
-export default {
-  getDashboardOverview,
-  getRevenueChart,
-  getPackageDistribution,
-  getPendingRequests,
-  getRecentTickets,
-  getExpiringSubscriptions,
-  getPaymentHistory,
-  getAllReports,
-  getReportStats,
-  getReportById,
-  updateReportStatus,
-  addReportResponse,
-  getAllRestaurants,
-  getRestaurantById,
-  updateRestaurantStatus,
-  getRestaurantStatistics,
-};
-// Dashboard APIs
-export const getDashboardOverview = () => axios.get(`${DASHBOARD_URL}/overview`, getAuthHeaders());
-export const getRevenueChart = () => axios.get(`${DASHBOARD_URL}/revenue-chart`, getAuthHeaders());
-export const getPackageDistribution = () => axios.get(`${DASHBOARD_URL}/package-distribution`, getAuthHeaders());
-export const getPendingRequests = () => axios.get(`${DASHBOARD_URL}/pending-requests`, getAuthHeaders());
-export const getRecentTickets = () => axios.get(`${DASHBOARD_URL}/recent-tickets`, getAuthHeaders());
-export const getExpiringSubscriptions = () => axios.get(`${DASHBOARD_URL}/expiring-subscriptions`, getAuthHeaders());
+// ========== ADMIN SERVICE PACKAGE APIs ==========
+export const getServicePackages = () => adminAxios.get("/admin/service-packages");
+export const createServicePackage = (data) => adminAxios.post("/admin/service-packages", data);
+export const updateServicePackage = (id, data) => adminAxios.put(`/admin/service-packages/${id}`, data);
+export const deleteServicePackage = (id) => adminAxios.delete(`/admin/service-packages/${id}`);
+export const renewSubscription = (data) => adminAxios.post("/admin/service-packages/renew", data);
+export const getSubscriptionHistory = () => adminAxios.get("/admin/service-packages/history");
+export const getRestaurantsForRenewal = () => adminAxios.get("/admin/service-packages/restaurants-for-renewal");
+export const getRestaurantStatuses = () => adminAxios.get("/admin/service-packages/active-subscriptions");
 
-// Service Package APIs
-export const getServicePackages = () => axios.get(PACKAGES_URL, getAuthHeaders());
-export const createServicePackage = (data) => axios.post(PACKAGES_URL, data, getAuthHeaders());
-export const updateServicePackage = (id, data) => axios.put(`${PACKAGES_URL}/${id}`, data, getAuthHeaders());
-export const deleteServicePackage = (id) => axios.delete(`${PACKAGES_URL}/${id}`, getAuthHeaders());
-export const renewSubscription = (data) => axios.post(`${PACKAGES_URL}/renew`, data, getAuthHeaders());
-export const getSubscriptionHistory = () => axios.get(`${PACKAGES_URL}/history`, getAuthHeaders());
-export const getRestaurantsForRenewal = () => axios.get(`${PACKAGES_URL}/restaurants-for-renewal`, getAuthHeaders());
-export const getRestaurantStatuses = () => axios.get(`${PACKAGES_URL}/active-subscriptions`, getAuthHeaders());
-
+export default adminAxios;

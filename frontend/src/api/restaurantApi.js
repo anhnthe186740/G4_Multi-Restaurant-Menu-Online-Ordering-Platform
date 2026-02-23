@@ -1,67 +1,56 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/admin/restaurants';
+const restaurantAxios = axios.create({
+    baseURL: 'http://localhost:5000/api/admin/restaurants',
+});
 
-// Get auth token
-const getAuthHeader = () => {
+// Interceptor: luôn lấy token mới nhất từ localStorage
+restaurantAxios.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
-    return { Authorization: `Bearer ${token}` };
-};
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+});
 
 // Get all restaurants with filters
 export const getAllRestaurants = async (params = {}) => {
-    const response = await axios.get(API_URL, {
-        params,
-        headers: getAuthHeader()
-    });
+    const response = await restaurantAxios.get('/', { params });
     return response.data;
 };
 
 // Get restaurant details
 export const getRestaurantDetails = async (id) => {
-    const response = await axios.get(`${API_URL}/${id}`, {
-        headers: getAuthHeader()
-    });
+    const response = await restaurantAxios.get(`/${id}`);
     return response.data;
 };
 
 // Get restaurant statistics
 export const getRestaurantStats = async (id) => {
-    const response = await axios.get(`${API_URL}/${id}/stats`, {
-        headers: getAuthHeader()
-    });
+    const response = await restaurantAxios.get(`/${id}/stats`);
     return response.data;
 };
 
 // Update restaurant info
 export const updateRestaurantInfo = async (id, data) => {
-    const response = await axios.patch(`${API_URL}/${id}`, data, {
-        headers: getAuthHeader()
-    });
+    const response = await restaurantAxios.patch(`/${id}`, data);
     return response.data;
 };
 
 // Soft delete (deactivate)
 export const deactivateRestaurant = async (id, reason) => {
-    const response = await axios.post(`${API_URL}/${id}/deactivate`,
-        { reason },
-        { headers: getAuthHeader() }
-    );
+    const response = await restaurantAxios.post(`/${id}/deactivate`, { reason });
     return response.data;
 };
 
 // Reactivate restaurant
 export const reactivateRestaurant = async (id) => {
-    const response = await axios.post(`${API_URL}/${id}/reactivate`, {},
-        { headers: getAuthHeader() }
-    );
+    const response = await restaurantAxios.post(`/${id}/reactivate`, {});
     return response.data;
 };
 
 // Force delete (permanent)
 export const forceDeleteRestaurant = async (id) => {
-    const response = await axios.delete(`${API_URL}/${id}`, {
-        headers: getAuthHeader()
-    });
+    const response = await restaurantAxios.delete(`/${id}`);
     return response.data;
 };

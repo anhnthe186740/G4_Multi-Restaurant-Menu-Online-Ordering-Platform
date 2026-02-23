@@ -21,8 +21,14 @@ export default function Login() {
                 localStorage.setItem("token", response.data.token);
                 localStorage.setItem("user", JSON.stringify(response.data.user));
                 if (remember) localStorage.setItem("rememberEmail", form.email);
-                alert("✓ Đăng nhập thành công!");
-                setTimeout(() => navigate("/"), 500);
+
+                // Redirect theo role
+                const role = response.data.user?.role;
+                if (role === "Admin") {
+                    navigate("/admin/dashboard");
+                } else {
+                    navigate("/");
+                }
             } else {
                 alert("Không nhận được token từ server");
             }
