@@ -12,7 +12,6 @@ export default function AdminLayout({ children }) {
         if (path.includes('/admin/packages')) return 'Quản lý Gói dịch vụ';
         if (path.includes('/admin/reports')) return 'Báo cáo & Thống kê';
         if (path.includes('/admin/content')) return 'Quản lý Nội dung';
-        if (path.includes('/admin/support')) return 'Hỗ trợ';
         return 'Trang chủ';
     };
 

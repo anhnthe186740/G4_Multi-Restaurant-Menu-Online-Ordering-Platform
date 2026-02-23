@@ -11,7 +11,6 @@ export default function AdminSidebar() {
         { icon: '📝', label: 'Đơn đăng ký', path: '/admin/requests' },
         { icon: '📦', label: 'Gói dịch vụ', path: '/admin/service-packages' },
         { icon: '📈', label: 'Báo cáo', path: '/admin/reports' },
-        { icon: '🎫', label: 'Hỗ trợ', path: '/admin/support' },
         { icon: '⚙️', label: 'Cài đặt', path: '/admin/settings' },
     ];
 
