@@ -68,6 +68,11 @@ export default function App() {
               <AdminLayout>
                 <RestaurantManagement />
               </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/admin/service-packages"
           element={
             <ProtectedRoute requiredRole="Admin">
