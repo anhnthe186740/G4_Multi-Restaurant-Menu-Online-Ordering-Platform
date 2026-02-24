@@ -1,0 +1,434 @@
+/**
+ * Prisma Seed Script
+ * Run: node prisma/seed.js
+ *
+ * Tạo dữ liệu mẫu cho toàn bộ hệ thống:
+ * - 1 Admin
+ * - 3 RestaurantOwner + 3 Restaurants
+ * - 3 Service Packages + Subscriptions
+ * - Branches, Tables, Categories, Products
+ * - RegistrationRequests, SupportTickets
+ */
+
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("🌱 Bắt đầu seed dữ liệu...\n");
+
+  // =============================================
+  // 0. CLEAN UP (xóa theo thứ tự FK)
+  // =============================================
+  await prisma.transaction.deleteMany();
+  await prisma.invoiceDetail.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.orderDetail.deleteMany();
+  await prisma.orderTable.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.serviceRequest.deleteMany();
+  await prisma.supportTicket.deleteMany();
+  await prisma.registrationRequest.deleteMany();
+  await prisma.table.deleteMany();
+  await prisma.branch.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.category.deleteMany();
+  await prisma.discount.deleteMany();
+  await prisma.subscription.deleteMany();
+  await prisma.restaurant.deleteMany();
+  await prisma.servicePackage.deleteMany();
+  await prisma.user.deleteMany();
+  console.log("✅ Đã xóa dữ liệu cũ\n");
+
+  // =============================================
+  // 1. SERVICE PACKAGES
+  // =============================================
+  const [pkgBasic, pkgPro, pkgEnterprise] = await Promise.all([
+    prisma.servicePackage.create({
+      data: {
+        packageName: "Gói Cơ Bản",
+        price: 299000,
+        duration: 1,
+        featuresDescription: "1 chi nhánh, 50 món, báo cáo cơ bản",
+        isActive: true,
+      },
+    }),
+    prisma.servicePackage.create({
+      data: {
+        packageName: "Gói Chuyên Nghiệp",
+        price: 699000,
+        duration: 1,
+        featuresDescription: "5 chi nhánh, không giới hạn món, báo cáo nâng cao, QR Order",
+        isActive: true,
+      },
+    }),
+    prisma.servicePackage.create({
+      data: {
+        packageName: "Gói Doanh Nghiệp",
+        price: 1499000,
+        duration: 1,
+        featuresDescription: "Không giới hạn chi nhánh, API tích hợp, hỗ trợ 24/7, xuất hóa đơn VAT",
+        isActive: true,
+      },
+    }),
+  ]);
+  console.log("✅ Tạo 3 Service Packages");
+
+  // =============================================
+  // 2. USERS
+  // =============================================
+  const hashPw = (pw) => bcrypt.hash(pw, 10);
+
+  const [admin, owner1, owner2, owner3, manager1, staff1] = await Promise.all([
+    prisma.user.create({
+      data: {
+        username: "admin",
+        passwordHash: await hashPw("Admin@123"),
+        fullName: "Quản trị viên",
+        email: "admin@rms.vn",
+        phone: "0900000001",
+        role: "Admin",
+        status: "Active",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        username: "owner_phogamenu",
+        passwordHash: await hashPw("Owner@123"),
+        fullName: "Nguyễn Văn Phở",
+        email: "owner1@phogamenu.vn",
+        phone: "0911111111",
+        role: "RestaurantOwner",
+        status: "Active",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        username: "owner_banhmi",
+        passwordHash: await hashPw("Owner@123"),
+        fullName: "Trần Thị Bánh Mì",
+        email: "owner2@banhmi.vn",
+        phone: "0922222222",
+        role: "RestaurantOwner",
+        status: "Active",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        username: "owner_bbq",
+        passwordHash: await hashPw("Owner@123"),
+        fullName: "Lê Văn BBQ",
+        email: "owner3@bbqhouse.vn",
+        phone: "0933333333",
+        role: "RestaurantOwner",
+        status: "Active",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        username: "manager_q1",
+        passwordHash: await hashPw("Manager@123"),
+        fullName: "Phạm Thị Quản Lý",
+        email: "manager1@rms.vn",
+        phone: "0944444444",
+        role: "BranchManager",
+        status: "Active",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        username: "staff_cashier",
+        passwordHash: await hashPw("Staff@123"),
+        fullName: "Hoàng Văn Thu Ngân",
+        email: "staff1@rms.vn",
+        phone: "0955555555",
+        role: "Staff",
+        status: "Active",
+      },
+    }),
+  ]);
+  console.log("✅ Tạo 6 Users (1 Admin, 3 Owner, 1 Manager, 1 Staff)");
+
+  // =============================================
+  // 3. RESTAURANTS
+  // =============================================
+  const [rest1, rest2, rest3] = await Promise.all([
+    prisma.restaurant.create({
+      data: {
+        ownerUserID: owner1.userID,
+        name: "Phở Gà Menu",
+        description: "Chuỗi phở gà nổi tiếng Hà Nội, phục vụ từ 1990",
+        taxCode: "0123456789",
+        website: "https://phogamenu.vn",
+      },
+    }),
+    prisma.restaurant.create({
+      data: {
+        ownerUserID: owner2.userID,
+        name: "Bánh Mì Sài Gòn",
+        description: "Bánh mì truyền thống Sài Gòn, 30 loại nhân",
+        taxCode: "0987654321",
+        website: "https://banhmi.vn",
+      },
+    }),
+    prisma.restaurant.create({
+      data: {
+        ownerUserID: owner3.userID,
+        name: "BBQ House Hà Nội",
+        description: "Nhà hàng nướng Hàn Quốc phong cách hiện đại",
+        taxCode: "1122334455",
+        website: "https://bbqhouse.vn",
+      },
+    }),
+  ]);
+  console.log("✅ Tạo 3 Restaurants");
+
+  // =============================================
+  // 4. SUBSCRIPTIONS
+  // =============================================
+  const now = new Date();
+  const nextMonth = new Date(now); nextMonth.setMonth(nextMonth.getMonth() + 1);
+  const next3Month = new Date(now); next3Month.setMonth(next3Month.getMonth() + 3);
+
+  await Promise.all([
+    prisma.subscription.create({
+      data: {
+        restaurantID: rest1.restaurantID,
+        packageID: pkgEnterprise.packageID,
+        startDate: now,
+        endDate: next3Month,
+        status: "Active",
+        autoRenew: true,
+      },
+    }),
+    prisma.subscription.create({
+      data: {
+        restaurantID: rest2.restaurantID,
+        packageID: pkgPro.packageID,
+        startDate: now,
+        endDate: nextMonth,
+        status: "Active",
+        autoRenew: false,
+      },
+    }),
+    prisma.subscription.create({
+      data: {
+        restaurantID: rest3.restaurantID,
+        packageID: pkgBasic.packageID,
+        startDate: now,
+        endDate: nextMonth,
+        status: "Active",
+        autoRenew: false,
+      },
+    }),
+  ]);
+  console.log("✅ Tạo 3 Subscriptions");
+
+  // =============================================
+  // 5. BRANCHES & TABLES
+  // =============================================
+  const branch1 = await prisma.branch.create({
+    data: {
+      restaurantID: rest1.restaurantID,
+      managerUserID: manager1.userID,
+      name: "Phở Gà Menu - Chi nhánh Hoàn Kiếm",
+      address: "15 Hàng Bạc, Hoàn Kiếm, Hà Nội",
+      phone: "0241111111",
+      openingHours: "06:00 - 22:00",
+      isActive: true,
+    },
+  });
+
+  const branch2 = await prisma.branch.create({
+    data: {
+      restaurantID: rest1.restaurantID,
+      name: "Phở Gà Menu - Chi nhánh Đống Đa",
+      address: "88 Tây Sơn, Đống Đa, Hà Nội",
+      phone: "0242222222",
+      openingHours: "06:00 - 22:00",
+      isActive: true,
+    },
+  });
+
+  const branch3 = await prisma.branch.create({
+    data: {
+      restaurantID: rest2.restaurantID,
+      name: "Bánh Mì Sài Gòn - Quận 1",
+      address: "123 Lê Lợi, Q.1, TP.HCM",
+      phone: "0283333333",
+      openingHours: "07:00 - 21:00",
+      isActive: true,
+    },
+  });
+
+  // Tạo bàn cho branch1
+  await prisma.table.createMany({
+    data: [
+      { branchID: branch1.branchID, tableName: "Bàn 01", capacity: 2, status: "Available" },
+      { branchID: branch1.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
+      { branchID: branch1.branchID, tableName: "Bàn 03", capacity: 4, status: "Occupied" },
+      { branchID: branch1.branchID, tableName: "Bàn 04", capacity: 6, status: "Available" },
+      { branchID: branch1.branchID, tableName: "Bàn VIP 01", capacity: 8, status: "Reserved" },
+      { branchID: branch2.branchID, tableName: "Bàn 01", capacity: 4, status: "Available" },
+      { branchID: branch2.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
+      { branchID: branch3.branchID, tableName: "Bàn 01", capacity: 2, status: "Available" },
+      { branchID: branch3.branchID, tableName: "Bàn 02", capacity: 2, status: "Available" },
+      { branchID: branch3.branchID, tableName: "Bàn 03", capacity: 6, status: "Available" },
+    ],
+  });
+  console.log("✅ Tạo 3 Branches + 10 Tables");
+
+  // =============================================
+  // 6. CATEGORIES & PRODUCTS
+  // =============================================
+  const [catPho, catDrink, catSide] = await Promise.all([
+    prisma.category.create({ data: { restaurantID: rest1.restaurantID, name: "Phở", displayOrder: 1 } }),
+    prisma.category.create({ data: { restaurantID: rest1.restaurantID, name: "Đồ uống", displayOrder: 2 } }),
+    prisma.category.create({ data: { restaurantID: rest1.restaurantID, name: "Ăn kèm", displayOrder: 3 } }),
+  ]);
+
+  await prisma.product.createMany({
+    data: [
+      { categoryID: catPho.categoryID, name: "Phở tái", price: 65000, status: "Available", description: "Phở bò tái truyền thống" },
+      { categoryID: catPho.categoryID, name: "Phở chín", price: 65000, status: "Available", description: "Phở bò chín mềm" },
+      { categoryID: catPho.categoryID, name: "Phở gà", price: 60000, status: "Available", description: "Phở gà ta nước trong" },
+      { categoryID: catPho.categoryID, name: "Phở đặc biệt", price: 85000, status: "Available", description: "Tổng hợp tái, nạm, gầu, gân" },
+      { categoryID: catDrink.categoryID, name: "Trà đá", price: 10000, status: "Available" },
+      { categoryID: catDrink.categoryID, name: "Nước ngọt Pepsi", price: 20000, status: "Available" },
+      { categoryID: catDrink.categoryID, name: "Bia Hà Nội", price: 30000, status: "Available" },
+      { categoryID: catSide.categoryID, name: "Quẩy", price: 10000, status: "Available" },
+      { categoryID: catSide.categoryID, name: "Trứng luộc", price: 15000, status: "Available" },
+      { categoryID: catSide.categoryID, name: "Giò lụa", price: 25000, status: "Available" },
+    ],
+  });
+
+  // Categories & Products cho rest2
+  const catBanhMi = await prisma.category.create({
+    data: { restaurantID: rest2.restaurantID, name: "Bánh mì", displayOrder: 1 },
+  });
+  await prisma.product.createMany({
+    data: [
+      { categoryID: catBanhMi.categoryID, name: "Bánh mì thịt nguội", price: 35000, status: "Available" },
+      { categoryID: catBanhMi.categoryID, name: "Bánh mì pate", price: 30000, status: "Available" },
+      { categoryID: catBanhMi.categoryID, name: "Bánh mì xíu mại", price: 40000, status: "Available" },
+      { categoryID: catBanhMi.categoryID, name: "Bánh mì bơ sữa", price: 25000, status: "Available" },
+    ],
+  });
+  console.log("✅ Tạo Categories + 14 Products");
+
+  // =============================================
+  // 7. DISCOUNTS
+  // =============================================
+  await prisma.discount.createMany({
+    data: [
+      {
+        restaurantID: rest1.restaurantID,
+        code: "WELCOME10",
+        discountType: "Percentage",
+        value: 10,
+        minOrderValue: 100000,
+        startDate: now,
+        endDate: next3Month,
+      },
+      {
+        restaurantID: rest1.restaurantID,
+        code: "FREESHIP50K",
+        discountType: "FixedAmount",
+        value: 50000,
+        minOrderValue: 200000,
+        startDate: now,
+        endDate: next3Month,
+      },
+    ],
+  });
+  console.log("✅ Tạo 2 Discounts");
+
+  // =============================================
+  // 8. REGISTRATION REQUESTS
+  // =============================================
+  await prisma.registrationRequest.createMany({
+    data: [
+      {
+        ownerName: "Đinh Văn Lẩu",
+        contactInfo: "lau@hotpot.vn | 0966666666",
+        restaurantName: "Lẩu Thái Sài Gòn",
+        approvalStatus: "Pending",
+      },
+      {
+        ownerName: "Vũ Thị Cơm Tấm",
+        contactInfo: "comtam@saigon.vn | 0977777777",
+        restaurantName: "Cơm Tấm Bà Bảy",
+        approvalStatus: "Pending",
+      },
+      {
+        ownerName: "Bùi Văn Dimsum",
+        contactInfo: "dimsum@yumcha.vn | 0988888888",
+        restaurantName: "Dimsum Yum Cha Palace",
+        approvalStatus: "Approved",
+        ownerUserID: owner1.userID,
+        restaurantID: rest1.restaurantID,
+        approvedBy: admin.userID,
+        approvedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 ngày trước
+      },
+    ],
+  });
+  console.log("✅ Tạo 3 Registration Requests (2 Pending, 1 Approved)");
+
+  // =============================================
+  // 9. SUPPORT TICKETS
+  // =============================================
+  await prisma.supportTicket.createMany({
+    data: [
+      {
+        userID: owner1.userID,
+        subject: "Không in được hóa đơn VAT",
+        description: "Tôi không thể xuất hóa đơn VAT cho khách hàng doanh nghiệp. Hệ thống báo lỗi khi in.",
+        priority: "High",
+        status: "Open",
+      },
+      {
+        userID: owner2.userID,
+        subject: "Muốn nâng cấp gói dịch vụ",
+        description: "Tôi muốn nâng từ Gói Chuyên Nghiệp lên Gói Doanh Nghiệp, tư vấn giúp tôi.",
+        priority: "Medium",
+        status: "InProgress",
+        resolution: `[${now.toISOString()}] Admin: Chúng tôi sẽ liên hệ lại trong vòng 24h để tư vấn chi tiết.`,
+      },
+      {
+        userID: owner3.userID,
+        subject: "QR Code bàn không hoạt động",
+        description: "QR Code của bàn 03 không redirect đúng về trang order. Khách quét vào thì bị lỗi 404.",
+        priority: "High",
+        status: "Resolved",
+        resolution: `[${now.toISOString()}] Admin: Đã reset QR Code. Vui lòng tạo lại QR Code mới trong phần quản lý bàn.`,
+      },
+      {
+        userID: owner1.userID,
+        subject: "Thêm tính năng đặt bàn online",
+        description: "Đề xuất thêm tính năng cho khách đặt bàn trước qua website.",
+        priority: "Low",
+        status: "Open",
+      },
+    ],
+  });
+  console.log("✅ Tạo 4 Support Tickets");
+
+  console.log("\n🎉 Seed hoàn tất!\n");
+  console.log("📋 Tài khoản đăng nhập:");
+  console.log("   Admin:   admin@rms.vn        / Admin@123");
+  console.log("   Owner 1: owner1@phogamenu.vn  / Owner@123");
+  console.log("   Owner 2: owner2@banhmi.vn     / Owner@123");
+  console.log("   Owner 3: owner3@bbqhouse.vn   / Owner@123");
+  console.log("   Manager: manager1@rms.vn      / Manager@123");
+  console.log("   Staff:   staff1@rms.vn        / Staff@123");
+}
+
+main()
+  .catch((e) => {
+    console.error("❌ Seed thất bại:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

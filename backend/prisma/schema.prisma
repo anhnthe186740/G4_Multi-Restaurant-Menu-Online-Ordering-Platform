@@ -1,0 +1,445 @@
+// =============================================
+// schema.prisma
+// Multi-Restaurant Ordering Platform (SaaS)
+// =============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================
+// ENUMs
+// =============================================
+
+enum UserRole {
+  Admin
+  RestaurantOwner
+  BranchManager
+  Staff
+}
+
+enum UserStatus {
+  Active
+  Inactive
+}
+
+enum ApprovalStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+enum SubscriptionStatus {
+  Active
+  Expired
+}
+
+enum TableStatus {
+  Available
+  Occupied
+  Reserved
+}
+
+enum ProductStatus {
+  Available
+  OutOfStock
+}
+
+enum OrderStatus {
+  Open
+  Serving
+  Completed
+  Cancelled
+}
+
+enum PaymentStatus {
+  Unpaid
+  Paid
+}
+
+enum ItemStatus {
+  Pending
+  Cooking
+  Ready
+  Served
+  Cancelled
+}
+
+enum DiscountType {
+  Percentage
+  FixedAmount
+}
+
+enum InvoiceStatus {
+  Open
+  Closed
+  Issued
+}
+
+enum InvoiceDetailStatus {
+  Open
+  Finalized
+}
+
+enum PaymentMethod {
+  Cash
+  BankTransfer
+  E_Wallet @map("E-Wallet")
+}
+
+enum TransactionStatus {
+  Success
+  Failed
+}
+
+enum ServiceRequestType {
+  GoiMon  @map("Gọi món")
+  GoiNuoc @map("Gọi nước")
+  ThanhToan @map("Thanh toán")
+  Khac    @map("Khác")
+}
+
+enum TicketPriority {
+  Low
+  Medium
+  High
+}
+
+// =============================================
+// MODELS
+// =============================================
+
+// 1. Users
+model User {
+  userID       Int        @id @default(autoincrement()) @map("UserID")
+  username     String     @unique @map("Username") @db.VarChar(50)
+  passwordHash String     @map("PasswordHash") @db.VarChar(255)
+  fullName     String?    @map("FullName") @db.VarChar(100)
+  email        String?    @unique @map("Email") @db.VarChar(100)
+  phone        String?    @map("Phone") @db.VarChar(20)
+  role         UserRole   @map("Role")
+  status       UserStatus @default(Active) @map("Status")
+  createdAt    DateTime   @default(now()) @map("CreatedAt")
+
+  // Relations
+  ownedRestaurants         Restaurant[]         @relation("RestaurantOwner")
+  managedBranches          Branch[]             @relation("BranchManager")
+  registrationRequests     RegistrationRequest[] @relation("RequestOwner")
+  approvedRequests         RegistrationRequest[] @relation("RequestApprover")
+  createdOrders            Order[]
+  supportTickets           SupportTicket[]
+
+  @@map("Users")
+}
+
+// 2. ServicePackages
+model ServicePackage {
+  packageID           Int      @id @default(autoincrement()) @map("PackageID")
+  packageName         String   @map("PackageName") @db.VarChar(100)
+  price               Decimal  @map("Price") @db.Decimal(15, 2)
+  duration            Int?     @map("Duration")
+  featuresDescription String?  @map("FeaturesDescription") @db.Text
+  isActive            Boolean  @default(true) @map("IsActive")
+
+  // Relations
+  subscriptions Subscription[]
+
+  @@map("ServicePackages")
+}
+
+// 3. Restaurants
+model Restaurant {
+  restaurantID Int     @id @default(autoincrement()) @map("RestaurantID")
+  ownerUserID  Int?    @map("OwnerUserID")
+  name         String  @map("Name") @db.VarChar(255)
+  logo         String? @map("Logo") @db.VarChar(255)
+  description  String? @map("Description") @db.Text
+  taxCode      String? @map("TaxCode") @db.VarChar(50)
+  website      String? @map("Website") @db.VarChar(255)
+
+  // Relations
+  owner                User?                 @relation("RestaurantOwner", fields: [ownerUserID], references: [userID], onDelete: SetNull)
+  subscriptions        Subscription[]
+  branches             Branch[]
+  categories           Category[]
+  discounts            Discount[]
+  registrationRequests RegistrationRequest[]
+
+  @@map("Restaurants")
+}
+
+// 4. RegistrationRequests
+model RegistrationRequest {
+  requestID      Int            @id @default(autoincrement()) @map("RequestID")
+  ownerName      String?        @map("OwnerName") @db.VarChar(100)
+  contactInfo    String?        @map("ContactInfo") @db.VarChar(255)
+  restaurantName String?        @map("RestaurantName") @db.VarChar(255)
+  submissionDate DateTime       @default(now()) @map("SubmissionDate")
+  approvalStatus ApprovalStatus @default(Pending) @map("ApprovalStatus")
+  adminNote      String?        @map("AdminNote") @db.Text
+  ownerUserID    Int?           @map("OwnerUserID")
+  restaurantID   Int?           @map("RestaurantID")
+  approvedBy     Int?           @map("ApprovedBy")
+  approvedDate   DateTime?      @map("ApprovedDate")
+
+  // Relations
+  owner      User?       @relation("RequestOwner", fields: [ownerUserID], references: [userID], onDelete: SetNull)
+  restaurant Restaurant? @relation(fields: [restaurantID], references: [restaurantID], onDelete: SetNull)
+  approver   User?       @relation("RequestApprover", fields: [approvedBy], references: [userID], onDelete: SetNull)
+
+  @@map("RegistrationRequests")
+}
+
+// 5. Subscriptions
+model Subscription {
+  subscriptionID Int                @id @default(autoincrement()) @map("SubscriptionID")
+  restaurantID   Int?               @map("RestaurantID")
+  packageID      Int?               @map("PackageID")
+  startDate      DateTime?          @map("StartDate")
+  endDate        DateTime?          @map("EndDate")
+  status         SubscriptionStatus @default(Active) @map("Status")
+  autoRenew      Boolean            @default(false) @map("AutoRenew")
+
+  // Relations
+  restaurant Restaurant?    @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
+  package    ServicePackage? @relation(fields: [packageID], references: [packageID])
+
+  @@map("Subscriptions")
+}
+
+// 6. Branches
+model Branch {
+  branchID     Int     @id @default(autoincrement()) @map("BranchID")
+  restaurantID Int     @map("RestaurantID")
+  managerUserID Int?   @map("ManagerUserID")
+  name         String  @map("Name") @db.VarChar(255)
+  address      String? @map("Address") @db.VarChar(255)
+  phone        String? @map("Phone") @db.VarChar(20)
+  openingHours String? @map("OpeningHours") @db.VarChar(100)
+  isActive     Boolean @default(true) @map("IsActive")
+
+  // Relations
+  restaurant      Restaurant       @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
+  manager         User?            @relation("BranchManager", fields: [managerUserID], references: [userID], onDelete: SetNull)
+  tables          Table[]
+  orders          Order[]
+  serviceRequests ServiceRequest[]
+
+  @@map("Branches")
+}
+
+// 7. Tables
+model Table {
+  tableID   Int         @id @default(autoincrement()) @map("TableID")
+  branchID  Int         @map("BranchID")
+  tableName String?     @map("TableName") @db.VarChar(50)
+  capacity  Int?        @map("Capacity")
+  status    TableStatus @default(Available) @map("Status")
+  qrCode    String?     @map("QRCode") @db.Text
+
+  // Relations
+  branch          Branch           @relation(fields: [branchID], references: [branchID], onDelete: Cascade)
+  orderTables     OrderTable[]
+  serviceRequests ServiceRequest[]
+
+  @@map("Tables")
+}
+
+// 8. Categories
+model Category {
+  categoryID   Int     @id @default(autoincrement()) @map("CategoryID")
+  restaurantID Int     @map("RestaurantID")
+  name         String  @map("Name") @db.VarChar(100)
+  description  String? @map("Description") @db.Text
+  displayOrder Int?    @map("DisplayOrder")
+
+  // Relations
+  restaurant Restaurant @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
+  products   Product[]
+
+  @@map("Categories")
+}
+
+// 9. Products
+model Product {
+  productID   Int           @id @default(autoincrement()) @map("ProductID")
+  categoryID  Int           @map("CategoryID")
+  name        String        @map("Name") @db.VarChar(255)
+  description String?       @map("Description") @db.Text
+  price       Decimal       @map("Price") @db.Decimal(15, 2)
+  imageURL    String?       @map("ImageURL") @db.VarChar(255)
+  status      ProductStatus @default(Available) @map("Status")
+
+  // Relations
+  category       Category        @relation(fields: [categoryID], references: [categoryID], onDelete: Cascade)
+  orderDetails   OrderDetail[]
+  invoiceDetails InvoiceDetail[]
+
+  @@map("Products")
+}
+
+// 10. Orders
+model Order {
+  orderID       Int           @id @default(autoincrement()) @map("OrderID")
+  branchID      Int           @map("BranchID")
+  createdBy     Int?          @map("CreatedBy")
+  orderTime     DateTime      @default(now()) @map("OrderTime")
+  totalAmount   Decimal       @default(0) @map("TotalAmount") @db.Decimal(15, 2)
+  orderStatus   OrderStatus   @default(Open) @map("OrderStatus")
+  paymentStatus PaymentStatus @default(Unpaid) @map("PaymentStatus")
+  customerNote  String?       @map("CustomerNote") @db.Text
+
+  // Relations
+  branch       Branch        @relation(fields: [branchID], references: [branchID])
+  creator      User?         @relation(fields: [createdBy], references: [userID])
+  orderTables  OrderTable[]
+  orderDetails OrderDetail[]
+  invoice      Invoice?
+
+  @@map("Orders")
+}
+
+// 11. OrderTables (M:N junction — Orders <-> Tables)
+model OrderTable {
+  orderID Int @map("OrderID")
+  tableID Int @map("TableID")
+
+  // Relations
+  order Order @relation(fields: [orderID], references: [orderID], onDelete: Cascade)
+  table Table @relation(fields: [tableID], references: [tableID], onDelete: Cascade)
+
+  @@id([orderID, tableID])
+  @@map("OrderTables")
+}
+
+// 12. OrderDetails
+model OrderDetail {
+  orderDetailID Int        @id @default(autoincrement()) @map("OrderDetailID")
+  orderID       Int?       @map("OrderID")
+  productID     Int?       @map("ProductID")
+  quantity      Int        @map("Quantity")
+  unitPrice     Decimal    @map("UnitPrice") @db.Decimal(15, 2)
+  note          String?    @map("Note") @db.Text
+  itemStatus    ItemStatus @default(Pending) @map("ItemStatus")
+
+  // Relations
+  order          Order?          @relation(fields: [orderID], references: [orderID], onDelete: Cascade)
+  product        Product?        @relation(fields: [productID], references: [productID])
+  invoiceDetails InvoiceDetail[]
+
+  @@map("OrderDetails")
+}
+
+// 13. Discounts
+model Discount {
+  discountID    Int          @id @default(autoincrement()) @map("DiscountID")
+  restaurantID  Int?         @map("RestaurantID")
+  code          String       @unique @map("Code") @db.VarChar(50)
+  discountType  DiscountType @map("DiscountType")
+  value         Decimal      @map("Value") @db.Decimal(15, 2)
+  minOrderValue Decimal      @default(0) @map("MinOrderValue") @db.Decimal(15, 2)
+  startDate     DateTime?    @map("StartDate")
+  endDate       DateTime?    @map("EndDate")
+
+  // Relations
+  restaurant Restaurant? @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
+  invoices   Invoice[]
+
+  @@map("Discounts")
+}
+
+// 14. Invoices
+model Invoice {
+  invoiceID       Int           @id @default(autoincrement()) @map("InvoiceID")
+  orderID         Int?          @unique @map("OrderID")
+  discountID      Int?          @map("DiscountID")
+  issuedDate      DateTime      @default(now()) @map("IssuedDate")
+  status          InvoiceStatus @default(Open) @map("Status")
+  subTotal        Decimal       @map("SubTotal") @db.Decimal(15, 2)
+  discountAmount  Decimal       @default(0) @map("DiscountAmount") @db.Decimal(15, 2)
+  totalAmount     Decimal       @map("TotalAmount") @db.Decimal(15, 2)
+  customerTaxName String?       @map("CustomerTaxName") @db.VarChar(255)
+  customerTaxCode String?       @map("CustomerTaxCode") @db.VarChar(50)
+  invoiceFileURL  String?       @map("InvoiceFileURL") @db.VarChar(255)
+
+  // Relations
+  order          Order?          @relation(fields: [orderID], references: [orderID])
+  discount       Discount?       @relation(fields: [discountID], references: [discountID])
+  transactions   Transaction[]
+  invoiceDetails InvoiceDetail[]
+
+  @@map("Invoices")
+}
+
+// 15. InvoiceDetails
+model InvoiceDetail {
+  invoiceDetailID Int                 @id @default(autoincrement()) @map("InvoiceDetailID")
+  invoiceID       Int?                @map("InvoiceID")
+  orderDetailID   Int?                @map("OrderDetailID")
+  productID       Int?                @map("ProductID")
+  quantity        Int?                @map("Quantity")
+  unitPrice       Decimal?            @map("UnitPrice") @db.Decimal(15, 2)
+  totalPrice      Decimal?            @map("TotalPrice") @db.Decimal(15, 2)
+  status          InvoiceDetailStatus @default(Open) @map("Status")
+
+  // Relations
+  invoice     Invoice?     @relation(fields: [invoiceID], references: [invoiceID], onDelete: Cascade)
+  orderDetail OrderDetail? @relation(fields: [orderDetailID], references: [orderDetailID])
+  product     Product?     @relation(fields: [productID], references: [productID])
+
+  @@map("InvoiceDetails")
+}
+
+// 16. Transactions
+model Transaction {
+  transactionID      Int               @id @default(autoincrement()) @map("TransactionID")
+  invoiceID          Int?              @map("InvoiceID")
+  paymentGatewayRef  String?           @map("PaymentGatewayRef") @db.VarChar(255)
+  amount             Decimal           @map("Amount") @db.Decimal(15, 2)
+  paymentMethod      PaymentMethod     @map("PaymentMethod")
+  status             TransactionStatus @default(Success) @map("Status")
+  transactionTime    DateTime          @default(now()) @map("TransactionTime")
+
+  // Relations
+  invoice Invoice? @relation(fields: [invoiceID], references: [invoiceID])
+
+  @@map("Transactions")
+}
+
+// 17. ServiceRequests
+model ServiceRequest {
+  requestID   Int                @id @default(autoincrement()) @map("RequestID")
+  branchID    Int?               @map("BranchID")
+  tableID     Int?               @map("TableID")
+  requestType ServiceRequestType @map("RequestType")
+  status      String?            @map("Status") @db.VarChar(50)
+  createdTime DateTime           @default(now()) @map("CreatedTime")
+
+  // Relations
+  branch Branch? @relation(fields: [branchID], references: [branchID])
+  table  Table?  @relation(fields: [tableID], references: [tableID])
+
+  @@map("ServiceRequests")
+}
+
+// 18. SupportTickets
+model SupportTicket {
+  ticketID    Int            @id @default(autoincrement()) @map("TicketID")
+  userID      Int?           @map("UserID")
+  subject     String?        @map("Subject") @db.VarChar(255)
+  description String?        @map("Description") @db.Text
+  priority    TicketPriority @default(Medium) @map("Priority")
+  status      String?        @map("Status") @db.VarChar(50)
+  resolution  String?        @map("Resolution") @db.Text
+  createdAt   DateTime       @default(now()) @map("CreatedAt")
+
+  // Relations
+  user User? @relation(fields: [userID], references: [userID])
+
+  @@map("SupportTickets")
+}

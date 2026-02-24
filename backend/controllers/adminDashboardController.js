@@ -1,61 +1,70 @@
-import { db as pool } from "../config/db.js";
+import prisma from "../config/prismaClient.js";
 
 /* ================= GET DASHBOARD OVERVIEW ================= */
 export const getOverview = async (req, res) => {
   try {
-    // Total restaurants
-    const [restaurants] = await pool.query(`
-      SELECT COUNT(*) as total FROM Restaurants
-    `);
+    const [
+      totalRestaurants,
+      activeSubscriptions,
+      pendingRequests,
+      expiringSoon,
+      revenueAgg,
+      monthlyRevenueAgg,
+    ] = await Promise.all([
+      // Total restaurants
+      prisma.restaurant.count(),
 
-    // Active subscriptions
-    const [activeSubscriptions] = await pool.query(`
-      SELECT COUNT(*) as total 
-      FROM Subscriptions 
-      WHERE Status = 'Active'
-    `);
+      // Active subscriptions
+      prisma.subscription.count({ where: { status: "Active" } }),
 
-    // Total revenue from active subscriptions
-    const [revenue] = await pool.query(`
-      SELECT SUM(sp.Price) as total
-      FROM Subscriptions s
-      INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
-      WHERE s.Status = 'Active'
-    `);
+      // Pending registration requests
+      prisma.registrationRequest.count({ where: { approvalStatus: "Pending" } }),
 
-    // Pending registration requests
-    const [pendingRequests] = await pool.query(`
-      SELECT COUNT(*) as total 
-      FROM RegistrationRequests 
-      WHERE ApprovalStatus = 'Pending'
-    `);
+      // Expiring within 7 days
+      prisma.subscription.count({
+        where: {
+          status: "Active",
+          endDate: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          },
+        },
+      }),
 
-    // Monthly revenue (current month)
-    const [monthlyRevenue] = await pool.query(`
-      SELECT SUM(sp.Price) as total
-      FROM Subscriptions s
-      INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
-      WHERE s.Status = 'Active'
-        AND MONTH(s.StartDate) = MONTH(CURRENT_DATE())
-        AND YEAR(s.StartDate) = YEAR(CURRENT_DATE())
-    `);
+      // Total revenue from active subscriptions
+      prisma.subscription.findMany({
+        where: { status: "Active" },
+        include: { package: { select: { price: true } } },
+      }),
 
-    // Expiring soon (within 7 days)
-    const [expiringSoon] = await pool.query(`
-      SELECT COUNT(*) as total
-      FROM Subscriptions
-      WHERE Status = 'Active'
-        AND EndDate BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
-    `);
+      // Monthly revenue (current month)
+      prisma.subscription.findMany({
+        where: {
+          status: "Active",
+          startDate: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1),
+          },
+        },
+        include: { package: { select: { price: true } } },
+      }),
+    ]);
+
+    const totalRevenue = revenueAgg.reduce(
+      (sum, s) => sum + (parseFloat(s.package?.price) || 0), 0
+    );
+    const monthlyRevenue = monthlyRevenueAgg.reduce(
+      (sum, s) => sum + (parseFloat(s.package?.price) || 0), 0
+    );
 
     res.json({
-      totalRestaurants: restaurants[0].total || 0,
-      activeRestaurants: restaurants[0].total || 0,
-      totalRevenue: parseFloat(revenue[0].total || 0),
-      pendingRequests: pendingRequests[0].total || 0,
-      activeSubscriptions: activeSubscriptions[0].total || 0,
-      monthlyRevenue: parseFloat(monthlyRevenue[0].total || 0),
-      expiringSoon: expiringSoon[0].total || 0
+      totalRestaurants,
+      activeRestaurants: totalRestaurants,
+      totalRevenue,
+      pendingRequests,
+      activeSubscriptions,
+      monthlyRevenue,
+      expiringSoon,
     });
   } catch (error) {
     console.error("getOverview error:", error);
@@ -66,7 +75,8 @@ export const getOverview = async (req, res) => {
 /* ================= GET REVENUE CHART ================= */
 export const getRevenueChart = async (req, res) => {
   try {
-    const [results] = await pool.query(`
+    // Dùng $queryRaw vì cần DATE_FORMAT (MySQL function)
+    const results = await prisma.$queryRaw`
       SELECT 
         DATE_FORMAT(s.StartDate, '%Y-%m') as month,
         SUM(sp.Price) as revenue
@@ -75,10 +85,10 @@ export const getRevenueChart = async (req, res) => {
       WHERE s.StartDate >= DATE_SUB(CURRENT_DATE(), INTERVAL 12 MONTH)
       GROUP BY DATE_FORMAT(s.StartDate, '%Y-%m')
       ORDER BY month ASC
-    `);
+    `;
 
-    const labels = results.map(r => r.month);
-    const data = results.map(r => parseFloat(r.revenue));
+    const labels = results.map((r) => r.month);
+    const data = results.map((r) => parseFloat(r.revenue));
 
     res.json({ labels, data });
   } catch (error) {
@@ -90,16 +100,20 @@ export const getRevenueChart = async (req, res) => {
 /* ================= GET PACKAGE DISTRIBUTION ================= */
 export const getPackageDistribution = async (req, res) => {
   try {
-    const [results] = await pool.query(`
-      SELECT 
-        sp.PackageName as packageName,
-        COUNT(s.SubscriptionID) as count
-      FROM ServicePackages sp
-      LEFT JOIN Subscriptions s ON sp.PackageID = s.PackageID AND s.Status = 'Active'
-      WHERE sp.IsActive = TRUE
-      GROUP BY sp.PackageID, sp.PackageName
-      ORDER BY count DESC
-    `);
+    const packages = await prisma.servicePackage.findMany({
+      where: { isActive: true },
+      include: {
+        _count: {
+          select: { subscriptions: { where: { status: "Active" } } },
+        },
+      },
+      orderBy: { packageID: "asc" },
+    });
+
+    const results = packages.map((pkg) => ({
+      packageName: pkg.packageName,
+      count: pkg._count.subscriptions,
+    }));
 
     res.json(results);
   } catch (error) {
@@ -111,19 +125,19 @@ export const getPackageDistribution = async (req, res) => {
 /* ================= GET PENDING REQUESTS ================= */
 export const getPendingRequests = async (req, res) => {
   try {
-    const [requests] = await pool.query(`
-      SELECT 
-        RequestID,
-        OwnerName,
-        RestaurantName,
-        ContactInfo,
-        SubmissionDate,
-        ApprovalStatus
-      FROM RegistrationRequests
-      WHERE ApprovalStatus = 'Pending'
-      ORDER BY SubmissionDate DESC
-      LIMIT 10
-    `);
+    const requests = await prisma.registrationRequest.findMany({
+      where: { approvalStatus: "Pending" },
+      orderBy: { submissionDate: "desc" },
+      take: 10,
+      select: {
+        requestID: true,
+        ownerName: true,
+        restaurantName: true,
+        contactInfo: true,
+        submissionDate: true,
+        approvalStatus: true,
+      },
+    });
 
     res.json(requests);
   } catch (error) {
@@ -135,21 +149,29 @@ export const getPendingRequests = async (req, res) => {
 /* ================= GET RECENT TICKETS ================= */
 export const getRecentTickets = async (req, res) => {
   try {
-    const [tickets] = await pool.query(`
-      SELECT 
-        st.TicketID,
-        st.Subject,
-        st.Priority,
-        st.Status,
-        st.CreatedAt,
-        u.FullName as userName
-      FROM SupportTickets st
-      LEFT JOIN Users u ON st.UserID = u.UserID
-      ORDER BY st.CreatedAt DESC
-      LIMIT 10
-    `);
+    const tickets = await prisma.supportTicket.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        ticketID: true,
+        subject: true,
+        priority: true,
+        status: true,
+        createdAt: true,
+        user: { select: { fullName: true } },
+      },
+    });
 
-    res.json(tickets);
+    const result = tickets.map((t) => ({
+      TicketID: t.ticketID,
+      Subject: t.subject,
+      Priority: t.priority,
+      Status: t.status,
+      CreatedAt: t.createdAt,
+      userName: t.user?.fullName || null,
+    }));
+
+    res.json(result);
   } catch (error) {
     console.error("getRecentTickets error:", error);
     res.status(500).json({ message: error.message || "Server error" });
@@ -159,22 +181,30 @@ export const getRecentTickets = async (req, res) => {
 /* ================= GET EXPIRING SUBSCRIPTIONS ================= */
 export const getExpiringSubscriptions = async (req, res) => {
   try {
-    const [subscriptions] = await pool.query(`
-      SELECT 
-        s.SubscriptionID,
-        r.Name as RestaurantName,
-        sp.PackageName,
-        s.EndDate,
-        DATEDIFF(s.EndDate, CURRENT_DATE()) as DaysRemaining
-      FROM Subscriptions s
-      INNER JOIN Restaurants r ON s.RestaurantID = r.RestaurantID
-      INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
-      WHERE s.Status = 'Active'
-        AND s.EndDate BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
-      ORDER BY s.EndDate ASC
-    `);
+    const subscriptions = await prisma.subscription.findMany({
+      where: {
+        status: "Active",
+        endDate: {
+          gte: new Date(),
+          lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: { endDate: "asc" },
+      include: {
+        restaurant: { select: { name: true } },
+        package: { select: { packageName: true } },
+      },
+    });
 
-    res.json(subscriptions);
+    const result = subscriptions.map((s) => ({
+      SubscriptionID: s.subscriptionID,
+      RestaurantName: s.restaurant?.name,
+      PackageName: s.package?.packageName,
+      EndDate: s.endDate,
+      DaysRemaining: Math.ceil((new Date(s.endDate) - new Date()) / (1000 * 60 * 60 * 24)),
+    }));
+
+    res.json(result);
   } catch (error) {
     console.error("getExpiringSubscriptions error:", error);
     res.status(500).json({ message: error.message || "Server error" });
@@ -184,25 +214,32 @@ export const getExpiringSubscriptions = async (req, res) => {
 /* ================= GET PAYMENT HISTORY ================= */
 export const getPaymentHistory = async (req, res) => {
   try {
-    const [payments] = await pool.query(`
-      SELECT 
-        s.SubscriptionID,
-        r.Name as RestaurantName,
-        u.FullName as OwnerName,
-        sp.PackageName,
-        sp.Price as Amount,
-        s.StartDate as PaymentDate,
-        s.Status,
-        s.EndDate
-      FROM Subscriptions s
-      INNER JOIN Restaurants r ON s.RestaurantID = r.RestaurantID
-      INNER JOIN Users u ON r.OwnerUserID = u.UserID
-      INNER JOIN ServicePackages sp ON s.PackageID = sp.PackageID
-      ORDER BY s.StartDate DESC
-      LIMIT 10
-    `);
+    const payments = await prisma.subscription.findMany({
+      orderBy: { startDate: "desc" },
+      take: 10,
+      include: {
+        restaurant: {
+          select: {
+            name: true,
+            owner: { select: { fullName: true } },
+          },
+        },
+        package: { select: { packageName: true, price: true } },
+      },
+    });
 
-    res.json(payments);
+    const result = payments.map((s) => ({
+      SubscriptionID: s.subscriptionID,
+      RestaurantName: s.restaurant?.name,
+      OwnerName: s.restaurant?.owner?.fullName,
+      PackageName: s.package?.packageName,
+      Amount: s.package?.price,
+      PaymentDate: s.startDate,
+      Status: s.status,
+      EndDate: s.endDate,
+    }));
+
+    res.json(result);
   } catch (error) {
     console.error("getPaymentHistory error:", error);
     res.status(500).json({ message: error.message || "Server error" });
