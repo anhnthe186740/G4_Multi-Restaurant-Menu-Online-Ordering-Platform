@@ -516,7 +516,7 @@ async function main() {
       .map(([idx, qty]) => {
         const p = products[idx];
         total += parseFloat(p.price) * qty;
-        return { productID: p.productID, quantity: qty, unitPrice: p.price, subtotal: parseFloat(p.price) * qty };
+        return { productID: p.productID, quantity: qty, unitPrice: p.price };
       });
     if (details.length === 0) continue;
     await prisma.order.create({
