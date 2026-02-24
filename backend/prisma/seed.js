@@ -467,6 +467,71 @@ async function main() {
   });
   console.log("✅ Tạo 4 Support Tickets");
 
+  // =============================================
+  // 10. ORDERS (dữ liệu mẫu cho Owner Dashboard)
+  // =============================================
+  const products = await prisma.product.findMany({
+    where: { category: { restaurantID: rest1.restaurantID } },
+    select: { productID: true, price: true },
+  });
+
+  const mkDate = (daysAgo, hour) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, 30, 0, 0);
+    return d;
+  };
+
+  const orderSamples = [
+    { branchID: branch1.branchID, daysAgo: 0,  hour: 7,  items: [[0,2],[4,2]] },
+    { branchID: branch1.branchID, daysAgo: 0,  hour: 11, items: [[2,3],[7,3]] },
+    { branchID: branch1.branchID, daysAgo: 0,  hour: 12, items: [[3,2],[5,1]] },
+    { branchID: branch1.branchID, daysAgo: 0,  hour: 19, items: [[1,4],[6,2]] },
+    { branchID: branch1.branchID, daysAgo: 1,  hour: 8,  items: [[0,3],[8,2]] },
+    { branchID: branch1.branchID, daysAgo: 1,  hour: 11, items: [[2,2],[4,3]] },
+    { branchID: branch1.branchID, daysAgo: 1,  hour: 13, items: [[3,1],[9,2]] },
+    { branchID: branch1.branchID, daysAgo: 1,  hour: 20, items: [[1,2],[5,3]] },
+    { branchID: branch1.branchID, daysAgo: 2,  hour: 7,  items: [[0,5]] },
+    { branchID: branch1.branchID, daysAgo: 2,  hour: 12, items: [[3,3],[6,2]] },
+    { branchID: branch1.branchID, daysAgo: 2,  hour: 18, items: [[1,3],[7,1]] },
+    { branchID: branch1.branchID, daysAgo: 3,  hour: 11, items: [[2,4],[4,4]] },
+    { branchID: branch1.branchID, daysAgo: 4,  hour: 19, items: [[0,2],[8,3]] },
+    { branchID: branch1.branchID, daysAgo: 5,  hour: 12, items: [[3,2],[5,2]] },
+    { branchID: branch1.branchID, daysAgo: 7,  hour: 7,  items: [[0,4],[4,2]] },
+    { branchID: branch1.branchID, daysAgo: 10, hour: 11, items: [[1,3],[9,1]] },
+    { branchID: branch1.branchID, daysAgo: 14, hour: 19, items: [[2,2],[6,3]] },
+    { branchID: branch2.branchID, daysAgo: 0,  hour: 12, items: [[0,2],[4,1]] },
+    { branchID: branch2.branchID, daysAgo: 0,  hour: 19, items: [[1,3]] },
+    { branchID: branch2.branchID, daysAgo: 1,  hour: 11, items: [[2,2],[6,2]] },
+    { branchID: branch2.branchID, daysAgo: 3,  hour: 7,  items: [[3,1],[5,1]] },
+    { branchID: branch2.branchID, daysAgo: 5,  hour: 20, items: [[0,4]] },
+    { branchID: branch2.branchID, daysAgo: 7,  hour: 12, items: [[1,2],[8,2]] },
+    { branchID: branch2.branchID, daysAgo: 10, hour: 18, items: [[2,3],[7,1]] },
+  ];
+
+  for (const o of orderSamples) {
+    let total = 0;
+    const details = o.items
+      .filter(([idx]) => idx < products.length)
+      .map(([idx, qty]) => {
+        const p = products[idx];
+        total += parseFloat(p.price) * qty;
+        return { productID: p.productID, quantity: qty, unitPrice: p.price, subtotal: parseFloat(p.price) * qty };
+      });
+    if (details.length === 0) continue;
+    await prisma.order.create({
+      data: {
+        branchID: o.branchID,
+        orderTime: mkDate(o.daysAgo, o.hour),
+        totalAmount: total,
+        paymentStatus: "Paid",
+        orderType: "DineIn",
+        orderDetails: { create: details },
+      },
+    });
+  }
+  console.log(`✅ Tạo ${orderSamples.length} Orders mẫu cho Owner Dashboard`);
+
   console.log("\n🎉 Seed hoàn tất!\n");
   console.log("📋 Tài khoản đăng nhập:");
   console.log("   Admin:   admin@rms.vn        / Admin@123");
@@ -475,6 +540,7 @@ async function main() {
   console.log("   Owner 3: owner3@bbqhouse.vn   / Owner@123");
   console.log("   Manager: manager1@rms.vn      / Manager@123");
   console.log("   Staff:   staff1@rms.vn        / Staff@123");
+
 }
 
 main()
