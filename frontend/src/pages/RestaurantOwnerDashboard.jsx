@@ -131,13 +131,15 @@ export default function RestaurantOwnerDashboard() {
                 {/* Card 4 — Chi nhánh xuất sắc (highlight màu blue) */}
                 <div className="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500">
                     <p className="text-gray-400 text-xs font-medium mb-2">Chi nhánh xuất sắc</p>
-                    <p className="text-2xl font-bold text-gray-900 mb-1 truncate">
+                    <p className="text-base font-bold text-gray-900 mb-1 leading-snug line-clamp-2">
                         {stats?.topBranch?.name ?? '—'}
                     </p>
                     {stats?.topBranch && (
                         <span className="flex items-center gap-1 text-xs font-semibold text-blue-600">
                             <Star size={12} className="fill-blue-500 text-blue-500" />
-                            Tăng trưởng {stats.topBranch.growth}%
+                            {stats.topBranch.growth !== null
+                                ? `Tăng trưởng ${stats.topBranch.growth}%`
+                                : 'Chi nhánh doanh thu cao nhất'}
                         </span>
                     )}
                 </div>
