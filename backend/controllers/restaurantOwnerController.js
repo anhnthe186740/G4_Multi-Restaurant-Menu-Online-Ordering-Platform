@@ -1,4 +1,5 @@
 import prisma from "../config/prismaClient.js";
+import { Parser } from "json2csv";
 
 /* =================== HELPER =================== */
 // Lấy restaurantID của owner đang login
@@ -428,6 +429,206 @@ export const updateOwnerBranch = async (req, res) => {
     res.json({ message: "Cập nhật chi nhánh thành công", branch: updated });
   } catch (error) {
     console.error("updateOwnerBranch error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== GET PAYMENT HISTORY =================== */
+export const getPaymentHistory = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      select: { branchID: true, name: true },
+    });
+    const branchIDs = branches.map((b) => b.branchID);
+
+    const {
+      page = 1,
+      limit = 10,
+      startDate,
+      endDate,
+      paymentMethod,
+      status,
+      search,
+      exportCsv,
+    } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    // Build base filters (always active)
+    const baseWhere = {
+      invoice: {
+        order: {
+          branchID: { in: branchIDs },
+        },
+      },
+    };
+
+    // Filter theo thời gian (áp dụng cho cả bảng và summary)
+    const timeWhere = {};
+    if (startDate || endDate) {
+      timeWhere.transactionTime = {};
+      if (startDate) timeWhere.transactionTime.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        timeWhere.transactionTime.lte = end;
+      }
+    }
+
+    // Filter theo phương thức/trạng thái (chỉ áp dụng cho bảng dữ liệu)
+    const tableFilters = {};
+    const methodMap = { Cash: "Cash", BankTransfer: "BankTransfer", "E-Wallet": "E_Wallet" };
+    if (paymentMethod && methodMap[paymentMethod]) tableFilters.paymentMethod = methodMap[paymentMethod];
+    if (status) tableFilters.status = status;
+
+    // Search logic nâng cao
+    const searchWhere = {};
+    if (search) {
+      const cleanSearch = search.replace(/#ORD-/i, "").trim();
+      const searchNum = parseInt(cleanSearch);
+      if (!isNaN(searchNum)) {
+        searchWhere.invoice = {
+          order: {
+            orderID: searchNum,
+          },
+        };
+      }
+    }
+
+    // Câu lệnh WHERE cuối cùng cho bảng dữ liệu (Table & Pagination)
+    const where = {
+      ...baseWhere,
+      ...timeWhere,
+      ...tableFilters,
+      ...(search ? searchWhere : {}),
+    };
+
+    // Câu lệnh WHERE cho Summary (Stat Cards) - Chỉ lọc theo thời gian và chi nhánh
+    const summaryWhere = {
+      ...baseWhere,
+      ...timeWhere,
+    };
+
+    // Tổng số bản ghi
+    const totalCount = await prisma.transaction.count({ where });
+
+    // Nếu là export CSV - lấy tất cả không phân trang
+    const skipVal = exportCsv === "true" ? 0 : (pageNum - 1) * limitNum;
+    const takeVal = exportCsv === "true" ? undefined : limitNum;
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      include: {
+        invoice: {
+          include: {
+            order: {
+              include: {
+                branch: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { transactionTime: "desc" },
+      skip: skipVal,
+      take: takeVal,
+    });
+
+    // Nếu export CSV
+    if (exportCsv === "true") {
+      try {
+        const fields = [
+          { label: "Ngày", value: (row) => new Date(row.transactionTime).toLocaleString("vi-VN") },
+          { label: "Mã đơn hàng", value: (row) => `#ORD-${row.invoice?.order?.orderID || ""}` },
+          { label: "Chi nhánh", value: (row) => row.invoice?.order?.branch?.name || "" },
+          { label: "Phương thức", value: "paymentMethod" },
+          { label: "Số tiền", value: (row) => parseFloat(row.amount) },
+          { label: "Trạng thái", value: "status" },
+        ];
+        const parser = new Parser({ fields });
+        const csv = parser.parse(transactions);
+        res.header("Content-Type", "text/csv; charset=utf-8");
+        res.header("Content-Disposition", 'attachment; filename="lich-su-thanh-toan.csv"');
+        return res.send("\uFEFF" + csv);
+      } catch (csvErr) {
+        console.error("CSV export error:", csvErr);
+        return res.status(500).json({ message: "Lỗi xuất CSV" });
+      }
+    }
+
+    // Tính tổng hợp (Dùng summaryWhere để Stat Cards không bị ảnh hưởng bởi filter Method/Status)
+    const allForSummary = await prisma.transaction.findMany({
+      where: summaryWhere,
+      select: { amount: true, paymentMethod: true, status: true },
+    });
+
+    let totalRevenue = 0, cashRevenue = 0, onlineRevenue = 0;
+    for (const t of allForSummary) {
+      if (t.status !== "Success") continue;
+      const amt = parseFloat(t.amount);
+      totalRevenue += amt;
+      if (t.paymentMethod === "Cash") cashRevenue += amt;
+      else onlineRevenue += amt;
+    }
+
+    // Tính growth so với khoảng thời gian tương đương trước đó
+    let revenueGrowth = null;
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diff = end.getTime() - start.getTime();
+      const prevStart = new Date(start.getTime() - diff - 86400000);
+      const prevEnd = new Date(start.getTime() - 1);
+      const prevSummary = await prisma.transaction.findMany({
+        where: {
+          invoice: { order: { branchID: { in: branchIDs } } },
+          transactionTime: { gte: prevStart, lte: prevEnd },
+          status: "Success",
+        },
+        select: { amount: true },
+      });
+      const prevRevenue = prevSummary.reduce((s, t) => s + parseFloat(t.amount), 0);
+      if (prevRevenue > 0) {
+        revenueGrowth = parseFloat((((totalRevenue - prevRevenue) / prevRevenue) * 100).toFixed(1));
+      }
+    }
+
+    const cashPercent = totalRevenue > 0 ? Math.round((cashRevenue / totalRevenue) * 100) : 0;
+    const onlinePercent = totalRevenue > 0 ? Math.round((onlineRevenue / totalRevenue) * 100) : 0;
+
+    const result = transactions.map((t) => ({
+      transactionID: t.transactionID,
+      orderID: t.invoice?.order?.orderID ?? null,
+      branchName: t.invoice?.order?.branch?.name ?? null,
+      paymentMethod: t.paymentMethod,
+      amount: parseFloat(t.amount),
+      status: t.status,
+      transactionTime: t.transactionTime,
+      paymentGatewayRef: t.paymentGatewayRef,
+    }));
+
+    res.json({
+      transactions: result,
+      totalCount,
+      page: pageNum,
+      limit: limitNum,
+      summary: {
+        totalRevenue,
+        cashRevenue,
+        onlineRevenue,
+        cashPercent,
+        onlinePercent,
+        revenueGrowth,
+      },
+    });
+  } catch (error) {
+    console.error("getPaymentHistory error:", error);
     res.status(500).json({ message: error.message || "Server error" });
   }
 };

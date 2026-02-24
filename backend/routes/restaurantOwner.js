@@ -9,6 +9,7 @@ import {
   getOwnerBranchById,
   updateOwnerBranch,
   toggleOwnerBranch,
+  getPaymentHistory,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -29,6 +30,9 @@ router.get("/branches", getOwnerBranches);
 router.get("/branches/:id", getOwnerBranchById);
 router.put("/branches/:id", updateOwnerBranch);
 router.patch("/branches/:id/toggle", toggleOwnerBranch);
+
+// Payment History
+router.get("/payment-history", getPaymentHistory);
 
 export default router;
 

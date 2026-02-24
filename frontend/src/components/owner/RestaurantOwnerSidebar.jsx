@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, GitBranch, BookOpen, Users, Settings, UtensilsCrossed, LogOut } from 'lucide-react';
+import { LayoutDashboard, BarChart3, GitBranch, BookOpen, Users, Settings, UtensilsCrossed, LogOut, CreditCard } from 'lucide-react';
 
 export default function RestaurantOwnerSidebar() {
     const location = useLocation();
@@ -11,6 +11,7 @@ export default function RestaurantOwnerSidebar() {
         { icon: GitBranch, label: 'Chi nhánh', path: '/owner/branches' },
         { icon: BookOpen, label: 'Thực đơn', path: '/owner/menu' },
         { icon: Users, label: 'Nhân viên', path: '/owner/staff' },
+        { icon: CreditCard, label: 'Lịch sử thanh toán', path: '/owner/payment-history' },
         { icon: Settings, label: 'Cài đặt', path: '/owner/settings' },
     ];
 

@@ -588,7 +588,71 @@ async function main() {
   }
   console.log(`✅ Tạo ${orderSamples.length} Orders mẫu cho Owner Dashboard`);
 
+  // =============================================
+  // 11. INVOICES + TRANSACTIONS (cho lịch sử thanh toán)
+  // =============================================
+  const allOrders = await prisma.order.findMany({
+    where: { branchID: { in: [branch1.branchID, branch2.branchID, branch4.branchID, branch5.branchID] } },
+    select: { orderID: true, totalAmount: true, orderTime: true },
+    orderBy: { orderID: 'asc' },
+  });
+
+  const paymentMethods = ['Cash', 'BankTransfer', 'E_Wallet'];
+  const transactionStatuses = ['Success', 'Success', 'Success', 'Success', 'Failed'];
+
+  let invoiceCount = 0;
+  let txCount = 0;
+
+  for (let i = 0; i < allOrders.length; i++) {
+    const order = allOrders[i];
+    const method = paymentMethods[i % paymentMethods.length];
+    const status = transactionStatuses[i % transactionStatuses.length];
+
+    // Tạo Invoice
+    const invoice = await prisma.invoice.create({
+      data: {
+        orderID: order.orderID,
+        issuedDate: order.orderTime,
+        status: 'Closed',
+        subTotal: order.totalAmount,
+        discountAmount: 0,
+        totalAmount: order.totalAmount,
+      },
+    });
+    invoiceCount++;
+
+    // Tạo Transaction chính
+    await prisma.transaction.create({
+      data: {
+        invoiceID: invoice.invoiceID,
+        amount: order.totalAmount,
+        paymentMethod: method,
+        status: status,
+        transactionTime: order.orderTime,
+      },
+    });
+    txCount++;
+
+    // Thêm 1 transaction Failed trước đó (retry scenario)
+    if (i % 7 === 0 && status === 'Success') {
+      const retryTime = new Date(order.orderTime);
+      retryTime.setMinutes(retryTime.getMinutes() - 5);
+      await prisma.transaction.create({
+        data: {
+          invoiceID: invoice.invoiceID,
+          amount: order.totalAmount,
+          paymentMethod: method,
+          status: 'Failed',
+          transactionTime: retryTime,
+        },
+      });
+      txCount++;
+    }
+  }
+  console.log(`✅ Tạo ${invoiceCount} Invoices + ${txCount} Transactions`);
+
   console.log("\n🎉 Seed hoàn tất!\n");
+
   console.log("📋 Tài khoản đăng nhập:");
   console.log("   Admin:   admin@rms.vn        / Admin@123");
   console.log("   Owner 1: owner1@phogamenu.vn  / Owner@123");
