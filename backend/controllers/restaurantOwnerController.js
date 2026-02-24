@@ -325,3 +325,135 @@ export const getBranchPerformance = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+/* =================== GET OWNER BRANCHES LIST =================== */
+export const getOwnerBranches = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      include: {
+        _count: { select: { tables: true, orders: true } },
+      },
+      orderBy: { branchID: "asc" },
+    });
+
+    const result = branches.map((b) => {
+      let parsedHours = {};
+      try { parsedHours = b.openingHours ? JSON.parse(b.openingHours) : {}; } catch { }
+      return {
+        branchID: b.branchID,
+        name: b.name,
+        address: b.address || "",
+        phone: b.phone || "",
+        email: parsedHours.email || "",
+        isActive: b.isActive,
+        tableCount: b._count.tables,
+        orderCount: b._count.orders,
+        openingHours: parsedHours,
+      };
+    });
+
+    res.json({ restaurantName: restaurant.name, branches: result });
+  } catch (error) {
+    console.error("getOwnerBranches error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== GET SINGLE BRANCH =================== */
+export const getOwnerBranchById = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+      include: { _count: { select: { tables: true, orders: true } } },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    let parsedHours = {};
+    try { parsedHours = branch.openingHours ? JSON.parse(branch.openingHours) : {}; } catch { }
+
+    res.json({
+      branchID: branch.branchID,
+      name: branch.name,
+      address: branch.address || "",
+      phone: branch.phone || "",
+      email: parsedHours.email || "",
+      isActive: branch.isActive,
+      tableCount: branch._count.tables,
+      orderCount: branch._count.orders,
+      openingHours: parsedHours,
+      restaurantName: restaurant.name,
+    });
+  } catch (error) {
+    console.error("getOwnerBranchById error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== UPDATE BRANCH =================== */
+export const updateOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+    const { name, address, phone, email, openingHours } = req.body;
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    const hoursObj = { ...(openingHours || {}), email: email || "" };
+    const updated = await prisma.branch.update({
+      where: { branchID },
+      data: {
+        name: name ?? branch.name,
+        address: address ?? branch.address,
+        phone: phone ?? branch.phone,
+        openingHours: JSON.stringify(hoursObj),
+      },
+    });
+
+    res.json({ message: "Cập nhật chi nhánh thành công", branch: updated });
+  } catch (error) {
+    console.error("updateOwnerBranch error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== TOGGLE BRANCH STATUS =================== */
+export const toggleOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    const updated = await prisma.branch.update({
+      where: { branchID },
+      data: { isActive: !branch.isActive },
+    });
+
+    res.json({ message: `Chi nhánh đã được ${updated.isActive ? "kích hoạt" : "tạm dừng"}`, isActive: updated.isActive });
+  } catch (error) {
+    console.error("toggleOwnerBranch error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};

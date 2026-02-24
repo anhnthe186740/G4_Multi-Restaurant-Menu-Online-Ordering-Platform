@@ -5,6 +5,10 @@ import {
   getTopProducts,
   getOrdersByHour,
   getBranchPerformance,
+  getOwnerBranches,
+  getOwnerBranchById,
+  updateOwnerBranch,
+  toggleOwnerBranch,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -20,4 +24,11 @@ router.get("/dashboard/top-products", getTopProducts);
 router.get("/dashboard/orders-by-hour", getOrdersByHour);
 router.get("/dashboard/branch-performance", getBranchPerformance);
 
+// Branch Management
+router.get("/branches", getOwnerBranches);
+router.get("/branches/:id", getOwnerBranchById);
+router.put("/branches/:id", updateOwnerBranch);
+router.patch("/branches/:id/toggle", toggleOwnerBranch);
+
 export default router;
+
