@@ -5,15 +5,20 @@ export const getOverview = async (req, res) => {
   try {
     const [
       totalRestaurants,
+      activeRestaurants,
       activeSubscriptions,
       pendingRequests,
       expiringSoon,
       revenueAgg,
       monthlyRevenueAgg,
     ] = await Promise.all([
-      // Total restaurants
+      // Tất cả nhà hàng (kể cả bị khóa)
       prisma.restaurant.count(),
 
+      // Chỉ nhà hàng có owner đang Active
+      prisma.restaurant.count({
+        where: { owner: { status: "Active" } },
+      }),
       // Active subscriptions
       prisma.subscription.count({ where: { status: "Active" } }),
 
@@ -59,7 +64,8 @@ export const getOverview = async (req, res) => {
 
     res.json({
       totalRestaurants,
-      activeRestaurants: totalRestaurants,
+      activeRestaurants,
+      inactiveRestaurants: totalRestaurants - activeRestaurants,
       totalRevenue,
       pendingRequests,
       activeSubscriptions,

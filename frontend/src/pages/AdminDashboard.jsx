@@ -88,7 +88,7 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                     <div className="flex items-baseline gap-2">
-                        <h2 className="text-4xl font-bold text-white">{overview?.totalRestaurants?.toLocaleString() || '0'}</h2>
+                        <h2 className="text-4xl font-bold text-white">{overview?.activeRestaurants?.toLocaleString() || '0'}</h2>
                         <span className="text-gray-500 text-sm">nhà hàng</span>
                     </div>
                 </div>

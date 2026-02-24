@@ -71,11 +71,6 @@ const RestaurantManagement = () => {
             const data = await getAllRestaurants(filters);
             setRestaurants(data.restaurants);
             setPagination(data.pagination);
-
-            // Only fetch stats once or if drastic changes happen
-            if (pagination.total === 0) {
-                fetchStats();
-            }
         } catch (error) {
             console.error('Error fetching restaurants:', error);
         } finally {
@@ -85,12 +80,8 @@ const RestaurantManagement = () => {
 
     useEffect(() => {
         fetchRestaurants();
-    }, [filters]);
-
-    // Refresh stats when filters change or actions performed
-    useEffect(() => {
         fetchStats();
-    }, [actionLoading]);
+    }, [filters]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -118,7 +109,8 @@ const RestaurantManagement = () => {
         try {
             setActionLoading(true);
             await deactivateRestaurant(id, reason);
-            fetchRestaurants();
+            await fetchRestaurants();
+            await fetchStats();
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || 'Lỗi khi khóa nhà hàng');
@@ -133,7 +125,8 @@ const RestaurantManagement = () => {
         try {
             setActionLoading(true);
             await reactivateRestaurant(id);
-            fetchRestaurants();
+            await fetchRestaurants();
+            await fetchStats();
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || 'Lỗi khi mở khóa nhà hàng');
@@ -149,7 +142,8 @@ const RestaurantManagement = () => {
         try {
             setActionLoading(true);
             await forceDeleteRestaurant(id);
-            fetchRestaurants();
+            await fetchRestaurants();
+            await fetchStats();
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.message || 'Lỗi khi xóa nhà hàng');
