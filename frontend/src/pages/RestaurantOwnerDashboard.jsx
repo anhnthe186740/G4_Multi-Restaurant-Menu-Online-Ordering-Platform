@@ -25,6 +25,13 @@ const fmtVND = (v) => {
 };
 
 const GrowthBadge = ({ value }) => {
+    if (value === null || value === undefined) {
+        return (
+            <span className="flex items-center gap-1 text-xs font-medium text-gray-400">
+                — Chưa có dữ liệu tháng trước
+            </span>
+        );
+    }
     const isPos = value >= 0;
     return (
         <span className={`flex items-center gap-1 text-xs font-semibold ${isPos ? 'text-green-600' : 'text-red-500'}`}>

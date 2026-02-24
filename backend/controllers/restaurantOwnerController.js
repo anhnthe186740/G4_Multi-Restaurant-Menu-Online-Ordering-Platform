@@ -58,14 +58,14 @@ export const getDashboardStats = async (req, res) => {
     const currentRevenue = parseFloat(currentMonthOrders._sum.totalAmount || 0);
     const lastRevenue = parseFloat(lastMonthOrders._sum.totalAmount || 0);
     const revenueGrowth = lastRevenue > 0
-      ? (((currentRevenue - lastRevenue) / lastRevenue) * 100).toFixed(1)
-      : 0;
+      ? parseFloat((((currentRevenue - lastRevenue) / lastRevenue) * 100).toFixed(1))
+      : null;
 
     const currentOrderCount = currentMonthOrders._count || 0;
     const lastOrderCount = lastMonthOrders._count || 0;
     const orderGrowth = lastOrderCount > 0
-      ? (((currentOrderCount - lastOrderCount) / lastOrderCount) * 100).toFixed(1)
-      : 0;
+      ? parseFloat((((currentOrderCount - lastOrderCount) / lastOrderCount) * 100).toFixed(1))
+      : null;
 
     // Giá trị trung bình đơn tháng này
     const avgOrderValue = currentOrderCount > 0
@@ -76,8 +76,8 @@ export const getDashboardStats = async (req, res) => {
       ? Math.round(lastRevenue / lastOrderCount)
       : 0;
     const avgGrowth = lastAvgOrderValue > 0
-      ? (((avgOrderValue - lastAvgOrderValue) / lastAvgOrderValue) * 100).toFixed(1)
-      : 0;
+      ? parseFloat((((avgOrderValue - lastAvgOrderValue) / lastAvgOrderValue) * 100).toFixed(1))
+      : null;
 
     // Chi nhánh xuất sắc (doanh thu cao nhất tháng này)
     const branchRevenues = await Promise.all(
@@ -113,13 +113,13 @@ export const getDashboardStats = async (req, res) => {
 
     res.json({
       totalRevenue: currentRevenue,
-      revenueGrowth: parseFloat(revenueGrowth),
+      revenueGrowth,
       totalOrders: currentOrderCount,
-      orderGrowth: parseFloat(orderGrowth),
+      orderGrowth,
       avgOrderValue,
-      avgGrowth: parseFloat(avgGrowth),
+      avgGrowth,
       topBranch: topBranch
-        ? { name: topBranch.name, growth: parseFloat(topBranch.growth) }
+        ? { name: topBranch.name, growth: topBranch.growth !== null ? parseFloat(topBranch.growth) : null }
         : null,
       totalBranches: branches.length,
       restaurantName: restaurant.name,
