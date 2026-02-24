@@ -49,4 +49,9 @@ export const getSubscriptionHistory = () => adminAxios.get("/admin/service-packa
 export const getRestaurantsForRenewal = () => adminAxios.get("/admin/service-packages/restaurants-for-renewal");
 export const getRestaurantStatuses = () => adminAxios.get("/admin/service-packages/active-subscriptions");
 
+// ========== REGISTRATION REQUESTS APIs ==========
+export const getRegistrationRequests = (params) => adminAxios.get("/admin/registration-requests", { params });
+export const approveRegistrationRequest = (id) => adminAxios.post(`/admin/registration-requests/${id}/approve`);
+export const rejectRegistrationRequest = (id, adminNote) => adminAxios.post(`/admin/registration-requests/${id}/reject`, { adminNote });
+
 export default adminAxios;

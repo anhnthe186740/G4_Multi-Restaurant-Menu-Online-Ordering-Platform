@@ -349,18 +349,50 @@ async function main() {
   // =============================================
   await prisma.registrationRequest.createMany({
     data: [
+      // ── Pending ──────────────────────────────────────────────────
+      {
+        ownerName: "Nguyễn Văn A",
+        contactInfo: "nguyenvana@gmail.com | 0901234567",
+        restaurantName: "The Burger Joint",
+        approvalStatus: "Pending",
+        submissionDate: new Date("2023-10-10"),
+      },
+      {
+        ownerName: "Trần Thị B",
+        contactInfo: "tranthib@gmail.com | 0912345678",
+        restaurantName: "Phở Gia Truyền",
+        approvalStatus: "Pending",
+        submissionDate: new Date("2023-10-10"),
+      },
+      {
+        ownerName: "Lê Văn C",
+        contactInfo: "levanc@gmail.com | 0923456789",
+        restaurantName: "Pizza Home",
+        approvalStatus: "Pending",
+        submissionDate: new Date("2023-10-09"),
+      },
+      {
+        ownerName: "Phạm Minh D",
+        contactInfo: "phaminh@hotmail.com | 0934567890",
+        restaurantName: "Sushi World",
+        approvalStatus: "Pending",
+        submissionDate: new Date("2023-10-08"),
+      },
       {
         ownerName: "Đinh Văn Lẩu",
         contactInfo: "lau@hotpot.vn | 0966666666",
         restaurantName: "Lẩu Thái Sài Gòn",
         approvalStatus: "Pending",
+        submissionDate: new Date("2023-10-07"),
       },
       {
         ownerName: "Vũ Thị Cơm Tấm",
         contactInfo: "comtam@saigon.vn | 0977777777",
         restaurantName: "Cơm Tấm Bà Bảy",
         approvalStatus: "Pending",
+        submissionDate: new Date("2023-10-06"),
       },
+      // ── Approved ─────────────────────────────────────────────────
       {
         ownerName: "Bùi Văn Dimsum",
         contactInfo: "dimsum@yumcha.vn | 0988888888",
@@ -369,11 +401,32 @@ async function main() {
         ownerUserID: owner1.userID,
         restaurantID: rest1.restaurantID,
         approvedBy: admin.userID,
-        approvedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 ngày trước
+        approvedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        submissionDate: new Date("2023-10-01"),
+      },
+      {
+        ownerName: "Ngô Thị Loan",
+        contactInfo: "ntloan@bbqvn.vn | 0965432100",
+        restaurantName: "BBQ Garden Ha Noi",
+        approvalStatus: "Approved",
+        approvedBy: admin.userID,
+        approvedDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        submissionDate: new Date("2023-09-25"),
+      },
+      // ── Rejected ─────────────────────────────────────────────────
+      {
+        ownerName: "Bùi Thanh Hải",
+        contactInfo: "haisantuoi@gmail.com | 0945678901",
+        restaurantName: "Hải Sản Tươi Sống",
+        approvalStatus: "Rejected",
+        adminNote: "Thiếu giấy phép kinh doanh. Vui lòng bổ sung và gửi lại.",
+        approvedBy: admin.userID,
+        approvedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        submissionDate: new Date("2023-10-03"),
       },
     ],
   });
-  console.log("✅ Tạo 3 Registration Requests (2 Pending, 1 Approved)");
+  console.log("✅ Tạo 9 Registration Requests (6 Pending, 2 Approved, 1 Rejected)");
 
   // =============================================
   // 9. SUPPORT TICKETS

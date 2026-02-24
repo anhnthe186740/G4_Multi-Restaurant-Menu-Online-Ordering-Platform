@@ -10,6 +10,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminReports from "./pages/AdminReports";
 import RestaurantManagement from "./pages/RestaurantManagement";
 import AdminServicePackages from "./pages/AdminServicePackages";
+import AdminRequests from "./pages/AdminRequests";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -77,6 +78,15 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="Admin">
               <AdminServicePackages />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/requests"
+          element={
+            <ProtectedRoute requiredRole="Admin">
+              <AdminRequests />
             </ProtectedRoute>
           }
         />

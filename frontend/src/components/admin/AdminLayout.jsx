@@ -9,6 +9,7 @@ export default function AdminLayout({ children }) {
         const path = location.pathname;
         if (path.includes('/admin/dashboard')) return 'Tổng quan';
         if (path.includes('/admin/restaurants')) return 'Quản lý Nhà hàng';
+        if (path.includes('/admin/requests')) return 'Duyệt Đơn Đăng Ký';
         if (path.includes('/admin/packages')) return 'Quản lý Gói dịch vụ';
         if (path.includes('/admin/reports')) return 'Báo cáo & Thống kê';
         if (path.includes('/admin/content')) return 'Quản lý Nội dung';

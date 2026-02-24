@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Search,
     Filter,
@@ -18,6 +19,7 @@ import { getAllRestaurants, deactivateRestaurant, reactivateRestaurant, forceDel
 import RestaurantDetailsModal from '../components/RestaurantDetailsModal';
 
 const RestaurantManagement = () => {
+    const navigate = useNavigate();
     const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -168,7 +170,7 @@ const RestaurantManagement = () => {
                 </div>
                 <button
                     className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-emerald-500/20"
-                    onClick={() => alert("Tính năng Phê duyệt đang được phát triển")}
+                    onClick={() => navigate('/admin/requests')}
                 >
                     <UserPlus size={20} />
                     phê duyệt đăng kí

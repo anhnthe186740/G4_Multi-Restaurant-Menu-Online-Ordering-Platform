@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/admin/AdminLayout';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -8,6 +9,7 @@ import {
 } from '../api/adminApi';
 
 export default function AdminDashboard() {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [overview, setOverview] = useState(null);
     const [packageData, setPackageData] = useState([]);
@@ -110,16 +112,19 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Pending Requests Card */}
-                <div className="bg-[#142920] rounded-xl p-6 border border-[#1f3d2f]">
+                <div
+                    onClick={() => navigate('/admin/requests')}
+                    className="bg-[#142920] rounded-xl p-6 border border-[#1f3d2f] cursor-pointer hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group"
+                >
                     <div className="flex items-center justify-between mb-3">
-                        <span className="text-gray-400 text-sm font-medium">Yêu cầu chờ duyệt</span>
+                        <span className="text-gray-400 text-sm font-medium group-hover:text-orange-300 transition">Yêu cầu chờ duyệt</span>
                         <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
                             <span className="text-2xl">📝</span>
                         </div>
                     </div>
                     <div className="flex items-baseline gap-2">
                         <h2 className="text-4xl font-bold text-white">{overview?.pendingRequests || '0'}</h2>
-                        <span className="text-orange-400 text-sm font-semibold">Cần xử lý</span>
+                        <span className="text-orange-400 text-sm font-semibold">Cần xử lý →</span>
                     </div>
                 </div>
             </div>
@@ -244,7 +249,10 @@ export default function AdminDashboard() {
                             <p className="text-gray-400 text-xs">Có 2 đăng ký mới cần xác nhận, vào trang chi tiết để xem</p>
                         </div>
                     </div>
-                    <button className="px-4 py-2 rounded-lg bg-[#00ff88] text-black font-semibold text-sm hover:bg-[#00d975] transition">
+                    <button
+                        onClick={() => navigate('/admin/requests')}
+                        className="px-4 py-2 rounded-lg bg-[#00ff88] text-black font-semibold text-sm hover:bg-[#00d975] transition"
+                    >
                         Mở danh sách chờ duyệt
                     </button>
                 </div>
