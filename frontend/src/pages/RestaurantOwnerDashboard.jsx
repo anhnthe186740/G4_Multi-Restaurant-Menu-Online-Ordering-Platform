@@ -213,7 +213,7 @@ export default function RestaurantOwnerDashboard() {
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                     <div className="mb-1">
                         <h3 className="font-bold text-gray-800">Lượng đơn theo giờ</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Thời gian cao điểm dự kiến: 11h - 13h và 18h - 20h</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Phân bổ đơn hàng theo khung giờ trong ngày (30 ngày qua)</p>
                     </div>
                     <ResponsiveContainer width="100%" height={220}>
                         <AreaChart data={ordersByHour.filter((_, i) => i % 2 === 0)} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
