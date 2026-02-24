@@ -12,7 +12,7 @@ async function getOwnerRestaurant(userID) {
 /* =================== GET DASHBOARD STATS =================== */
 export const getDashboardStats = async (req, res) => {
   try {
-    const userID = req.user.userID;
+    const userID = req.user.userId;
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) {
       return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
@@ -133,7 +133,7 @@ export const getDashboardStats = async (req, res) => {
 /* =================== GET BRANCH REVENUE COMPARISON =================== */
 export const getBranchRevenue = async (req, res) => {
   try {
-    const userID = req.user.userID;
+    const userID = req.user.userId;
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
 
@@ -174,7 +174,7 @@ export const getBranchRevenue = async (req, res) => {
 /* =================== GET TOP PRODUCTS =================== */
 export const getTopProducts = async (req, res) => {
   try {
-    const userID = req.user.userID;
+    const userID = req.user.userId;
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
 
@@ -232,7 +232,7 @@ export const getTopProducts = async (req, res) => {
 /* =================== GET ORDERS BY HOUR =================== */
 export const getOrdersByHour = async (req, res) => {
   try {
-    const userID = req.user.userID;
+    const userID = req.user.userId;
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
 
@@ -274,7 +274,7 @@ export const getOrdersByHour = async (req, res) => {
 /* =================== GET BRANCH PERFORMANCE TABLE =================== */
 export const getBranchPerformance = async (req, res) => {
   try {
-    const userID = req.user.userID;
+    const userID = req.user.userId;
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
 
