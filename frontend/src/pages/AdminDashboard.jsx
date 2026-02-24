@@ -18,18 +18,36 @@ export default function AdminDashboard() {
     }, []);
 
     const loadDashboardData = async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-
-            const [overviewRes, packageRes, paymentsRes] = await Promise.all([
+            // Chạy độc lập — một API lỗi không ảnh hưởng API khác
+            const results = await Promise.allSettled([
                 getDashboardOverview(),
                 getPackageDistribution(),
                 getPaymentHistory()
             ]);
 
-            setOverview(overviewRes.data);
-            setPackageData(packageRes.data);
-            setPaymentHistory(paymentsRes.data);
+            const [overviewRes, packageRes, paymentsRes] = results;
+
+            if (overviewRes.status === 'fulfilled') {
+                setOverview(overviewRes.value.data);
+            } else {
+                console.error('Overview error:', overviewRes.reason);
+            }
+
+            if (packageRes.status === 'fulfilled') {
+                const pkgData = packageRes.value.data;
+                console.log('Package distribution data:', pkgData);
+                setPackageData(Array.isArray(pkgData) ? pkgData : []);
+            } else {
+                console.error('Package distribution error:', packageRes.reason);
+            }
+
+            if (paymentsRes.status === 'fulfilled') {
+                setPaymentHistory(paymentsRes.value.data);
+            } else {
+                console.error('Payment history error:', paymentsRes.reason);
+            }
         } catch (error) {
             console.error('Error loading dashboard:', error);
         } finally {
@@ -47,10 +65,12 @@ export default function AdminDashboard() {
         );
     }
 
-    // Transform package data for bar chart
+    // Transform package data for bar chart — dùng revenue (price × count)
     const chartData = packageData.map(pkg => ({
         name: pkg.packageName,
-        count: pkg.count
+        revenue: pkg.revenue || 0,
+        count: pkg.count || 0,
+        price: pkg.price || 0,
     }));
 
     return (
@@ -119,11 +139,18 @@ export default function AdminDashboard() {
                             <XAxis
                                 dataKey="name"
                                 stroke="#6b7280"
-                                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                                tick={{ fill: '#9ca3af', fontSize: 11 }}
                             />
                             <YAxis
                                 stroke="#6b7280"
-                                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                                tick={{ fill: '#9ca3af', fontSize: 11 }}
+                                tickFormatter={(value) =>
+                                    value >= 1000000
+                                        ? `${(value / 1000000).toFixed(1)}M`
+                                        : value >= 1000
+                                            ? `${(value / 1000).toFixed(0)}K`
+                                            : value
+                                }
                             />
                             <Tooltip
                                 contentStyle={{
@@ -132,8 +159,13 @@ export default function AdminDashboard() {
                                     borderRadius: '8px',
                                     color: '#fff'
                                 }}
+                                formatter={(value, name, props) => [
+                                    `${value.toLocaleString('vi-VN')} ₫`,
+                                    `Doanh thu (${props.payload.count} sub)`
+                                ]}
+                                labelStyle={{ color: '#00ff88', fontWeight: 'bold' }}
                             />
-                            <Bar dataKey="count" fill="#00ff88" radius={[8, 8, 0, 0]} />
+                            <Bar dataKey="revenue" fill="#00ff88" radius={[8, 8, 0, 0]} name="Doanh thu" />
                         </BarChart>
                     </ResponsiveContainer>
 

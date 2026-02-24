@@ -113,6 +113,8 @@ export const getPackageDistribution = async (req, res) => {
     const results = packages.map((pkg) => ({
       packageName: pkg.packageName,
       count: pkg._count.subscriptions,
+      price: parseFloat(pkg.price),
+      revenue: parseFloat(pkg.price) * pkg._count.subscriptions,
     }));
 
     res.json(results);
