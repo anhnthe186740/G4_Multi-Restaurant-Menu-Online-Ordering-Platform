@@ -11,6 +11,7 @@ import AdminReports from "./pages/AdminReports";
 import RestaurantManagement from "./pages/RestaurantManagement";
 import AdminServicePackages from "./pages/AdminServicePackages";
 import AdminRequests from "./pages/AdminRequests";
+import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -87,6 +88,16 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="Admin">
               <AdminRequests />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ===== RESTAURANT OWNER ROUTES ===== */}
+        <Route
+          path="/owner/dashboard"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <RestaurantOwnerDashboard />
             </ProtectedRoute>
           }
         />

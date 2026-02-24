@@ -26,6 +26,8 @@ export default function Login() {
                 const role = response.data.user?.role;
                 if (role === "Admin") {
                     navigate("/admin/dashboard");
+                } else if (role === "RestaurantOwner") {
+                    navigate("/owner/dashboard");
                 } else {
                     navigate("/");
                 }

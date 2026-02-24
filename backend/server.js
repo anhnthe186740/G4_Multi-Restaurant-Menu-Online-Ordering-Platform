@@ -7,6 +7,7 @@ import adminReportsRoutes from "./routes/adminReports.js";
 import restaurantManagementRoutes from "./routes/restaurantManagement.js";
 import adminServicePackageRoutes from "./routes/adminServicePackages.js";
 import registrationRequestRoutes from "./routes/registrationRequests.js";
+import restaurantOwnerRoutes from "./routes/restaurantOwner.js";
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use("/api/admin", adminReportsRoutes);
 app.use("/api/admin/restaurants", restaurantManagementRoutes);
 app.use("/api/admin/service-packages", adminServicePackageRoutes);
 app.use("/api/admin/registration-requests", registrationRequestRoutes);
+app.use("/api/owner", restaurantOwnerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
