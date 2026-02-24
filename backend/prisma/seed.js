@@ -525,7 +525,6 @@ async function main() {
         orderTime: mkDate(o.daysAgo, o.hour),
         totalAmount: total,
         paymentStatus: "Paid",
-        orderType: "DineIn",
         orderDetails: { create: details },
       },
     });
