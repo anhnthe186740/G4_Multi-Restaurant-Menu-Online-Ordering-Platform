@@ -1,4 +1,5 @@
 import prisma from "../config/prismaClient.js";
+import { Parser } from "json2csv";
 
 /* =================== HELPER =================== */
 // Lấy restaurantID của owner đang login
@@ -322,6 +323,338 @@ export const getBranchPerformance = async (req, res) => {
     res.json(data.sort((a, b) => b.revenue - a.revenue));
   } catch (error) {
     console.error("getBranchPerformance error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== GET OWNER BRANCHES LIST =================== */
+export const getOwnerBranches = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      include: {
+        _count: { select: { tables: true, orders: true } },
+      },
+      orderBy: { branchID: "asc" },
+    });
+
+    const result = branches.map((b) => {
+      let parsedHours = {};
+      try { parsedHours = b.openingHours ? JSON.parse(b.openingHours) : {}; } catch { }
+      return {
+        branchID: b.branchID,
+        name: b.name,
+        address: b.address || "",
+        phone: b.phone || "",
+        email: parsedHours.email || "",
+        isActive: b.isActive,
+        tableCount: b._count.tables,
+        orderCount: b._count.orders,
+        openingHours: parsedHours,
+      };
+    });
+
+    res.json({ restaurantName: restaurant.name, branches: result });
+  } catch (error) {
+    console.error("getOwnerBranches error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== GET SINGLE BRANCH =================== */
+export const getOwnerBranchById = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+      include: { _count: { select: { tables: true, orders: true } } },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    let parsedHours = {};
+    try { parsedHours = branch.openingHours ? JSON.parse(branch.openingHours) : {}; } catch { }
+
+    res.json({
+      branchID: branch.branchID,
+      name: branch.name,
+      address: branch.address || "",
+      phone: branch.phone || "",
+      email: parsedHours.email || "",
+      isActive: branch.isActive,
+      tableCount: branch._count.tables,
+      orderCount: branch._count.orders,
+      openingHours: parsedHours,
+      restaurantName: restaurant.name,
+    });
+  } catch (error) {
+    console.error("getOwnerBranchById error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== UPDATE BRANCH =================== */
+export const updateOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+    const { name, address, phone, email, openingHours } = req.body;
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    const hoursObj = { ...(openingHours || {}), email: email || "" };
+    const updated = await prisma.branch.update({
+      where: { branchID },
+      data: {
+        name: name ?? branch.name,
+        address: address ?? branch.address,
+        phone: phone ?? branch.phone,
+        openingHours: JSON.stringify(hoursObj),
+      },
+    });
+
+    res.json({ message: "Cập nhật chi nhánh thành công", branch: updated });
+  } catch (error) {
+    console.error("updateOwnerBranch error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== GET PAYMENT HISTORY =================== */
+export const getPaymentHistory = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      select: { branchID: true, name: true },
+    });
+    const branchIDs = branches.map((b) => b.branchID);
+
+    const {
+      page = 1,
+      limit = 10,
+      startDate,
+      endDate,
+      paymentMethod,
+      status,
+      search,
+      exportCsv,
+    } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    // Build base filters (always active)
+    const baseWhere = {
+      invoice: {
+        order: {
+          branchID: { in: branchIDs },
+        },
+      },
+    };
+
+    // Filter theo thời gian (áp dụng cho cả bảng và summary)
+    const timeWhere = {};
+    if (startDate || endDate) {
+      timeWhere.transactionTime = {};
+      if (startDate) timeWhere.transactionTime.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        timeWhere.transactionTime.lte = end;
+      }
+    }
+
+    // Filter theo phương thức/trạng thái (chỉ áp dụng cho bảng dữ liệu)
+    const tableFilters = {};
+    const methodMap = { Cash: "Cash", BankTransfer: "BankTransfer", "E-Wallet": "E_Wallet" };
+    if (paymentMethod && methodMap[paymentMethod]) tableFilters.paymentMethod = methodMap[paymentMethod];
+    if (status) tableFilters.status = status;
+
+    // Search logic nâng cao
+    const searchWhere = {};
+    if (search) {
+      const cleanSearch = search.replace(/#ORD-/i, "").trim();
+      const searchNum = parseInt(cleanSearch);
+      if (!isNaN(searchNum)) {
+        searchWhere.invoice = {
+          order: {
+            orderID: searchNum,
+          },
+        };
+      }
+    }
+
+    // Câu lệnh WHERE cuối cùng cho bảng dữ liệu (Table & Pagination)
+    const where = {
+      ...baseWhere,
+      ...timeWhere,
+      ...tableFilters,
+      ...(search ? searchWhere : {}),
+    };
+
+    // Câu lệnh WHERE cho Summary (Stat Cards) - Chỉ lọc theo thời gian và chi nhánh
+    const summaryWhere = {
+      ...baseWhere,
+      ...timeWhere,
+    };
+
+    // Tổng số bản ghi
+    const totalCount = await prisma.transaction.count({ where });
+
+    // Nếu là export CSV - lấy tất cả không phân trang
+    const skipVal = exportCsv === "true" ? 0 : (pageNum - 1) * limitNum;
+    const takeVal = exportCsv === "true" ? undefined : limitNum;
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      include: {
+        invoice: {
+          include: {
+            order: {
+              include: {
+                branch: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { transactionTime: "desc" },
+      skip: skipVal,
+      take: takeVal,
+    });
+
+    // Nếu export CSV
+    if (exportCsv === "true") {
+      try {
+        const fields = [
+          { label: "Ngày", value: (row) => new Date(row.transactionTime).toLocaleString("vi-VN") },
+          { label: "Mã đơn hàng", value: (row) => `#ORD-${row.invoice?.order?.orderID || ""}` },
+          { label: "Chi nhánh", value: (row) => row.invoice?.order?.branch?.name || "" },
+          { label: "Phương thức", value: "paymentMethod" },
+          { label: "Số tiền", value: (row) => parseFloat(row.amount) },
+          { label: "Trạng thái", value: "status" },
+        ];
+        const parser = new Parser({ fields });
+        const csv = parser.parse(transactions);
+        res.header("Content-Type", "text/csv; charset=utf-8");
+        res.header("Content-Disposition", 'attachment; filename="lich-su-thanh-toan.csv"');
+        return res.send("\uFEFF" + csv);
+      } catch (csvErr) {
+        console.error("CSV export error:", csvErr);
+        return res.status(500).json({ message: "Lỗi xuất CSV" });
+      }
+    }
+
+    // Tính tổng hợp (Dùng summaryWhere để Stat Cards không bị ảnh hưởng bởi filter Method/Status)
+    const allForSummary = await prisma.transaction.findMany({
+      where: summaryWhere,
+      select: { amount: true, paymentMethod: true, status: true },
+    });
+
+    let totalRevenue = 0, cashRevenue = 0, onlineRevenue = 0;
+    for (const t of allForSummary) {
+      if (t.status !== "Success") continue;
+      const amt = parseFloat(t.amount);
+      totalRevenue += amt;
+      if (t.paymentMethod === "Cash") cashRevenue += amt;
+      else onlineRevenue += amt;
+    }
+
+    // Tính growth so với khoảng thời gian tương đương trước đó
+    let revenueGrowth = null;
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diff = end.getTime() - start.getTime();
+      const prevStart = new Date(start.getTime() - diff - 86400000);
+      const prevEnd = new Date(start.getTime() - 1);
+      const prevSummary = await prisma.transaction.findMany({
+        where: {
+          invoice: { order: { branchID: { in: branchIDs } } },
+          transactionTime: { gte: prevStart, lte: prevEnd },
+          status: "Success",
+        },
+        select: { amount: true },
+      });
+      const prevRevenue = prevSummary.reduce((s, t) => s + parseFloat(t.amount), 0);
+      if (prevRevenue > 0) {
+        revenueGrowth = parseFloat((((totalRevenue - prevRevenue) / prevRevenue) * 100).toFixed(1));
+      }
+    }
+
+    const cashPercent = totalRevenue > 0 ? Math.round((cashRevenue / totalRevenue) * 100) : 0;
+    const onlinePercent = totalRevenue > 0 ? Math.round((onlineRevenue / totalRevenue) * 100) : 0;
+
+    const result = transactions.map((t) => ({
+      transactionID: t.transactionID,
+      orderID: t.invoice?.order?.orderID ?? null,
+      branchName: t.invoice?.order?.branch?.name ?? null,
+      paymentMethod: t.paymentMethod,
+      amount: parseFloat(t.amount),
+      status: t.status,
+      transactionTime: t.transactionTime,
+      paymentGatewayRef: t.paymentGatewayRef,
+    }));
+
+    res.json({
+      transactions: result,
+      totalCount,
+      page: pageNum,
+      limit: limitNum,
+      summary: {
+        totalRevenue,
+        cashRevenue,
+        onlineRevenue,
+        cashPercent,
+        onlinePercent,
+        revenueGrowth,
+      },
+    });
+  } catch (error) {
+    console.error("getPaymentHistory error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== TOGGLE BRANCH STATUS =================== */
+export const toggleOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    const updated = await prisma.branch.update({
+      where: { branchID },
+      data: { isActive: !branch.isActive },
+    });
+
+    res.json({ message: `Chi nhánh đã được ${updated.isActive ? "kích hoạt" : "tạm dừng"}`, isActive: updated.isActive });
+  } catch (error) {
+    console.error("toggleOwnerBranch error:", error);
     res.status(500).json({ message: error.message || "Server error" });
   }
 };

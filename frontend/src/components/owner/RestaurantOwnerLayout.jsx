@@ -12,6 +12,7 @@ export default function RestaurantOwnerLayout({ children }) {
         if (p.includes('/owner/menu')) return 'Thực đơn';
         if (p.includes('/owner/staff')) return 'Nhân viên';
         if (p.includes('/owner/settings')) return 'Cài đặt';
+        if (p.includes('/owner/payment-history')) return 'Lịch sử thanh toán';
         return 'Trang chủ';
     };
 
