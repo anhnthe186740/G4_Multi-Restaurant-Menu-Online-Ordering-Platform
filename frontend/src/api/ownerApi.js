@@ -26,6 +26,14 @@ export const toggleOwnerBranch = (id) => ownerAxios.patch(`/owner/branches/${id}
 export const getOwnerPaymentHistory = (params) =>
   ownerAxios.get("/owner/payment-history", { params });
 
+// Kitchen Display System (KDS)
+export const getOwnerKitchenOrders = (branchID, categoryID) =>
+  ownerAxios.get(`/owner/branches/${branchID}/kitchen-orders`, {
+    params: { categoryID },
+  });
+export const updateOwnerItemStatus = (orderDetailID, status) =>
+  ownerAxios.patch("/owner/kitchen-orders/update-status", { orderDetailID, status });
+
 export default ownerAxios;
 
 

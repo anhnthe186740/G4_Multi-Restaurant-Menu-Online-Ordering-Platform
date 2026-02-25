@@ -15,6 +15,8 @@ import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
 import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
+import OwnerKitchenTracking from "./pages/OwnerKitchenTracking";
+import KitchenDisplaySystem from "./pages/KitchenDisplaySystem";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -128,6 +130,24 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerPaymentHistory />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/kitchen-tracking"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerKitchenTracking />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/kds/:branchID"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <KitchenDisplaySystem />
             </ProtectedRoute>
           }
         />

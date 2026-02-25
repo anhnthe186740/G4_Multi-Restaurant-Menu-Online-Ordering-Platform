@@ -658,3 +658,107 @@ export const toggleOwnerBranch = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+/* =================== KITCHEN DISPLAY SYSTEM (KDS) =================== */
+
+// 1. Lấy danh sách đơn hàng trong ngày của chi nhánh/bếp (FIFO)
+export const getKitchenOrders = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.branchID);
+    const categoryID = req.query.categoryID ? parseInt(req.query.categoryID) : null;
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    // Kiểm tra branch thuộc restaurant của owner
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại hoặc không thuộc quyền quản lý" });
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        branchID,
+        orderTime: { gte: startOfDay, lte: endOfDay },
+        // Chỉ lấy các đơn chưa hoàn tất hoặc đã sẵn sàng nhưng chưa phục vụ hết
+        orderStatus: { not: "Cancelled" },
+      },
+      include: {
+        orderTables: { include: { table: { select: { tableName: true } } } },
+        orderDetails: {
+          where: categoryID ? { product: { categoryID } } : {},
+          include: { product: { select: { name: true, categoryID: true } } },
+        },
+      },
+      orderBy: { orderTime: "asc" }, // FIFO
+    });
+
+    // Lọc bỏ những đơn không có món ăn nào thuộc category được chọn (nếu có categoryID)
+    const filteredOrders = orders.filter(o => o.orderDetails.length > 0);
+
+    const result = filteredOrders.map(o => ({
+      orderID: o.orderID,
+      tableName: o.orderTables.map(ot => ot.table.tableName).join(", "),
+      orderTime: o.orderTime,
+      customerNote: o.customerNote,
+      items: o.orderDetails.map(d => ({
+        orderDetailID: d.orderDetailID,
+        productName: d.product.name,
+        quantity: d.quantity,
+        note: d.note,
+        itemStatus: d.itemStatus,
+      })),
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("getKitchenOrders error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+// 2. Cập nhật trạng thái món ăn (Bếp/Staff dùng)
+export const updateItemStatus = async (req, res) => {
+  try {
+    const { orderDetailID, status } = req.body;
+
+    // Kiểm tra status hợp lệ
+    const validStatuses = ["Pending", "Cooking", "Ready", "Served", "Cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    }
+
+    const updated = await prisma.orderDetail.update({
+      where: { orderDetailID: parseInt(orderDetailID) },
+      data: { itemStatus: status },
+      include: { order: true }
+    });
+
+    // Nếu món được Served, kiểm tra xem toàn bộ đơn đã xong chưa
+    if (status === "Served") {
+      const remaining = await prisma.orderDetail.count({
+        where: {
+          orderID: updated.orderID,
+          itemStatus: { notIn: ["Served", "Cancelled"] }
+        }
+      });
+
+      if (remaining === 0) {
+        await prisma.order.update({
+          where: { orderID: updated.orderID },
+          data: { orderStatus: "Completed", paymentStatus: "Paid" } // Cập nhật status order
+        });
+      }
+    }
+
+    res.json({ message: "Cập nhật trạng thái món thành công", updated });
+  } catch (error) {
+    console.error("updateItemStatus error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};

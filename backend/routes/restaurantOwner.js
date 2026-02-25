@@ -10,6 +10,8 @@ import {
   updateOwnerBranch,
   toggleOwnerBranch,
   getPaymentHistory,
+  getKitchenOrders,
+  updateItemStatus,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -33,6 +35,10 @@ router.patch("/branches/:id/toggle", toggleOwnerBranch);
 
 // Payment History
 router.get("/payment-history", getPaymentHistory);
+
+// Kitchen Display System (KDS)
+router.get("/branches/:branchID/kitchen-orders", getKitchenOrders);
+router.patch("/kitchen-orders/update-status", updateItemStatus);
 
 export default router;
 
