@@ -2,7 +2,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prismaClient.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "secret_key_dev";
+// JWT_SECRET đọc tại runtime (không cache ở module level) để đảm bảo .env đã được load
+const getSecret = () => process.env.JWT_SECRET || "secret_key_dev";
 
 /* ================= REGISTER ================= */
 export const register = async (req, res) => {
@@ -13,13 +14,11 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "Vui lòng cung cấp username, email và password" });
     }
 
-    // Check email tồn tại
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: "Email đã tồn tại" });
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
     await prisma.user.create({
@@ -71,7 +70,7 @@ export const login = async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.userID, role: user.role },
-      JWT_SECRET,
+      getSecret(),
       { expiresIn: "7d" }
     );
 
@@ -87,6 +86,41 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("login error:", error?.stack || error);
+    res.status(500).json({ message: error?.message || "Lỗi server" });
+  }
+};
+
+/* ================= REFRESH TOKEN ================= */
+// Trả về JWT mới với role đã được cập nhật từ DB
+export const refreshToken = async (req, res) => {
+  try {
+    const userID = req.user?.userID || req.user?.userId;
+    if (!userID) return res.status(401).json({ message: "Không tìm thấy userID" });
+
+    const user = await prisma.user.findUnique({
+      where: { userID: parseInt(userID) },
+      select: { userID: true, fullName: true, email: true, role: true },
+    });
+
+    if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
+
+    const token = jwt.sign(
+      { userId: user.userID, role: user.role },
+      getSecret(),
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user.userID,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("refreshToken error:", error?.stack || error);
     res.status(500).json({ message: error?.message || "Lỗi server" });
   }
 };

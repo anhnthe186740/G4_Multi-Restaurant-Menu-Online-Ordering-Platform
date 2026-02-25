@@ -16,6 +16,10 @@ export const getOwnerTopProducts = () => ownerAxios.get("/owner/dashboard/top-pr
 export const getOwnerOrdersByHour = () => ownerAxios.get("/owner/dashboard/orders-by-hour");
 export const getOwnerBranchPerformance = () => ownerAxios.get("/owner/dashboard/branch-performance");
 
+// Restaurant info
+export const getOwnRestaurantInfo = () => ownerAxios.get("/owner/restaurant");
+export const updateOwnRestaurantInfo = (data) => ownerAxios.put("/owner/restaurant", data);
+
 // Branch management
 export const getOwnerBranches = () => ownerAxios.get("/owner/branches");
 export const getOwnerBranchById = (id) => ownerAxios.get(`/owner/branches/${id}`);
@@ -27,5 +31,3 @@ export const getOwnerPaymentHistory = (params) =>
   ownerAxios.get("/owner/payment-history", { params });
 
 export default ownerAxios;
-
-

@@ -102,11 +102,11 @@ export const getRestaurantDetails = async (req, res) => {
     // Get tickets from owner
     const tickets = restaurant.owner
       ? await prisma.supportTicket.findMany({
-          where: { userID: restaurant.owner.userID },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-          select: { ticketID: true, subject: true, description: true, priority: true, status: true, createdAt: true },
-        })
+        where: { userID: restaurant.owner.userID },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { ticketID: true, subject: true, description: true, priority: true, status: true, createdAt: true },
+      })
       : [];
 
     res.json({
@@ -114,6 +114,8 @@ export const getRestaurantDetails = async (req, res) => {
         RestaurantID: restaurant.restaurantID,
         Name: restaurant.name,
         Logo: restaurant.logo,
+        CoverImage: restaurant.coverImage,
+        BusinessLicense: restaurant.businessLicense,
         Description: restaurant.description,
         TaxCode: restaurant.taxCode,
         Website: restaurant.website,
@@ -288,13 +290,15 @@ export const forceDeleteRestaurant = async (req, res) => {
 export const updateRestaurantInfo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, website, logo } = req.body;
+    const { name, description, website, logo, coverImage, businessLicense } = req.body;
 
     const data = {};
     if (name) data.name = name;
     if (description !== undefined) data.description = description;
     if (website !== undefined) data.website = website;
     if (logo !== undefined) data.logo = logo;
+    if (coverImage !== undefined) data.coverImage = coverImage;
+    if (businessLicense !== undefined) data.businessLicense = businessLicense;
 
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ message: "No fields to update" });
