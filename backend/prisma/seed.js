@@ -228,14 +228,19 @@ async function main() {
   // =============================================
   // 5. BRANCHES & TABLES
   // =============================================
+
+  // Helper: tạo chuỗi JSON openingHours
+  const mkHours = (email, mon_fri, sat, sun) =>
+    JSON.stringify({ email, mon_fri, sat, sun });
+
   const branch1 = await prisma.branch.create({
     data: {
       restaurantID: rest1.restaurantID,
       managerUserID: manager1.userID,
       name: "Phở Gà Menu - Chi nhánh Hoàn Kiếm",
       address: "15 Hàng Bạc, Hoàn Kiếm, Hà Nội",
-      phone: "0241111111",
-      openingHours: "06:00 - 22:00",
+      phone: "024 1111 1111",
+      openingHours: mkHours("hoankiemq1@phogamenu.vn", "06:00-22:00", "06:00-22:30", "07:00-21:00"),
       isActive: true,
     },
   });
@@ -245,9 +250,31 @@ async function main() {
       restaurantID: rest1.restaurantID,
       name: "Phở Gà Menu - Chi nhánh Đống Đa",
       address: "88 Tây Sơn, Đống Đa, Hà Nội",
-      phone: "0242222222",
-      openingHours: "06:00 - 22:00",
+      phone: "024 2222 2222",
+      openingHours: mkHours("dongda@phogamenu.vn", "06:00-22:00", "06:00-23:00", "07:00-22:00"),
       isActive: true,
+    },
+  });
+
+  const branch4 = await prisma.branch.create({
+    data: {
+      restaurantID: rest1.restaurantID,
+      name: "Phở Gà Menu - Chi nhánh Cầu Giấy",
+      address: "201 Xuân Thủy, Cầu Giấy, Hà Nội",
+      phone: "024 3333 4444",
+      openingHours: mkHours("caugiay@phogamenu.vn", "06:30-22:00", "06:30-22:30", "07:00-21:30"),
+      isActive: true,
+    },
+  });
+
+  const branch5 = await prisma.branch.create({
+    data: {
+      restaurantID: rest1.restaurantID,
+      name: "Phở Gà Menu - Chi nhánh Bắc Từ Liêm",
+      address: "45 Phạm Văn Đồng, Bắc Từ Liêm, Hà Nội",
+      phone: "024 5566 7788",
+      openingHours: mkHours("bactuliem@phogamenu.vn", "07:00-21:30", "07:00-22:00", "07:30-21:00"),
+      isActive: false,
     },
   });
 
@@ -255,29 +282,58 @@ async function main() {
     data: {
       restaurantID: rest2.restaurantID,
       name: "Bánh Mì Sài Gòn - Quận 1",
-      address: "123 Lê Lợi, Q.1, TP.HCM",
-      phone: "0283333333",
-      openingHours: "07:00 - 21:00",
+      address: "123 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh",
+      phone: "028 1234 5678",
+      openingHours: mkHours("quan1@banhmi.vn", "07:00-21:00", "07:00-21:30", "08:00-20:00"),
       isActive: true,
     },
   });
 
-  // Tạo bàn cho branch1
+  const branch6 = await prisma.branch.create({
+    data: {
+      restaurantID: rest3.restaurantID,
+      name: "BBQ House - Chi nhánh Hoàng Mai",
+      address: "99 Trần Điền, Hoàng Mai, Hà Nội",
+      phone: "024 9988 7766",
+      openingHours: mkHours("hoangmai@bbqhouse.vn", "10:00-22:30", "10:00-23:00", "10:00-22:00"),
+      isActive: true,
+    },
+  });
+
+  // Tạo bàn cho các chi nhánh
   await prisma.table.createMany({
     data: [
+      // branch1 – Hoàn Kiếm (5 bàn)
       { branchID: branch1.branchID, tableName: "Bàn 01", capacity: 2, status: "Available" },
       { branchID: branch1.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
       { branchID: branch1.branchID, tableName: "Bàn 03", capacity: 4, status: "Occupied" },
       { branchID: branch1.branchID, tableName: "Bàn 04", capacity: 6, status: "Available" },
       { branchID: branch1.branchID, tableName: "Bàn VIP 01", capacity: 8, status: "Reserved" },
+      // branch2 – Đống Đa (4 bàn)
       { branchID: branch2.branchID, tableName: "Bàn 01", capacity: 4, status: "Available" },
       { branchID: branch2.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
+      { branchID: branch2.branchID, tableName: "Bàn 03", capacity: 6, status: "Available" },
+      { branchID: branch2.branchID, tableName: "Bàn VIP 01", capacity: 10, status: "Available" },
+      // branch4 – Cầu Giấy (3 bàn)
+      { branchID: branch4.branchID, tableName: "Bàn 01", capacity: 2, status: "Available" },
+      { branchID: branch4.branchID, tableName: "Bàn 02", capacity: 4, status: "Occupied" },
+      { branchID: branch4.branchID, tableName: "Bàn 03", capacity: 4, status: "Available" },
+      // branch5 – Bắc Từ Liêm (2 bàn, tạm dừng)
+      { branchID: branch5.branchID, tableName: "Bàn 01", capacity: 4, status: "Available" },
+      { branchID: branch5.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
+      // branch3 – Bánh Mì Q1 (3 bàn)
       { branchID: branch3.branchID, tableName: "Bàn 01", capacity: 2, status: "Available" },
       { branchID: branch3.branchID, tableName: "Bàn 02", capacity: 2, status: "Available" },
       { branchID: branch3.branchID, tableName: "Bàn 03", capacity: 6, status: "Available" },
+      // branch6 – BBQ Hoàng Mai (4 bàn)
+      { branchID: branch6.branchID, tableName: "Bàn A1", capacity: 4, status: "Available" },
+      { branchID: branch6.branchID, tableName: "Bàn A2", capacity: 4, status: "Occupied" },
+      { branchID: branch6.branchID, tableName: "Bàn B1", capacity: 6, status: "Available" },
+      { branchID: branch6.branchID, tableName: "Bàn VIP", capacity: 10, status: "Available" },
     ],
   });
-  console.log("✅ Tạo 3 Branches + 10 Tables");
+  console.log("✅ Tạo 6 Branches + 21 Tables");
+
 
   // =============================================
   // 6. CATEGORIES & PRODUCTS
@@ -428,6 +484,7 @@ async function main() {
   });
   console.log("✅ Tạo 9 Registration Requests (6 Pending, 2 Approved, 1 Rejected)");
 
+
   // =============================================
   // 9. SUPPORT TICKETS
   // =============================================
@@ -483,30 +540,30 @@ async function main() {
   };
 
   const orderSamples = [
-    { branchID: branch1.branchID, daysAgo: 0,  hour: 7,  items: [[0,2],[4,2]] },
-    { branchID: branch1.branchID, daysAgo: 0,  hour: 11, items: [[2,3],[7,3]] },
-    { branchID: branch1.branchID, daysAgo: 0,  hour: 12, items: [[3,2],[5,1]] },
-    { branchID: branch1.branchID, daysAgo: 0,  hour: 19, items: [[1,4],[6,2]] },
-    { branchID: branch1.branchID, daysAgo: 1,  hour: 8,  items: [[0,3],[8,2]] },
-    { branchID: branch1.branchID, daysAgo: 1,  hour: 11, items: [[2,2],[4,3]] },
-    { branchID: branch1.branchID, daysAgo: 1,  hour: 13, items: [[3,1],[9,2]] },
-    { branchID: branch1.branchID, daysAgo: 1,  hour: 20, items: [[1,2],[5,3]] },
-    { branchID: branch1.branchID, daysAgo: 2,  hour: 7,  items: [[0,5]] },
-    { branchID: branch1.branchID, daysAgo: 2,  hour: 12, items: [[3,3],[6,2]] },
-    { branchID: branch1.branchID, daysAgo: 2,  hour: 18, items: [[1,3],[7,1]] },
-    { branchID: branch1.branchID, daysAgo: 3,  hour: 11, items: [[2,4],[4,4]] },
-    { branchID: branch1.branchID, daysAgo: 4,  hour: 19, items: [[0,2],[8,3]] },
-    { branchID: branch1.branchID, daysAgo: 5,  hour: 12, items: [[3,2],[5,2]] },
-    { branchID: branch1.branchID, daysAgo: 7,  hour: 7,  items: [[0,4],[4,2]] },
-    { branchID: branch1.branchID, daysAgo: 10, hour: 11, items: [[1,3],[9,1]] },
-    { branchID: branch1.branchID, daysAgo: 14, hour: 19, items: [[2,2],[6,3]] },
-    { branchID: branch2.branchID, daysAgo: 0,  hour: 12, items: [[0,2],[4,1]] },
-    { branchID: branch2.branchID, daysAgo: 0,  hour: 19, items: [[1,3]] },
-    { branchID: branch2.branchID, daysAgo: 1,  hour: 11, items: [[2,2],[6,2]] },
-    { branchID: branch2.branchID, daysAgo: 3,  hour: 7,  items: [[3,1],[5,1]] },
-    { branchID: branch2.branchID, daysAgo: 5,  hour: 20, items: [[0,4]] },
-    { branchID: branch2.branchID, daysAgo: 7,  hour: 12, items: [[1,2],[8,2]] },
-    { branchID: branch2.branchID, daysAgo: 10, hour: 18, items: [[2,3],[7,1]] },
+    { branchID: branch1.branchID, daysAgo: 0, hour: 7, items: [[0, 2], [4, 2]] },
+    { branchID: branch1.branchID, daysAgo: 0, hour: 11, items: [[2, 3], [7, 3]] },
+    { branchID: branch1.branchID, daysAgo: 0, hour: 12, items: [[3, 2], [5, 1]] },
+    { branchID: branch1.branchID, daysAgo: 0, hour: 19, items: [[1, 4], [6, 2]] },
+    { branchID: branch1.branchID, daysAgo: 1, hour: 8, items: [[0, 3], [8, 2]] },
+    { branchID: branch1.branchID, daysAgo: 1, hour: 11, items: [[2, 2], [4, 3]] },
+    { branchID: branch1.branchID, daysAgo: 1, hour: 13, items: [[3, 1], [9, 2]] },
+    { branchID: branch1.branchID, daysAgo: 1, hour: 20, items: [[1, 2], [5, 3]] },
+    { branchID: branch1.branchID, daysAgo: 2, hour: 7, items: [[0, 5]] },
+    { branchID: branch1.branchID, daysAgo: 2, hour: 12, items: [[3, 3], [6, 2]] },
+    { branchID: branch1.branchID, daysAgo: 2, hour: 18, items: [[1, 3], [7, 1]] },
+    { branchID: branch1.branchID, daysAgo: 3, hour: 11, items: [[2, 4], [4, 4]] },
+    { branchID: branch1.branchID, daysAgo: 4, hour: 19, items: [[0, 2], [8, 3]] },
+    { branchID: branch1.branchID, daysAgo: 5, hour: 12, items: [[3, 2], [5, 2]] },
+    { branchID: branch1.branchID, daysAgo: 7, hour: 7, items: [[0, 4], [4, 2]] },
+    { branchID: branch1.branchID, daysAgo: 10, hour: 11, items: [[1, 3], [9, 1]] },
+    { branchID: branch1.branchID, daysAgo: 14, hour: 19, items: [[2, 2], [6, 3]] },
+    { branchID: branch2.branchID, daysAgo: 0, hour: 12, items: [[0, 2], [4, 1]] },
+    { branchID: branch2.branchID, daysAgo: 0, hour: 19, items: [[1, 3]] },
+    { branchID: branch2.branchID, daysAgo: 1, hour: 11, items: [[2, 2], [6, 2]] },
+    { branchID: branch2.branchID, daysAgo: 3, hour: 7, items: [[3, 1], [5, 1]] },
+    { branchID: branch2.branchID, daysAgo: 5, hour: 20, items: [[0, 4]] },
+    { branchID: branch2.branchID, daysAgo: 7, hour: 12, items: [[1, 2], [8, 2]] },
+    { branchID: branch2.branchID, daysAgo: 10, hour: 18, items: [[2, 3], [7, 1]] },
   ];
 
   for (const o of orderSamples) {
@@ -531,7 +588,71 @@ async function main() {
   }
   console.log(`✅ Tạo ${orderSamples.length} Orders mẫu cho Owner Dashboard`);
 
+  // =============================================
+  // 11. INVOICES + TRANSACTIONS (cho lịch sử thanh toán)
+  // =============================================
+  const allOrders = await prisma.order.findMany({
+    where: { branchID: { in: [branch1.branchID, branch2.branchID, branch4.branchID, branch5.branchID] } },
+    select: { orderID: true, totalAmount: true, orderTime: true },
+    orderBy: { orderID: 'asc' },
+  });
+
+  const paymentMethods = ['Cash', 'BankTransfer', 'E_Wallet'];
+  const transactionStatuses = ['Success', 'Success', 'Success', 'Success', 'Failed'];
+
+  let invoiceCount = 0;
+  let txCount = 0;
+
+  for (let i = 0; i < allOrders.length; i++) {
+    const order = allOrders[i];
+    const method = paymentMethods[i % paymentMethods.length];
+    const status = transactionStatuses[i % transactionStatuses.length];
+
+    // Tạo Invoice
+    const invoice = await prisma.invoice.create({
+      data: {
+        orderID: order.orderID,
+        issuedDate: order.orderTime,
+        status: 'Closed',
+        subTotal: order.totalAmount,
+        discountAmount: 0,
+        totalAmount: order.totalAmount,
+      },
+    });
+    invoiceCount++;
+
+    // Tạo Transaction chính
+    await prisma.transaction.create({
+      data: {
+        invoiceID: invoice.invoiceID,
+        amount: order.totalAmount,
+        paymentMethod: method,
+        status: status,
+        transactionTime: order.orderTime,
+      },
+    });
+    txCount++;
+
+    // Thêm 1 transaction Failed trước đó (retry scenario)
+    if (i % 7 === 0 && status === 'Success') {
+      const retryTime = new Date(order.orderTime);
+      retryTime.setMinutes(retryTime.getMinutes() - 5);
+      await prisma.transaction.create({
+        data: {
+          invoiceID: invoice.invoiceID,
+          amount: order.totalAmount,
+          paymentMethod: method,
+          status: 'Failed',
+          transactionTime: retryTime,
+        },
+      });
+      txCount++;
+    }
+  }
+  console.log(`✅ Tạo ${invoiceCount} Invoices + ${txCount} Transactions`);
+
   console.log("\n🎉 Seed hoàn tất!\n");
+
   console.log("📋 Tài khoản đăng nhập:");
   console.log("   Admin:   admin@rms.vn        / Admin@123");
   console.log("   Owner 1: owner1@phogamenu.vn  / Owner@123");

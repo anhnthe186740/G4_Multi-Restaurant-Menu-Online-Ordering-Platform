@@ -22,3 +22,16 @@ export const updateOwnRestaurantInfo = (data) => ownerAxios.put("/owner/restaura
 
 export default ownerAxios;
 
+// Branch management
+export const getOwnerBranches = () => ownerAxios.get("/owner/branches");
+export const getOwnerBranchById = (id) => ownerAxios.get(`/owner/branches/${id}`);
+export const updateOwnerBranch = (id, data) => ownerAxios.put(`/owner/branches/${id}`, data);
+export const toggleOwnerBranch = (id) => ownerAxios.patch(`/owner/branches/${id}/toggle`);
+
+// Payment History
+export const getOwnerPaymentHistory = (params) =>
+  ownerAxios.get("/owner/payment-history", { params });
+
+export default ownerAxios;
+
+

@@ -15,6 +15,9 @@ import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
 import OwnerSettings from "./pages/OwnerSettings";
 import RegisterRestaurant from "./pages/RegisterRestaurant";
 import PendingStatus from "./pages/PendingStatus";
+import OwnerBranches from "./pages/OwnerBranches";
+import OwnerBranchSettings from "./pages/OwnerBranchSettings";
+import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -113,6 +116,28 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerSettings />
+          path="/owner/branches"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerBranches />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/branches/:id"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerBranchSettings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/payment-history"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerPaymentHistory />
             </ProtectedRoute>
           }
         />
