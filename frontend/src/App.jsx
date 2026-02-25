@@ -12,6 +12,9 @@ import RestaurantManagement from "./pages/RestaurantManagement";
 import AdminServicePackages from "./pages/AdminServicePackages";
 import AdminRequests from "./pages/AdminRequests";
 import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
+import OwnerSettings from "./pages/OwnerSettings";
+import RegisterRestaurant from "./pages/RegisterRestaurant";
+import PendingStatus from "./pages/PendingStatus";
 import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
@@ -47,6 +50,9 @@ export default function App() {
             </AuthLayout>
           }
         />
+
+        <Route path="/register-restaurant" element={<RegisterRestaurant />} />
+        <Route path="/pending-status" element={<PendingStatus />} />
 
         <Route
           path="/admin/dashboard"
@@ -106,6 +112,10 @@ export default function App() {
         />
 
         <Route
+          path="/owner/settings"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerSettings />
           path="/owner/branches"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">

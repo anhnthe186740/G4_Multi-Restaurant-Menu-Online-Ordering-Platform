@@ -5,6 +5,8 @@ import {
   getTopProducts,
   getOrdersByHour,
   getBranchPerformance,
+  getOwnerRestaurantInfo,
+  updateOwnerRestaurantInfo,
   getOwnerBranches,
   getOwnerBranchById,
   updateOwnerBranch,
@@ -12,6 +14,7 @@ import {
   getPaymentHistory,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
+
 
 const router = express.Router();
 
@@ -25,6 +28,9 @@ router.get("/dashboard/top-products", getTopProducts);
 router.get("/dashboard/orders-by-hour", getOrdersByHour);
 router.get("/dashboard/branch-performance", getBranchPerformance);
 
+// Restaurant info routes (owner manages their own restaurant)
+router.get("/restaurant", getOwnerRestaurantInfo);
+router.put("/restaurant", updateOwnerRestaurantInfo);
 // Branch Management
 router.get("/branches", getOwnerBranches);
 router.get("/branches/:id", getOwnerBranchById);
