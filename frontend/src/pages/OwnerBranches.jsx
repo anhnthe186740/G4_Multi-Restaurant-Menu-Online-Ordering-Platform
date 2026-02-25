@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
 import { getOwnerBranches, toggleOwnerBranch } from '../api/ownerApi';
 import {
     GitBranch, MapPin, Phone, Mail, Table2,
-    Settings, Power, CheckCircle2, XCircle,
-    ShoppingBag, Plus, RefreshCw
+    Settings, CheckCircle2, XCircle,
+    ShoppingBag, RefreshCw, Search
 } from 'lucide-react';
 
 export default function OwnerBranches() {
@@ -15,6 +15,8 @@ export default function OwnerBranches() {
     const [branches, setBranches] = useState([]);
     const [togglingId, setTogglingId] = useState(null);
     const [toast, setToast] = useState(null);
+    const [search, setSearch] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'inactive'
 
     useEffect(() => { loadBranches(); }, []);
 
@@ -56,6 +58,18 @@ export default function OwnerBranches() {
 
     const activeBranches = branches.filter(b => b.isActive).length;
 
+    // Client-side search + filter
+    const filteredBranches = useMemo(() => {
+        return branches.filter(b => {
+            const matchName = b.name.toLowerCase().includes(search.toLowerCase());
+            const matchStatus =
+                filterStatus === 'all' ? true :
+                    filterStatus === 'active' ? b.isActive :
+                        !b.isActive;
+            return matchName && matchStatus;
+        });
+    }, [branches, search, filterStatus]);
+
     return (
         <RestaurantOwnerLayout>
             {/* Toast */}
@@ -91,7 +105,47 @@ export default function OwnerBranches() {
                 </button>
             </div>
 
-            {/* ===== LOADING ===== */}
+            {/* ===== SEARCH & FILTER BAR ===== */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                {/* Search input */}
+                <div className="relative flex-1">
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm theo tên chi nhánh..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white"
+                    />
+                </div>
+
+                {/* Filter buttons */}
+                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl shrink-0">
+                    {[
+                        { key: 'all', label: 'Tất cả', count: branches.length },
+                        { key: 'active', label: 'Hoạt động', count: branches.filter(b => b.isActive).length },
+                        { key: 'inactive', label: 'Tạm dừng', count: branches.filter(b => !b.isActive).length },
+                    ].map(({ key, label, count }) => (
+                        <button
+                            key={key}
+                            onClick={() => setFilterStatus(key)}
+                            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all
+                                ${filterStatus === key
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            {label}
+                            <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full
+                                ${filterStatus === key ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                                {count}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* ===== LOADING / CONTENT ===== */}
             {loading ? (
                 <div className="min-h-[50vh] flex items-center justify-center">
                     <div className="text-center">
@@ -100,7 +154,7 @@ export default function OwnerBranches() {
                     </div>
                 </div>
             ) : branches.length === 0 ? (
-                /* ===== EMPTY STATE ===== */
+                /* ===== EMPTY STATE (no branches at all) ===== */
                 <div className="min-h-[50vh] flex flex-col items-center justify-center gap-4">
                     <div className="w-20 h-20 rounded-2xl bg-blue-50 flex items-center justify-center">
                         <GitBranch size={36} className="text-blue-400" />
@@ -110,10 +164,27 @@ export default function OwnerBranches() {
                         <p className="text-gray-400 text-sm mt-1">Nhà hàng của bạn chưa có chi nhánh nào được tạo.</p>
                     </div>
                 </div>
+            ) : filteredBranches.length === 0 ? (
+                /* ===== EMPTY STATE (no search/filter results) ===== */
+                <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                        <Search size={28} className="text-gray-400" />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-gray-700 font-semibold">Không tìm thấy chi nhánh</p>
+                        <p className="text-gray-400 text-sm mt-1">Thử thay đổi từ khóa hoặc bộ lọc.</p>
+                    </div>
+                    <button
+                        onClick={() => { setSearch(''); setFilterStatus('all'); }}
+                        className="text-sm text-blue-600 hover:underline"
+                    >
+                        Xóa bộ lọc
+                    </button>
+                </div>
             ) : (
                 /* ===== BRANCH GRID ===== */
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {branches.map((branch) => (
+                    {filteredBranches.map((branch) => (
                         <BranchCard
                             key={branch.branchID}
                             branch={branch}
