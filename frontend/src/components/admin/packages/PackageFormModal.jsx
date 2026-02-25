@@ -11,10 +11,10 @@ export default function PackageFormModal({ isOpen, onClose, onSubmit, initialDat
     useEffect(() => {
         if (initialData) {
             setFormData({
-                PackageName: initialData.PackageName,
-                Duration: initialData.Duration,
-                Price: initialData.Price,
-                Description: initialData.Description || ''
+                PackageName: initialData.packageName || initialData.PackageName || '',
+                Duration: initialData.duration ?? initialData.Duration ?? 1,
+                Price: initialData.price ?? initialData.Price ?? 0,
+                Description: initialData.featuresDescription || initialData.Description || ''
             });
         } else {
             setFormData({

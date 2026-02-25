@@ -13,7 +13,10 @@ import { authenticateToken, requireAdmin } from "../middlewares/authMiddleware.j
 
 const router = express.Router();
 
-// Middleware authentication setup
+// ✅ PUBLIC route — không cần auth, cho homepage fetch
+router.get("/public", getAllPackages);
+
+// Middleware authentication setup (chỉ áp dụng cho các route bên dưới)
 router.use(authenticateToken);
 router.use(requireAdmin);
 

@@ -73,7 +73,7 @@ export default function ServicePackagesPage() {
     const handleFormSubmit = async (data) => {
         try {
             if (editingPackage) {
-                await updateServicePackage(editingPackage.PackageID, data);
+                await updateServicePackage(editingPackage.packageID, data);
             } else {
                 await createServicePackage(data);
             }
@@ -146,10 +146,10 @@ export default function ServicePackagesPage() {
                     {/* Package Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
                         {packages.map((pkg, index) => {
-                            const isPopular = pkg.Duration === 12 || index === 2; // Mock "Popular" logic
+                            const isPopular = pkg.duration === 12 || index === 1; // gói giữa = phổ biến nhất
                             return (
                                 <div
-                                    key={pkg.PackageID}
+                                    key={pkg.packageID}
                                     className={`relative bg-[#0d1612] border rounded-2xl p-6 flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${isPopular
                                         ? 'border-[#00ff88] shadow-[0_0_30px_rgba(0,255,136,0.1)]'
                                         : 'border-gray-800 hover:border-gray-600'
@@ -163,19 +163,19 @@ export default function ServicePackagesPage() {
 
                                     <div className="mb-6">
                                         <h3 className={`text-sm font-bold uppercase tracking-widest mb-4 ${isPopular ? 'text-[#00ff88]' : 'text-gray-400'}`}>
-                                            {pkg.PackageName}
+                                            {pkg.packageName}
                                         </h3>
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-3xl font-black text-white">
-                                                {new Intl.NumberFormat('vi-VN').format(pkg.Price)}
+                                                {new Intl.NumberFormat('vi-VN').format(pkg.price)}
                                             </span>
-                                            <span className="text-gray-500 font-medium text-xs">VND / {pkg.Duration} Tháng</span>
+                                            <span className="text-gray-500 font-medium text-xs">VND / {pkg.duration} Tháng</span>
                                         </div>
                                     </div>
 
                                     <div className="flex-1 mb-6">
                                         <ul className="space-y-2.5">
-                                            {(pkg.Description || "Hỗ trợ kỹ thuật 24/7\nKhông giới hạn tính năng").split('\n').map((feature, i) => (
+                                            {(pkg.featuresDescription || "Hỗ trợ kỹ thuật 24/7\nKhông giới hạn tính năng").split('\n').map((feature, i) => (
                                                 <li key={i} className="flex items-start gap-2.5">
                                                     <div className="mt-1 w-4 h-4 rounded-full bg-[#00ff88]/10 flex items-center justify-center shrink-0">
                                                         <svg className="w-2.5 h-2.5 text-[#00ff88]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -199,7 +199,7 @@ export default function ServicePackagesPage() {
                                             <span>✎</span> Chỉnh sửa
                                         </button>
                                         <button
-                                            onClick={() => handleDelete(pkg.PackageID)}
+                                            onClick={() => handleDelete(pkg.packageID)}
                                             className="px-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition border border-red-500/20"
                                         >
                                             🗑️

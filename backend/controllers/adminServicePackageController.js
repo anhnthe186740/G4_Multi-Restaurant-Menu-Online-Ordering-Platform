@@ -47,23 +47,24 @@ export const updatePackage = async (req, res) => {
   const { id } = req.params;
   const { PackageName, Duration, Price, Description, FeaturesDescription } = req.body;
 
+  console.log("updatePackage body:", req.body);
+
   try {
+    const data = {};
+    if (PackageName != null) data.packageName = PackageName;
+    if (Duration != null) data.duration = parseInt(Duration);
+    if (Price != null) data.price = parseFloat(Price);
+    const desc = FeaturesDescription ?? Description;
+    if (desc !== undefined) data.featuresDescription = desc ?? null;
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ message: "Không có trường nào để cập nhật" });
+    }
+
     const updated = await prisma.servicePackage.update({
       where: { packageID: parseInt(id) },
-      data: {
-        ...(PackageName && { packageName: PackageName }),
-        ...(Duration && { duration: parseInt(Duration) }),
-        ...(Price && { price: parseFloat(Price) }),
-        // Chấp nhận cả 2 tên field từ frontend
-        ...((FeaturesDescription !== undefined || Description !== undefined) && {
-          featuresDescription: FeaturesDescription ?? Description ?? null,
-        }),
-      },
+      data,
     });
-
-    if (!updated) {
-      return res.status(404).json({ message: "Không tìm thấy gói dịch vụ" });
-    }
 
     res.json(updated);
   } catch (error) {
@@ -71,7 +72,7 @@ export const updatePackage = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy gói dịch vụ" });
     }
     console.error("Error updating package:", error);
-    res.status(500).json({ message: "Lỗi khi cập nhật gói dịch vụ" });
+    res.status(500).json({ message: error.message || "Lỗi khi cập nhật gói dịch vụ" });
   }
 };
 

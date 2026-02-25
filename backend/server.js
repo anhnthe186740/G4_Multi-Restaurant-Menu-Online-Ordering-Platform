@@ -8,6 +8,7 @@ import adminDashboardRoutes from "./routes/adminDashboard.js";
 import adminReportsRoutes from "./routes/adminReports.js";
 import restaurantManagementRoutes from "./routes/restaurantManagement.js";
 import adminServicePackageRoutes from "./routes/adminServicePackages.js";
+import { getAllPackages } from "./controllers/adminServicePackageController.js";
 import registrationRequestRoutes from "./routes/registrationRequests.js";
 import restaurantOwnerRoutes from "./routes/restaurantOwner.js";
 import uploadRoutes from "./routes/upload.js";
@@ -39,6 +40,9 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.get("/", (req, res) => {
   res.json({ message: "Backend is running!" });
 });
+
+// ✅ Public route — không cần auth, cho homepage
+app.get("/api/public/service-packages", getAllPackages);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
