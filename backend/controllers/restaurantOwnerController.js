@@ -378,6 +378,10 @@ export const getOwnerRestaurantInfo = async (req, res) => {
     });
   } catch (error) {
     console.error("getOwnerRestaurantInfo error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 /* =================== GET OWNER BRANCHES LIST =================== */
 export const getOwnerBranches = async (req, res) => {
   try {
@@ -719,6 +723,10 @@ export const updateOwnerRestaurantInfo = async (req, res) => {
     res.json({ message: "Cập nhật thông tin nhà hàng thành công" });
   } catch (error) {
     console.error("updateOwnerRestaurantInfo error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 /* =================== TOGGLE BRANCH STATUS =================== */
 export const toggleOwnerBranch = async (req, res) => {
   try {

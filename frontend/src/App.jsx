@@ -116,6 +116,11 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerSettings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/owner/branches"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
