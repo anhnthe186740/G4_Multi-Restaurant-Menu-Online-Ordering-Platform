@@ -1,5 +1,6 @@
 import Header from "./Header";
 import Footer from "./Footer";
+import RegistrationStatusButton from "../RegistrationStatusButton";
 
 export default function MainLayout({ children }) {
   return (
@@ -15,6 +16,10 @@ export default function MainLayout({ children }) {
 
       {/* Footer – full width */}
       <Footer />
+
+      {/* Floating registration status button */}
+      <RegistrationStatusButton />
     </div>
   );
 }
+

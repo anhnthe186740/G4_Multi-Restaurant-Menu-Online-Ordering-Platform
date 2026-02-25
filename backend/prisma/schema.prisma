@@ -154,13 +154,16 @@ model ServicePackage {
 
 // 3. Restaurants
 model Restaurant {
-  restaurantID Int     @id @default(autoincrement()) @map("RestaurantID")
-  ownerUserID  Int?    @map("OwnerUserID")
-  name         String  @map("Name") @db.VarChar(255)
-  logo         String? @map("Logo") @db.VarChar(255)
-  description  String? @map("Description") @db.Text
-  taxCode      String? @map("TaxCode") @db.VarChar(50)
-  website      String? @map("Website") @db.VarChar(255)
+  restaurantID    Int     @id @default(autoincrement()) @map("RestaurantID")
+  ownerUserID     Int?    @map("OwnerUserID")
+  name            String  @map("Name") @db.VarChar(255)
+  logo            String? @map("Logo") @db.VarChar(255)
+  coverImage      String? @map("CoverImage") @db.VarChar(255)
+  businessLicense String? @map("BusinessLicense") @db.VarChar(255)
+  description     String? @map("Description") @db.Text
+  taxCode         String? @map("TaxCode") @db.VarChar(50)
+  website         String? @map("Website") @db.VarChar(255)
+
 
   // Relations
   owner                User?                 @relation("RestaurantOwner", fields: [ownerUserID], references: [userID], onDelete: SetNull)

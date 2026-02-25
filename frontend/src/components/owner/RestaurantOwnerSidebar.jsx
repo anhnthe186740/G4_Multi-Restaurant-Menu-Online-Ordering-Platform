@@ -11,7 +11,7 @@ export default function RestaurantOwnerSidebar() {
         { icon: GitBranch, label: 'Chi nhánh', path: '/owner/branches' },
         { icon: BookOpen, label: 'Thực đơn', path: '/owner/menu' },
         { icon: Users, label: 'Nhân viên', path: '/owner/staff' },
-        { icon: Settings, label: 'Cài đặt', path: '/owner/settings' },
+        { icon: Settings, label: 'Cài đặt thông tin nhà hàng', path: '/owner/settings' },
     ];
 
     const isActive = (path) => location.pathname.startsWith(path);

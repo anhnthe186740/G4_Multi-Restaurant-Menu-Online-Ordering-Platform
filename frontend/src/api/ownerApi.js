@@ -10,10 +10,15 @@ ownerAxios.interceptors.request.use((config) => {
   return config;
 });
 
-export const getOwnerDashboardStats   = () => ownerAxios.get("/owner/dashboard/stats");
-export const getOwnerBranchRevenue    = () => ownerAxios.get("/owner/dashboard/branch-revenue");
-export const getOwnerTopProducts      = () => ownerAxios.get("/owner/dashboard/top-products");
-export const getOwnerOrdersByHour     = () => ownerAxios.get("/owner/dashboard/orders-by-hour");
+export const getOwnerDashboardStats = () => ownerAxios.get("/owner/dashboard/stats");
+export const getOwnerBranchRevenue = () => ownerAxios.get("/owner/dashboard/branch-revenue");
+export const getOwnerTopProducts = () => ownerAxios.get("/owner/dashboard/top-products");
+export const getOwnerOrdersByHour = () => ownerAxios.get("/owner/dashboard/orders-by-hour");
 export const getOwnerBranchPerformance = () => ownerAxios.get("/owner/dashboard/branch-performance");
 
+// Restaurant info
+export const getOwnRestaurantInfo = () => ownerAxios.get("/owner/restaurant");
+export const updateOwnRestaurantInfo = (data) => ownerAxios.put("/owner/restaurant", data);
+
 export default ownerAxios;
+

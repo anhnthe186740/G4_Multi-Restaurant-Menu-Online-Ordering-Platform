@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 export default function PricingSection() {
     const navigate = useNavigate();
 
-    const handleCTA = () => {
+    const handleCTA = (plan = "basic") => {
         const token = localStorage.getItem("token");
         if (!token) {
             navigate("/register");
+        } else {
+            navigate(`/register-restaurant?plan=${plan}`);
         }
     };
 
@@ -33,8 +35,11 @@ export default function PricingSection() {
                             <span className="text-gray-500 text-sm mb-1">/tháng</span>
                         </div>
                         <p className="text-gray-500 text-sm mb-8">Dành cho cá nhân mới bắt đầu.</p>
-                        <button onClick={handleCTA} className="w-full py-3 rounded-xl bg-[#0a2e1e] text-green-500 font-bold hover:bg-[#0f422b] transition mb-8">
-                            Bắt đầu ngay
+                        <button
+                            onClick={() => handleCTA("basic")}
+                            className="w-full py-3 rounded-xl bg-[#0a2e1e] text-green-500 font-bold hover:bg-[#0f422b] transition mb-8"
+                        >
+                            Đăng Kí Ngay
                         </button>
                         <ul className="space-y-4 text-sm text-gray-400">
                             <li className="flex items-center gap-3">
@@ -63,8 +68,11 @@ export default function PricingSection() {
                             <span className="text-gray-500 text-sm mb-1">/tháng</span>
                         </div>
                         <p className="text-gray-500 text-sm mb-8">Dành cho nhà hàng chuyên nghiệp.</p>
-                        <button onClick={handleCTA} className="w-full py-3 rounded-xl bg-green-500 text-white font-bold hover:bg-green-600 transition mb-8 shadow-lg shadow-green-500/20">
-                            Dùng thử Premium
+                        <button
+                            onClick={() => handleCTA("premium")}
+                            className="w-full py-3 rounded-xl bg-green-500 text-white font-bold hover:bg-green-600 transition mb-8 shadow-lg shadow-green-500/20"
+                        >
+                            Đăng Kí Ngay
                         </button>
                         <ul className="space-y-4 text-sm text-gray-300">
                             <li className="flex items-center gap-3">
@@ -89,8 +97,11 @@ export default function PricingSection() {
                             <span className="text-3xl font-bold text-white">Liên hệ</span>
                         </div>
                         <p className="text-gray-500 text-sm mb-8">Dành cho chuỗi thương hiệu lớn.</p>
-                        <button onClick={handleCTA} className="w-full py-3 rounded-xl bg-[#0a2e1e] text-green-500 font-bold hover:bg-[#0f422b] transition mb-8">
-                            Gặp chuyên viên tư vấn
+                        <button
+                            onClick={() => handleCTA("enterprise")}
+                            className="w-full py-3 rounded-xl bg-[#0a2e1e] text-green-500 font-bold hover:bg-[#0f422b] transition mb-8"
+                        >
+                            Đăng Kí Ngay
                         </button>
                         <ul className="space-y-4 text-sm text-gray-400">
                             <li className="flex items-center gap-3">

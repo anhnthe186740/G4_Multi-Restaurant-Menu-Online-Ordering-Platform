@@ -325,3 +325,97 @@ export const getBranchPerformance = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+/* =================== GET OWN RESTAURANT INFO =================== */
+export const getOwnerRestaurantInfo = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await prisma.restaurant.findFirst({
+      where: { ownerUserID: userID },
+      include: {
+        owner: {
+          select: { fullName: true, username: true, email: true, phone: true, status: true, createdAt: true },
+        },
+        branches: {
+          include: {
+            manager: { select: { fullName: true } },
+            _count: { select: { tables: true } },
+          },
+        },
+      },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+    }
+
+    res.json({
+      RestaurantID: restaurant.restaurantID,
+      Name: restaurant.name,
+      Logo: restaurant.logo,
+      CoverImage: restaurant.coverImage,
+      BusinessLicense: restaurant.businessLicense,
+      Description: restaurant.description,
+      TaxCode: restaurant.taxCode,
+      Website: restaurant.website,
+      ownerName: restaurant.owner?.fullName,
+      ownerUsername: restaurant.owner?.username,
+      ownerEmail: restaurant.owner?.email,
+      ownerPhone: restaurant.owner?.phone,
+      ownerStatus: restaurant.owner?.status,
+      registeredDate: restaurant.owner?.createdAt,
+      branches: restaurant.branches.map((b) => ({
+        BranchID: b.branchID,
+        Name: b.name,
+        Address: b.address,
+        Phone: b.phone,
+        OpeningHours: b.openingHours,
+        IsActive: b.isActive,
+        managerName: b.manager?.fullName,
+        tableCount: b._count.tables,
+      })),
+    });
+  } catch (error) {
+    console.error("getOwnerRestaurantInfo error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== UPDATE OWN RESTAURANT INFO =================== */
+export const updateOwnerRestaurantInfo = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await prisma.restaurant.findFirst({
+      where: { ownerUserID: userID },
+      select: { restaurantID: true },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+    }
+
+    const { name, description, website, taxCode, logo, coverImage, businessLicense } = req.body;
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (description !== undefined) data.description = description;
+    if (website !== undefined) data.website = website;
+    if (taxCode !== undefined) data.taxCode = taxCode;
+    if (logo !== undefined) data.logo = logo;
+    if (coverImage !== undefined) data.coverImage = coverImage;
+    if (businessLicense !== undefined) data.businessLicense = businessLicense;
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ message: "Không có trường nào để cập nhật" });
+    }
+
+    await prisma.restaurant.update({
+      where: { restaurantID: restaurant.restaurantID },
+      data,
+    });
+
+    res.json({ message: "Cập nhật thông tin nhà hàng thành công" });
+  } catch (error) {
+    console.error("updateOwnerRestaurantInfo error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
