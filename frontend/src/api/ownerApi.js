@@ -30,4 +30,12 @@ export const toggleOwnerBranch = (id) => ownerAxios.patch(`/owner/branches/${id}
 export const getOwnerPaymentHistory = (params) =>
   ownerAxios.get("/owner/payment-history", { params });
 
+// Reports
+export const getOwnerRevenueTrend = (params) =>
+  ownerAxios.get("/owner/reports/revenue-trend", { params });
+export const getOwnerBranchSummary = (params) =>
+  ownerAxios.get("/owner/reports/branch-summary", { params });
+export const getOwnerProductStats = (params) =>
+  ownerAxios.get("/owner/reports/product-stats", { params });
+
 export default ownerAxios;

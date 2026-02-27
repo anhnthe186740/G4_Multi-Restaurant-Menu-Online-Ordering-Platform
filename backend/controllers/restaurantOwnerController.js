@@ -752,3 +752,180 @@ export const toggleOwnerBranch = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+/* =================== REPORTS: REVENUE TREND BY DATE =================== */
+export const getRevenueByPeriod = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      select: { branchID: true },
+    });
+    const branchIDs = branches.map((b) => b.branchID);
+
+    const { startDate, endDate, branchID } = req.query;
+    const now = new Date();
+    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59, 999)) : now;
+    const filterBranches = branchID ? [parseInt(branchID)] : branchIDs;
+
+    const orders = await prisma.order.findMany({
+      where: {
+        branchID: { in: filterBranches },
+        orderTime: { gte: start, lte: end },
+        paymentStatus: "Paid",
+      },
+      select: { orderTime: true, totalAmount: true },
+      orderBy: { orderTime: "asc" },
+    });
+
+    // Group by date
+    const grouped = {};
+    orders.forEach((o) => {
+      const dateKey = new Date(o.orderTime).toISOString().slice(0, 10);
+      if (!grouped[dateKey]) grouped[dateKey] = { date: dateKey, revenue: 0, orders: 0 };
+      grouped[dateKey].revenue += parseFloat(o.totalAmount);
+      grouped[dateKey].orders += 1;
+    });
+
+    // Fill missing dates with 0
+    const result = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const key = cursor.toISOString().slice(0, 10);
+      result.push(grouped[key] || { date: key, revenue: 0, orders: 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("getRevenueByPeriod error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== REPORTS: BRANCH SUMMARY =================== */
+export const getBranchSummaryReport = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      select: { branchID: true, name: true, address: true, isActive: true },
+    });
+
+    const { startDate, endDate } = req.query;
+    const now = new Date();
+    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59, 999)) : now;
+
+    // Same-length period before for comparison
+    const diffMs = end.getTime() - start.getTime();
+    const prevEnd = new Date(start.getTime() - 1);
+    const prevStart = new Date(prevEnd.getTime() - diffMs);
+
+    const data = await Promise.all(
+      branches.map(async (b) => {
+        const [current, prev] = await Promise.all([
+          prisma.order.aggregate({
+            where: { branchID: b.branchID, orderTime: { gte: start, lte: end }, paymentStatus: "Paid" },
+            _sum: { totalAmount: true },
+            _count: true,
+          }),
+          prisma.order.aggregate({
+            where: { branchID: b.branchID, orderTime: { gte: prevStart, lte: prevEnd }, paymentStatus: "Paid" },
+            _sum: { totalAmount: true },
+            _count: true,
+          }),
+        ]);
+
+        const revenue = parseFloat(current._sum.totalAmount || 0);
+        const orders = current._count || 0;
+        const prevRevenue = parseFloat(prev._sum.totalAmount || 0);
+        const growth = prevRevenue > 0
+          ? parseFloat((((revenue - prevRevenue) / prevRevenue) * 100).toFixed(1))
+          : null;
+        const avgOrder = orders > 0 ? Math.round(revenue / orders) : 0;
+
+        return {
+          branchID: b.branchID,
+          name: b.name,
+          address: b.address,
+          isActive: b.isActive,
+          revenue,
+          orders,
+          avgOrder,
+          growth,
+        };
+      })
+    );
+
+    res.json(data.sort((a, b) => b.revenue - a.revenue));
+  } catch (error) {
+    console.error("getBranchSummaryReport error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== REPORTS: PRODUCT REVENUE STATS =================== */
+export const getProductRevenueStats = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      select: { branchID: true },
+    });
+    const branchIDs = branches.map((b) => b.branchID);
+
+    const { startDate, endDate, branchID } = req.query;
+    const now = new Date();
+    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59, 999)) : now;
+    const filterBranches = branchID ? [parseInt(branchID)] : branchIDs;
+
+    const grouped = await prisma.orderDetail.groupBy({
+      by: ["productID"],
+      where: {
+        order: {
+          branchID: { in: filterBranches },
+          orderTime: { gte: start, lte: end },
+        },
+      },
+      _sum: { quantity: true, price: true },
+      orderBy: { _sum: { price: "desc" } },
+      take: 10,
+    });
+
+    const totalRevenue = grouped.reduce((s, g) => s + parseFloat(g._sum.price || 0), 0);
+
+    const result = await Promise.all(
+      grouped.map(async (g) => {
+        const product = await prisma.product.findUnique({
+          where: { productID: g.productID },
+          select: { name: true },
+        });
+        const revenue = parseFloat(g._sum.price || 0);
+        return {
+          productID: g.productID,
+          name: product?.name || "Không xác định",
+          quantity: g._sum.quantity || 0,
+          revenue,
+          percentage: totalRevenue > 0 ? parseFloat(((revenue / totalRevenue) * 100).toFixed(1)) : 0,
+        };
+      })
+    );
+
+    res.json({ products: result, totalRevenue });
+  } catch (error) {
+    console.error("getProductRevenueStats error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};

@@ -12,6 +12,9 @@ import {
   updateOwnerBranch,
   toggleOwnerBranch,
   getPaymentHistory,
+  getRevenueByPeriod,
+  getBranchSummaryReport,
+  getProductRevenueStats,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -39,6 +42,11 @@ router.patch("/branches/:id/toggle", toggleOwnerBranch);
 
 // Payment History
 router.get("/payment-history", getPaymentHistory);
+
+// Reports
+router.get("/reports/revenue-trend", getRevenueByPeriod);
+router.get("/reports/branch-summary", getBranchSummaryReport);
+router.get("/reports/product-stats", getProductRevenueStats);
 
 export default router;
 
