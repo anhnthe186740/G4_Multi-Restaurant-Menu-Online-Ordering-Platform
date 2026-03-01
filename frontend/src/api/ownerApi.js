@@ -10,7 +10,7 @@ ownerAxios.interceptors.request.use((config) => {
   return config;
 });
 
-export const getOwnerDashboardStats = () => ownerAxios.get("/owner/dashboard/stats");
+export const getOwnerDashboardStats = (params) => ownerAxios.get("/owner/dashboard/stats", { params });
 export const getOwnerBranchRevenue = () => ownerAxios.get("/owner/dashboard/branch-revenue");
 export const getOwnerTopProducts = () => ownerAxios.get("/owner/dashboard/top-products");
 export const getOwnerOrdersByHour = () => ownerAxios.get("/owner/dashboard/orders-by-hour");
@@ -37,5 +37,9 @@ export const getOwnerBranchSummary = (params) =>
   ownerAxios.get("/owner/reports/branch-summary", { params });
 export const getOwnerProductStats = (params) =>
   ownerAxios.get("/owner/reports/product-stats", { params });
+export const getOwnerOrdersDetail = (params) =>
+  ownerAxios.get("/owner/reports/orders-detail", { params });
+export const getOwnerOrdersHeatmap = (params) =>
+  ownerAxios.get("/owner/reports/orders-heatmap", { params });
 
 export default ownerAxios;

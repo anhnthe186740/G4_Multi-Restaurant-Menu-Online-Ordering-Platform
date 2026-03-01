@@ -15,6 +15,8 @@ import {
   getRevenueByPeriod,
   getBranchSummaryReport,
   getProductRevenueStats,
+  getDetailedOrdersReport,
+  getOrdersHeatmap_Owner,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -47,6 +49,8 @@ router.get("/payment-history", getPaymentHistory);
 router.get("/reports/revenue-trend", getRevenueByPeriod);
 router.get("/reports/branch-summary", getBranchSummaryReport);
 router.get("/reports/product-stats", getProductRevenueStats);
+router.get("/reports/orders-detail", getDetailedOrdersReport);
+router.get("/reports/orders-heatmap", getOrdersHeatmap_Owner);
 
 export default router;
 

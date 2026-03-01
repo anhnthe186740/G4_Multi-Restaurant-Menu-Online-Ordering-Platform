@@ -9,8 +9,11 @@ import {
     getOwnerBranchSummary,
     getOwnerProductStats,
     getOwnerBranches,
+    getOwnerOrdersDetail,
+    getOwnerOrdersHeatmap,
+    getOwnerDashboardStats, // Will use this for Revenue, Cost, Profit
 } from '../api/ownerApi';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Store, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Store, Package, Download, ListOrdered, Receipt } from 'lucide-react';
 
 /* ─── Helpers ─── */
 const fmtVND = (v) => {
@@ -44,29 +47,29 @@ function getDateRange(days) {
 /* ─── Stat Card ─── */
 function StatCard({ icon: Icon, label, value, sub, growth, color }) {
     const colorMap = {
-        blue: 'from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400',
-        green: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-400',
-        purple: 'from-purple-500/20 to-purple-600/10 border-purple-500/30 text-purple-400',
-        orange: 'from-orange-500/20 to-orange-600/10 border-orange-500/30 text-orange-400',
+        blue: 'bg-blue-50 text-blue-600',
+        green: 'bg-emerald-50 text-emerald-600',
+        purple: 'bg-purple-50 text-purple-600',
+        orange: 'bg-orange-50 text-orange-600',
     };
     const isPos = growth === null || growth === undefined ? null : growth >= 0;
     return (
-        <div className={`bg-gradient-to-br ${colorMap[color]} border rounded-xl p-5 flex flex-col gap-2`}>
+        <div className="bg-white border border-gray-100 shadow-sm rounded-xl p-5 flex flex-col gap-2">
             <div className="flex items-center justify-between">
-                <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide">{label}</p>
-                <div className={`w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center ${colorMap[color].split(' ').pop()}`}>
-                    <Icon size={18} />
+                <p className="text-gray-500 text-sm font-medium">{label}</p>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${colorMap[color]}`}>
+                    <Icon size={20} />
                 </div>
             </div>
-            <p className="text-white text-2xl font-bold">{value}</p>
+            <p className="text-gray-900 text-2xl font-bold">{value}</p>
             <div className="flex items-center gap-2">
                 {isPos !== null ? (
-                    <span className={`flex items-center gap-1 text-xs font-semibold ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {isPos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                    <span className={`flex items-center gap-1 text-xs font-semibold ${isPos ? 'text-emerald-500 bg-emerald-50' : 'text-red-500 bg-red-50'} px-1.5 py-0.5 rounded-md`}>
+                        {isPos ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {isPos ? '+' : ''}{growth}%
                     </span>
                 ) : null}
-                {sub && <span className="text-gray-500 text-xs">{sub}</span>}
+                {sub && <span className="text-gray-400 text-xs">{sub}</span>}
             </div>
         </div>
     );
@@ -102,6 +105,9 @@ export default function OwnerReports() {
     const [trend, setTrend] = useState([]);
     const [branchSummary, setBranchSummary] = useState([]);
     const [productStats, setProductStats] = useState({ products: [], totalRevenue: 0 });
+    const [ordersDetail, setOrdersDetail] = useState([]);
+    const [dashboardStats, setDashboardStats] = useState(null);
+    const [heatmap, setHeatmap] = useState([]);
     const [loading, setLoading] = useState(true);
 
     /* Compute date range */
@@ -122,14 +128,20 @@ export default function OwnerReports() {
         setLoading(true);
         try {
             const params = getParams();
-            const [trendRes, branchRes, productRes] = await Promise.allSettled([
+            const [trendRes, branchRes, productRes, ordersRes, heatmapRes, statsRes] = await Promise.allSettled([
                 getOwnerRevenueTrend(params),
                 getOwnerBranchSummary({ startDate: params.startDate, endDate: params.endDate }),
                 getOwnerProductStats(params),
+                getOwnerOrdersDetail(params),
+                getOwnerOrdersHeatmap(params),
+                getOwnerDashboardStats(params),
             ]);
             if (trendRes.status === 'fulfilled') setTrend(trendRes.value.data);
             if (branchRes.status === 'fulfilled') setBranchSummary(branchRes.value.data);
             if (productRes.status === 'fulfilled') setProductStats(productRes.value.data);
+            if (ordersRes.status === 'fulfilled') setOrdersDetail(ordersRes.value.data.orders);
+            if (heatmapRes.status === 'fulfilled') setHeatmap(heatmapRes.value.data);
+            if (statsRes.status === 'fulfilled') setDashboardStats(statsRes.value.data);
         } finally {
             setLoading(false);
         }
@@ -145,6 +157,32 @@ export default function OwnerReports() {
 
     const dateRange = getParams();
 
+    /* CSV Export */
+    const handleExportCSV = () => {
+        if (!ordersDetail.length) return;
+        const headers = ["Mã Đơn", "Thời gian", "Chi nhánh", "Món ăn", "Tổng tiền", "Trạng thái"];
+        const rows = ordersDetail.map(o => [
+            `#${o.orderID}`,
+            `"${new Date(o.orderTime).toLocaleString('vi-VN')}"`,
+            `"${o.branchName}"`,
+            `"${o.itemsSummary}"`,
+            o.totalAmount,
+            o.status
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+            + headers.join(",") + "\n"
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `bao-cao-don-hang-${dateRange.startDate}-den-${dateRange.endDate}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <RestaurantOwnerLayout>
             {/* ── Header ── */}
@@ -153,6 +191,14 @@ export default function OwnerReports() {
                     <h1 className="text-2xl font-bold text-gray-900">Báo cáo chi tiết</h1>
                     <p className="text-gray-400 text-sm mt-0.5">Phân tích hiệu suất kinh doanh theo khoảng thời gian</p>
                 </div>
+                <button
+                    onClick={handleExportCSV}
+                    disabled={loading || ordersDetail.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                    <Download size={18} />
+                    Xuất CSV
+                </button>
             </div>
 
             {/* ── Filters ── */}
@@ -178,6 +224,7 @@ export default function OwnerReports() {
                     <input
                         type="date"
                         value={customStart}
+                        max={customEnd || undefined} // Không cho phép chọn ngày bắt đầu sau ngày kết thúc
                         onChange={e => { setCustomStart(e.target.value); setIsCustom(true); }}
                         className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
@@ -185,6 +232,8 @@ export default function OwnerReports() {
                     <input
                         type="date"
                         value={customEnd}
+                        min={customStart || undefined} // Không cho phép chọn ngày kết thúc trước ngày bắt đầu
+                        max={new Date().toISOString().split('T')[0]} // Không cho phép chọn ngày tương lai
                         onChange={e => { setCustomEnd(e.target.value); setIsCustom(true); }}
                         className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
@@ -214,61 +263,68 @@ export default function OwnerReports() {
                         <StatCard
                             icon={DollarSign}
                             label="Tổng doanh thu"
-                            value={`${totalRevenue.toLocaleString('vi-VN')} đ`}
-                            sub={`${dateRange.startDate} → ${dateRange.endDate}`}
+                            value={dashboardStats ? `${dashboardStats.totalRevenue.toLocaleString('vi-VN')} đ` : "0 đ"}
+                            growth={dashboardStats?.revenueGrowth}
                             color="blue"
                         />
                         <StatCard
-                            icon={ShoppingBag}
-                            label="Tổng đơn hàng"
-                            value={totalOrders.toLocaleString()}
-                            sub="đơn đã thanh toán"
+                            icon={Receipt}
+                            label="Tổng chi phí"
+                            value={dashboardStats ? `${dashboardStats.totalCost.toLocaleString('vi-VN')} đ` : "0 đ"}
+                            sub="Tạm tính (35%)"
+                            color="orange"
+                        />
+                        <StatCard
+                            icon={TrendingUp}
+                            label="Lợi nhuận ròng"
+                            value={dashboardStats ? `${dashboardStats.netProfit.toLocaleString('vi-VN')} đ` : "0 đ"}
+                            growth={dashboardStats?.profitGrowth}
                             color="green"
                         />
                         <StatCard
-                            icon={DollarSign}
-                            label="Giá trị TB / đơn"
-                            value={`${avgOrder.toLocaleString('vi-VN')} đ`}
+                            icon={ShoppingBag}
+                            label="Số đơn hàng"
+                            value={dashboardStats ? dashboardStats.totalOrders.toLocaleString() : "0"}
+                            growth={dashboardStats?.orderGrowth}
                             color="purple"
-                        />
-                        <StatCard
-                            icon={Store}
-                            label="Chi nhánh hoạt động"
-                            value={activeBranches}
-                            sub={`/ ${branchSummary.length} chi nhánh`}
-                            color="orange"
                         />
                     </div>
 
-                    {/* ── Area Chart: Revenue Trend ── */}
+                    {/* ── Area Chart: Revenue & Cost Trend ── */}
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
-                        <h3 className="font-bold text-gray-800 mb-1">Xu hướng doanh thu</h3>
-                        <p className="text-xs text-gray-400 mb-4">Doanh thu theo từng ngày trong kỳ được chọn</p>
-                        <ResponsiveContainer width="100%" height={220}>
+                        <h3 className="font-bold text-gray-800 mb-1">So sánh Thu nhập & Chi phí</h3>
+                        <p className="text-xs text-gray-400 mb-4">Doanh thu và chi phí dự tính theo ngày</p>
+                        <ResponsiveContainer width="100%" height={260}>
                             <AreaChart data={trend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
                                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                     </linearGradient>
+                                    <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#9ca3af" stopOpacity={0.15} />
+                                        <stop offset="95%" stopColor="#9ca3af" stopOpacity={0} />
+                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                                 <XAxis dataKey="date" tick={<DateTick />} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                                 <YAxis tickFormatter={fmtVND} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
                                 <Tooltip
-                                    formatter={(v) => [`${v.toLocaleString('vi-VN')} đ`, 'Doanh thu']}
+                                    formatter={(v, name) => [`${v.toLocaleString('vi-VN')} đ`, name === 'revenue' ? 'Doanh thu' : 'Chi phí']}
                                     labelFormatter={(l) => `Ngày ${fmtDate(l)}`}
                                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                                 />
-                                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5}
+                                <Area type="monotone" dataKey="revenue" name="revenue" stroke="#3b82f6" strokeWidth={3}
                                     fill="url(#revenueGrad)" dot={false} activeDot={{ r: 5, fill: '#3b82f6' }} />
+                                <Area type="monotone" dataKey="cost" name="cost" stroke="#9ca3af" strokeWidth={3}
+                                    fill="url(#costGrad)" dot={false} activeDot={{ r: 5, fill: '#9ca3af' }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
 
-                    {/* ── Row: Branch Bar + Product Table ── */}
+                    {/* ── Row: Branch Bar + Product List ── */}
                     <div className="grid grid-cols-2 gap-5">
-                        {/* Branch Revenue Bar */}
+                        {/* Area Chart replaces Branch Revenue because the layout dictates Area Chart is left and Products is right. But Area Chart is already above. Let's do Branch Summary on left and Top Products on right */}
                         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
                             <h3 className="font-bold text-gray-800 mb-1">Doanh thu theo chi nhánh</h3>
                             <p className="text-xs text-gray-400 mb-4">So sánh hiệu suất từng chi nhánh</p>
@@ -288,93 +344,163 @@ export default function OwnerReports() {
                             ) : (
                                 <div className="h-60 flex items-center justify-center text-gray-400 text-sm">Chưa có dữ liệu</div>
                             )}
-
-                            {/* Branch summary table under chart */}
-                            {branchSummary.length > 0 && (
-                                <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
-                                    {branchSummary.map(b => (
-                                        <div key={b.branchID} className="flex items-center justify-between text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${b.isActive ? 'bg-emerald-400' : 'bg-gray-300'}`} />
-                                                <span className="text-gray-700 font-medium truncate max-w-[160px]">{b.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-right">
-                                                <span className="text-gray-500 text-xs">{b.orders} đơn</span>
-                                                <span className="font-semibold text-gray-800 w-24">{b.revenue.toLocaleString('vi-VN')} đ</span>
-                                                {b.growth !== null && (
-                                                    <span className={`text-xs font-bold w-12 ${b.growth >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                        {b.growth >= 0 ? '+' : ''}{b.growth}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </div>
 
-                        {/* Top Product Table */}
+                        {/* Top Product List */}
                         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
                             <div className="flex items-center gap-2 mb-1">
                                 <Package size={16} className="text-blue-500" />
-                                <h3 className="font-bold text-gray-800">Top sản phẩm bán chạy</h3>
+                                <h3 className="font-bold text-gray-800">Món ăn bán chạy nhất</h3>
                             </div>
-                            <p className="text-xs text-gray-400 mb-4">Doanh thu và số lượng bán ra trong kỳ</p>
+                            <p className="text-xs text-gray-400 mb-4">Các sản phẩm đóng góp doanh thu cao nhất</p>
+
                             {productStats.products?.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
-                                                <th className="text-left py-2 pr-3">#</th>
-                                                <th className="text-left py-2 pr-3">Sản phẩm</th>
-                                                <th className="text-right py-2 pr-3">SL</th>
-                                                <th className="text-right py-2 pr-3">Doanh thu</th>
-                                                <th className="text-right py-2">%</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {productStats.products.map((p, i) => (
-                                                <tr key={p.productID} className="hover:bg-gray-50/60 transition-colors">
-                                                    <td className="py-2.5 pr-3">
-                                                        <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-xs font-bold
-                                                            ${i === 0 ? 'bg-yellow-400/20 text-yellow-600'
-                                                                : i === 1 ? 'bg-gray-300/30 text-gray-600'
-                                                                    : i === 2 ? 'bg-orange-400/20 text-orange-600'
-                                                                        : 'bg-gray-100 text-gray-400'}`}>
-                                                            {i + 1}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-2.5 pr-3 font-medium text-gray-800 max-w-[140px] truncate">{p.name}</td>
-                                                    <td className="py-2.5 pr-3 text-right text-gray-600">{p.quantity.toLocaleString()}</td>
-                                                    <td className="py-2.5 pr-3 text-right font-semibold text-gray-800">{fmtVND(p.revenue)}</td>
-                                                    <td className="py-2.5 text-right">
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className="h-full bg-blue-500 rounded-full"
-                                                                    style={{ width: `${p.percentage}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className="text-xs font-semibold text-blue-600 w-8 text-right">{p.percentage}%</span>
+                                <div className="space-y-4">
+                                    {productStats.products.slice(0, 5).map((p, i) => (
+                                        <div key={p.productID} className="flex items-center justify-between border-b border-gray-50 pb-3 last:border-0 last:pb-0 hover:bg-gray-50/50 p-2 rounded-lg transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                                                    {p.imageURL ? (
+                                                        <img src={p.imageURL} alt={p.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                            <Package size={20} />
                                                         </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-gray-800 text-sm max-w-[180px] truncate">{p.name}</p>
+                                                    <p className="text-xs text-gray-500">{p.quantity.toLocaleString()} lượt bán</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-semibold text-blue-600 text-sm">{fmtVND(p.revenue)}</p>
+                                                <div className="w-16 h-1.5 bg-gray-100 rounded-full mt-1.5 overflow-hidden ml-auto">
+                                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${p.percentage}%` }} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <button className="w-full text-center text-blue-600 text-sm font-semibold mt-2 hover:text-blue-700 transition-colors">
+                                        Xem tất cả thực đơn
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Chưa có dữ liệu sản phẩm</div>
                             )}
-
-                            {/* Total */}
-                            {productStats.totalRevenue > 0 && (
-                                <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between text-sm">
-                                    <span className="text-gray-500 font-medium">Tổng doanh thu top 10</span>
-                                    <span className="font-bold text-gray-900">{productStats.totalRevenue.toLocaleString('vi-VN')} đ</span>
-                                </div>
-                            )}
                         </div>
+                    </div>
+
+                    {/* ── Peak Hours Heatmap ── */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 className="font-bold text-gray-800">Biểu đồ nhiệt giờ cao điểm</h3>
+                                <p className="text-xs text-gray-400">Mật độ khách hàng trung bình trong 30 ngày qua</p>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                                <span>Ít khách</span>
+                                <div className="w-12 h-3 bg-gradient-to-r from-blue-50 to-blue-600 rounded-sm"></div>
+                                <span>Đông khách</span>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto pb-2">
+                            <div className="min-w-[700px]">
+                                {/* Heatmap Grid */}
+                                <div className="flex gap-1">
+                                    {/* Y-Axis Labels (Days) */}
+                                    <div className="flex flex-col gap-1 pr-3 justify-between text-xs text-gray-400 font-medium py-1">
+                                        {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => (
+                                            <div key={d} className="h-6 flex items-center">{d}</div>
+                                        ))}
+                                    </div>
+
+                                    {/* Grid Cells */}
+                                    <div className="flex-1 flex flex-col gap-1">
+                                        {[0, 1, 2, 3, 4, 5, 6].map(dayIdx => (
+                                            <div key={dayIdx} className="flex gap-1 flex-1">
+                                                {[...Array(24)].map((_, hourIdx) => {
+                                                    const count = heatmap[dayIdx]?.[hourIdx] || 0;
+                                                    // Max count estimation for opacity scaling (assume max ~15 orders per hour for color scale)
+                                                    const maxOrders = 15;
+                                                    const opacity = count === 0 ? 0.05 : Math.min(0.2 + (count / maxOrders) * 0.8, 1);
+                                                    return (
+                                                        <div
+                                                            key={`${dayIdx}-${hourIdx}`}
+                                                            className="flex-1 h-6 rounded-sm bg-blue-600 transition-opacity hover:opacity-100 cursor-pointer relative group"
+                                                            style={{ opacity: count === 0 ? 0.05 : opacity }}
+                                                        >
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-10">
+                                                                {count} đơn ({hourIdx}:00)
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* X-Axis Labels (Hours) */}
+                                <div className="flex mt-2 ml-7 text-[10px] text-gray-400 font-medium">
+                                    <div className="flex-1">00:00</div>
+                                    <div className="flex-1 text-center">06:00</div>
+                                    <div className="flex-1 text-center">12:00</div>
+                                    <div className="flex-1 text-center">18:00</div>
+                                    <div className="flex-1 text-right">23:59</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Product Analysis Table (Replaces Detailed Orders) ── */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-10">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-gray-800">Phân tích Sản phẩm</h3>
+                            </div>
+                            <button className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                                Tải dữ liệu đầy đủ (.xlsx)
+                            </button>
+                        </div>
+
+                        {productStats.products?.length > 0 ? (
+                            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-white border-b border-gray-100 z-10">
+                                        <tr className="text-xs text-gray-500 uppercase">
+                                            <th className="text-left py-4 px-2 font-semibold">Tên món</th>
+                                            <th className="text-left py-4 px-2 font-semibold">Phân loại</th>
+                                            <th className="text-left py-4 px-2 font-semibold">Đã bán</th>
+                                            <th className="text-left py-4 px-2 font-semibold">Doanh thu</th>
+                                            <th className="text-left py-4 px-2 font-semibold">Xu hướng</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {productStats.products.map((p) => {
+                                            const isPos = p.trend && p.trend.startsWith('+');
+                                            return (
+                                                <tr key={p.productID} className="hover:bg-blue-50/30 transition-colors group">
+                                                    <td className="py-3 px-2 text-gray-800 font-medium">{p.name}</td>
+                                                    <td className="py-3 px-2 text-blue-600 font-medium text-xs">{p.category}</td>
+                                                    <td className="py-3 px-2 text-gray-600">{p.quantity}</td>
+                                                    <td className="py-3 px-2 font-bold text-gray-900">{fmtVND(p.revenue)}</td>
+                                                    <td className="py-3 px-2">
+                                                        <span className={`flex items-center gap-1 text-xs font-semibold ${isPos ? 'text-blue-500' : 'text-red-400'}`}>
+                                                            {isPos ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                                            {p.trend}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="h-40 flex items-center justify-center text-gray-400 text-sm">Không có dữ liệu sản phẩm</div>
+                        )}
                     </div>
                 </>
             )}
