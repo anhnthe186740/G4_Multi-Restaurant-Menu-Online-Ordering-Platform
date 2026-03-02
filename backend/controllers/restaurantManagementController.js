@@ -3,7 +3,7 @@ import prisma from "../config/prismaClient.js";
 /* ================= GET ALL RESTAURANTS ================= */
 export const getAllRestaurants = async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
+    const { status, search, package: packageName, page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
@@ -14,6 +14,15 @@ export const getAllRestaurants = async (req, res) => {
         { owner: { fullName: { contains: search } } },
         { owner: { email: { contains: search } } },
       ];
+    }
+    // Lọc theo gói dịch vụ: nhà hàng phải có ít nhất 1 subscription Active với packageName khớp
+    if (packageName) {
+      where.subscriptions = {
+        some: {
+          status: "Active",
+          package: { packageName },
+        },
+      };
     }
 
     const [totalRestaurants, restaurants] = await Promise.all([
