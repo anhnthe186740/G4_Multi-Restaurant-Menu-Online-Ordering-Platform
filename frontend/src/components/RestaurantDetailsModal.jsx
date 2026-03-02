@@ -316,7 +316,7 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-sm font-semibold text-gray-600">Trạng Thái</label>
+                                <label className="text-sm font-semibold text-gray-600">Trạng Tháii</label>
                                 <div className="mt-1">{getStatusBadge(restaurant.ownerStatus)}</div>
                             </div>
                         </div>
