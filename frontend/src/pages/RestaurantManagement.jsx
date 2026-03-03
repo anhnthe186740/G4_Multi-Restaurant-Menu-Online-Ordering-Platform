@@ -15,7 +15,7 @@ import {
     Ban,
     UserPlus
 } from 'lucide-react';
-import { getAllRestaurants, deactivateRestaurant, reactivateRestaurant, forceDeleteRestaurant } from '../api/restaurantApi';
+import { getAllRestaurants, deactivateRestaurant, reactivateRestaurant, forceDeleteRestaurant, getServicePackages } from '../api/restaurantApi';
 import RestaurantDetailsModal from '../components/RestaurantDetailsModal';
 
 const RestaurantManagement = () => {
@@ -25,9 +25,11 @@ const RestaurantManagement = () => {
     const [filters, setFilters] = useState({
         status: '',
         search: '',
+        package: '',
         page: 1,
         limit: 10
     });
+    const [packages, setPackages] = useState([]);
     const [pagination, setPagination] = useState({
         total: 0,
         page: 1,
@@ -82,6 +84,13 @@ const RestaurantManagement = () => {
         fetchRestaurants();
         fetchStats();
     }, [filters]);
+
+    useEffect(() => {
+        getServicePackages()
+            .then(res => setPackages(Array.isArray(res) ? res : []))
+            .catch(() => { });
+    }, []);
+
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -189,12 +198,15 @@ const RestaurantManagement = () => {
                 <div className="flex gap-3">
                     <select
                         className="bg-[#0f172a] border border-slate-700 text-slate-300 py-3 px-4 rounded-lg outline-none focus:border-emerald-500 cursor-pointer"
-                        onChange={() => { }} // Placeholder for now
+                        value={filters.package}
+                        onChange={(e) => handleFilterChange('package', e.target.value)}
                     >
-                        <option>Gói dịch vụ (Tất cả)</option>
-                        <option>Basic</option>
-                        <option>Pro</option>
-                        <option>Enterprise</option>
+                        <option value="">Gói dịch vụ (Tất cả)</option>
+                        {packages.map(pkg => (
+                            <option key={pkg.packageID} value={pkg.packageName}>
+                                {pkg.packageName}
+                            </option>
+                        ))}
                     </select>
 
                     <select

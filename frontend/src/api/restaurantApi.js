@@ -54,3 +54,9 @@ export const forceDeleteRestaurant = async (id) => {
     const response = await restaurantAxios.delete(`/${id}`);
     return response.data;
 };
+
+// Get all service packages (for filter dropdown) — dùng public route, không cần auth
+export const getServicePackages = async () => {
+    const response = await axios.get('http://localhost:5000/api/admin/service-packages/public');
+    return response.data;
+};
