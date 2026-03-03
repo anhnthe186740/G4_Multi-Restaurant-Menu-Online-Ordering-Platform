@@ -12,13 +12,11 @@ import {
   updateOwnerBranch,
   toggleOwnerBranch,
   getPaymentHistory,
-<<<<<<< HEAD
   getRevenueByPeriod,
   getBranchSummaryReport,
   getProductRevenueStats,
   getDetailedOrdersReport,
   getOrdersHeatmap_Owner,
-=======
   // Menu management
   getMenuCategories,
   createMenuCategory,
@@ -29,7 +27,6 @@ import {
   updateMenuItem,
   deleteMenuItem,
   toggleMenuItem,
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -58,7 +55,6 @@ router.patch("/branches/:id/toggle", toggleOwnerBranch);
 // Payment History
 router.get("/payment-history", getPaymentHistory);
 
-<<<<<<< HEAD
 // Reports
 router.get("/reports/revenue-trend", getRevenueByPeriod);
 router.get("/reports/branch-summary", getBranchSummaryReport);
@@ -66,15 +62,12 @@ router.get("/reports/product-stats", getProductRevenueStats);
 router.get("/reports/orders-detail", getDetailedOrdersReport);
 router.get("/reports/orders-heatmap", getOrdersHeatmap_Owner);
 
-export default router;
-=======
 // ===== MENU MANAGEMENT =====
 // Categories
 router.get("/menu/categories", getMenuCategories);
 router.post("/menu/categories", createMenuCategory);
 router.put("/menu/categories/:id", updateMenuCategory);
 router.delete("/menu/categories/:id", deleteMenuCategory);
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
 
 // Products (menu items)
 router.get("/menu/items", getMenuItems);
