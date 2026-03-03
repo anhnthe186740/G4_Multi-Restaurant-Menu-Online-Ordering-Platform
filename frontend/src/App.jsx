@@ -18,11 +18,8 @@ import PendingStatus from "./pages/PendingStatus";
 import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
-<<<<<<< HEAD
 import OwnerReports from "./pages/OwnerReports";
-=======
 import OwnerMenu from "./pages/OwnerMenu";
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -153,17 +150,19 @@ export default function App() {
         />
 
         <Route
-<<<<<<< HEAD
           path="/owner/reports"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerReports />
-=======
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/owner/menu"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerMenu />
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
             </ProtectedRoute>
           }
         />

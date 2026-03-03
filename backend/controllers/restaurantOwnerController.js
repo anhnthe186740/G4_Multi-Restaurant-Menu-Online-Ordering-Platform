@@ -856,7 +856,6 @@ export const toggleOwnerBranch = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
 /* =================== DETAILED ORDERS REPORT =================== */
 export const getDetailedOrdersReport = async (req, res) => {
   try {
@@ -929,7 +928,10 @@ export const getDetailedOrdersReport = async (req, res) => {
     res.json({ orders: formattedOrders });
   } catch (error) {
     console.error("getDetailedOrdersReport error:", error);
-=======
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 /* =================== GET MENU CATEGORIES =================== */
 /**
  * GET /owner/menu/categories
@@ -957,31 +959,17 @@ export const getMenuCategories = async (req, res) => {
     })));
   } catch (error) {
     console.error("getMenuCategories error:", error);
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
-<<<<<<< HEAD
 /* =================== REPORTS: REVENUE TREND BY DATE =================== */
 export const getRevenueByPeriod = async (req, res) => {
-=======
-/* =================== CREATE MENU CATEGORY =================== */
-/**
- * POST /owner/menu/categories
- * Mục đích: Tạo một danh mục (category) mới cho nhà hàng của owner.
- * Input (body): { name, description?, displayOrder? }
- * Output: 201 + object category mới.
- * Lưu ý: - `name` bắt buộc; - kiểm tra category thuộc nhà hàng của owner.
- */
-export const createMenuCategory = async (req, res) => {
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
   try {
     const userID = req.user.userId;
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
 
-<<<<<<< HEAD
     const branches = await prisma.branch.findMany({
       where: { restaurantID: restaurant.restaurantID },
       select: { branchID: true },
@@ -1164,7 +1152,23 @@ export const getProductRevenueStats = async (req, res) => {
     res.json({ products: result, totalRevenue });
   } catch (error) {
     console.error("getProductRevenueStats error:", error);
-=======
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+/* =================== CREATE MENU CATEGORY =================== */
+/**
+ * POST /owner/menu/categories
+ * Mục đích: Tạo một danh mục (category) mới cho nhà hàng của owner.
+ * Input (body): { name, description?, displayOrder? }
+ * Output: 201 + object category mới.
+ */
+export const createMenuCategory = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
     const { name, description, displayOrder } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: "Tên danh mục là bắt buộc" });
 
@@ -1423,12 +1427,10 @@ export const updateMenuItem = async (req, res) => {
     });
   } catch (error) {
     console.error("updateMenuItem error:", error);
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
-<<<<<<< HEAD
 /* =================== REPORTS: ORDERS HEATMAP =================== */
 export const getOrdersHeatmap_Owner = async (req, res) => {
   try {
@@ -1479,7 +1481,7 @@ export const getOrdersHeatmap_Owner = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
-=======
+
 /* =================== DELETE MENU ITEM =================== */
 /**
  * DELETE /owner/menu/items/:id
@@ -1544,5 +1546,3 @@ export const toggleMenuItem = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
-
->>>>>>> db60ffbbcba7219f9c539f7cea7e60467bb67366
