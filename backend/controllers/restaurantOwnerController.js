@@ -71,6 +71,7 @@ export const getDashboardStats = async (req, res) => {
         branchID: { in: filterBranches },
         orderTime: { gte: start, lte: end },
         paymentStatus: "Paid",
+        orderStatus: { in: ["Completed", "Serving"] },
       },
       _sum: { totalAmount: true },
       _count: true,
@@ -82,6 +83,7 @@ export const getDashboardStats = async (req, res) => {
         branchID: { in: filterBranches },
         orderTime: { gte: prevStart, lte: prevEnd },
         paymentStatus: "Paid",
+        orderStatus: { in: ["Completed", "Serving"] },
       },
       _sum: { totalAmount: true },
       _count: true,
@@ -119,6 +121,7 @@ export const getDashboardStats = async (req, res) => {
             branchID: b.branchID,
             orderTime: { gte: start, lte: end },
             paymentStatus: "Paid",
+            orderStatus: { in: ["Completed", "Serving"] },
           },
           _sum: { totalAmount: true },
         });
@@ -127,6 +130,7 @@ export const getDashboardStats = async (req, res) => {
             branchID: b.branchID,
             orderTime: { gte: prevStart, lte: prevEnd },
             paymentStatus: "Paid",
+            orderStatus: { in: ["Completed", "Serving"] },
           },
           _sum: { totalAmount: true },
         });
@@ -978,7 +982,7 @@ export const getRevenueByPeriod = async (req, res) => {
 
     const { startDate, endDate, branchID } = req.query;
     const now = new Date();
-    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const start = startDate ? new Date(new Date(startDate).setHours(0, 0, 0, 0)) : new Date(now.getFullYear(), now.getMonth(), 1);
     const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59, 999)) : now;
     const filterBranches = branchID ? [parseInt(branchID)] : branchIDs;
 
@@ -987,6 +991,7 @@ export const getRevenueByPeriod = async (req, res) => {
         branchID: { in: filterBranches },
         orderTime: { gte: start, lte: end },
         paymentStatus: "Paid",
+        orderStatus: { in: ["Completed", "Serving"] },
       },
       select: { orderTime: true, totalAmount: true },
       orderBy: { orderTime: "asc" },
@@ -1038,7 +1043,7 @@ export const getBranchSummaryReport = async (req, res) => {
 
     const { startDate, endDate } = req.query;
     const now = new Date();
-    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const start = startDate ? new Date(new Date(startDate).setHours(0, 0, 0, 0)) : new Date(now.getFullYear(), now.getMonth(), 1);
     const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59, 999)) : now;
 
     // Same-length period before for comparison
@@ -1050,12 +1055,12 @@ export const getBranchSummaryReport = async (req, res) => {
       branches.map(async (b) => {
         const [current, prev] = await Promise.all([
           prisma.order.aggregate({
-            where: { branchID: b.branchID, orderTime: { gte: start, lte: end }, paymentStatus: "Paid" },
+            where: { branchID: b.branchID, orderTime: { gte: start, lte: end }, paymentStatus: "Paid", orderStatus: { in: ["Completed", "Serving"] } },
             _sum: { totalAmount: true },
             _count: true,
           }),
           prisma.order.aggregate({
-            where: { branchID: b.branchID, orderTime: { gte: prevStart, lte: prevEnd }, paymentStatus: "Paid" },
+            where: { branchID: b.branchID, orderTime: { gte: prevStart, lte: prevEnd }, paymentStatus: "Paid", orderStatus: { in: ["Completed", "Serving"] } },
             _sum: { totalAmount: true },
             _count: true,
           }),
