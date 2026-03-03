@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { registerApi } from "../api/authApi";
 
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectPath = searchParams.get("redirect");
   const [form, setForm] = useState({
     username: "",
     fullName: "",
@@ -25,9 +28,13 @@ export default function Register() {
       const response = await registerApi(form);
       console.log("Register response:", response);
 
-      alert("✓ Đăng ký thành công!");
+      alert("✓ Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.");
       setTimeout(() => {
-        navigate("/login");
+        if (redirectPath) {
+          navigate(`/login?redirect=${encodeURIComponent(redirectPath)}`);
+        } else {
+          navigate("/login");
+        }
       }, 500);
     } catch (err) {
       console.error("Register error:", err);

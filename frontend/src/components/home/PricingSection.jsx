@@ -17,9 +17,10 @@ export default function PricingSection() {
     const handleCTA = (pkgName = "") => {
         const token = localStorage.getItem("token");
         if (!token) {
-            navigate("/register");
+            const redirectPath = `/register-restaurant${pkgName ? `?plan=${pkgName.toLowerCase()}` : ""}`;
+            navigate(`/register?redirect=${encodeURIComponent(redirectPath)}`);
         } else {
-            navigate(`/register-restaurant?plan=${pkgName.toLowerCase()}`);
+            navigate(`/register-restaurant${pkgName ? `?plan=${pkgName.toLowerCase()}` : ""}`);
         }
     };
 
