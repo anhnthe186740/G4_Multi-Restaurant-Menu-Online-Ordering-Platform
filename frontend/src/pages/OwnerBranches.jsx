@@ -5,7 +5,7 @@ import { getOwnerBranches, toggleOwnerBranch } from '../api/ownerApi';
 import {
     GitBranch, MapPin, Phone, Mail, Table2,
     Settings, CheckCircle2, XCircle,
-    ShoppingBag, RefreshCw, Search
+    ShoppingBag, RefreshCw, Search, Plus
 } from 'lucide-react';
 
 export default function OwnerBranches() {
@@ -96,13 +96,22 @@ export default function OwnerBranches() {
                         {branches.length} chi nhánh · <span className="text-emerald-600 font-medium">{activeBranches} đang hoạt động</span>
                     </p>
                 </div>
-                <button
-                    onClick={loadBranches}
-                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 border border-gray-200 hover:border-blue-300 px-3.5 py-2 rounded-lg transition-colors"
-                >
-                    <RefreshCw size={14} />
-                    Làm mới
-                </button>
+                <div className="flex items-center gap-2.5">
+                    <button
+                        onClick={loadBranches}
+                        className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 border border-gray-200 hover:border-blue-300 px-3.5 py-2 rounded-lg transition-colors"
+                    >
+                        <RefreshCw size={14} />
+                        Làm mới
+                    </button>
+                    <button
+                        onClick={() => navigate('/owner/branches/new')}
+                        className="flex items-center gap-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors shadow-sm shadow-blue-200"
+                    >
+                        <Plus size={15} />
+                        Thêm chi nhánh
+                    </button>
+                </div>
             </div>
 
             {/* ===== SEARCH & FILTER BAR ===== */}

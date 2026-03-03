@@ -14,6 +14,7 @@ import AdminRequests from "./pages/AdminRequests";
 import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
 import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
+import OwnerCreateBranch from "./pages/OwnerCreateBranch";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -109,6 +110,15 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerBranches />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/branches/new"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerCreateBranch />
             </ProtectedRoute>
           }
         />

@@ -432,6 +432,39 @@ export const updateOwnerBranch = async (req, res) => {
   }
 };
 
+/* =================== CREATE BRANCH =================== */
+export const createOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const { name, address, phone, email, openingHours, isActive } = req.body;
+
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'Tên chi nhánh không được để trống' });
+    }
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
+
+    const hoursObj = { ...(openingHours || {}), email: email || '' };
+
+    const branch = await prisma.branch.create({
+      data: {
+        restaurantID: restaurant.restaurantID,
+        name: name.trim(),
+        address: address || null,
+        phone: phone || null,
+        openingHours: JSON.stringify(hoursObj),
+        isActive: isActive !== undefined ? isActive : true,
+      },
+    });
+
+    res.status(201).json({ message: 'Tạo chi nhánh thành công', branchID: branch.branchID });
+  } catch (error) {
+    console.error('createOwnerBranch error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
 /* =================== TOGGLE BRANCH STATUS =================== */
 export const toggleOwnerBranch = async (req, res) => {
   try {
