@@ -23,14 +23,14 @@ export const register = async (req, res) => {
 
     // Kiểm tra dữ liệu bắt buộc
     if (!username || !email || !password) {
-      return res.status(400).json({ 
-        message: "Vui lòng cung cấp username, email và password" 
+      return res.status(400).json({
+        message: "Vui lòng cung cấp username, email và password"
       });
     }
 
     // Kiểm tra email đã tồn tại chưa
-    const existingUser = await prisma.user.findUnique({ 
-      where: { email } 
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
     });
 
     if (existingUser) {
@@ -59,7 +59,7 @@ export const register = async (req, res) => {
   } catch (err) {
     // Log lỗi ra console để debug
     console.error("register error:", err?.stack || err);
-    
+
     // Trả lỗi server
     res.status(500).json({ message: err?.message || "Lỗi server" });
   }
@@ -75,8 +75,8 @@ export const login = async (req, res) => {
 
     // Kiểm tra dữ liệu đầu vào
     if (!email || !password) {
-      return res.status(400).json({ 
-        message: "Vui lòng cung cấp email và password" 
+      return res.status(400).json({
+        message: "Vui lòng cung cấp email và password"
       });
     }
 
@@ -89,13 +89,15 @@ export const login = async (req, res) => {
         email: true,
         passwordHash: true, // cần lấy để so sánh mật khẩu
         role: true,
+        status: true,
+        lockReason: true,
       },
     });
 
     // Nếu không tìm thấy user
     if (!user) {
-      return res.status(401).json({ 
-        message: "Email hoặc mật khẩu không đúng" 
+      return res.status(401).json({
+        message: "Email hoặc mật khẩu không đúng"
       });
     }
 
@@ -103,14 +105,23 @@ export const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (!isMatch) {
-      return res.status(401).json({ 
-        message: "Email hoặc mật khẩu không đúng" 
+      return res.status(401).json({
+        message: "Email hoặc mật khẩu không đúng"
+      });
+    }
+
+    // Kiểm tra tài khoản có bị khoá không
+    if (user.status === 'Inactive') {
+      return res.status(403).json({
+        message: "Tài khoản của bạn đã bị khoá",
+        lockReason: user.lockReason || "Không có lý do cụ thể",
+        locked: true,
       });
     }
 
     // Nếu đúng → tạo JWT token
     const token = jwt.sign(
-      { 
+      {
         userId: user.userID,  // Lưu userId trong token
         role: user.role       // Lưu role để phân quyền
       },
@@ -145,28 +156,28 @@ export const refreshToken = async (req, res) => {
     // Lấy userID từ middleware đã decode token trước đó
     const userID = req.user?.userID || req.user?.userId;
 
-    if (!userID) 
+    if (!userID)
       return res.status(401).json({ message: "Không tìm thấy userID" });
 
     // Tìm user trong database
     const user = await prisma.user.findUnique({
       where: { userID: parseInt(userID) },
-      select: { 
-        userID: true, 
-        fullName: true, 
-        email: true, 
-        role: true 
+      select: {
+        userID: true,
+        fullName: true,
+        email: true,
+        role: true
       },
     });
 
-    if (!user) 
+    if (!user)
       return res.status(404).json({ message: "Người dùng không tồn tại" });
 
     // Tạo token mới
     const token = jwt.sign(
-      { 
-        userId: user.userID, 
-        role: user.role 
+      {
+        userId: user.userID,
+        role: user.role
       },
       getSecret(),
       { expiresIn: "7d" }

@@ -318,6 +318,17 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                             <div>
                                 <label className="text-sm font-semibold text-gray-600">Trạng Thái</label>
                                 <div className="mt-1">{getStatusBadge(restaurant.ownerStatus)}</div>
+                                {restaurant.ownerStatus === 'Inactive' && restaurant.ownerLockReason && (
+                                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                                        <svg className="mt-0.5 w-4 h-4 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-xs font-semibold text-red-700">Lý do khoá:</p>
+                                            <p className="text-xs text-red-600 mt-0.5">{restaurant.ownerLockReason}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
