@@ -4,7 +4,7 @@ import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
 import { getOwnerBranchById, updateOwnerBranch, toggleOwnerBranch } from '../api/ownerApi';
 import {
     Info, Clock, MapPin, CheckCircle2, XCircle,
-    ArrowLeft, Power, AlertTriangle, Plus, Save
+    ArrowLeft, Power, AlertTriangle, Plus, Save, Trash2, CalendarDays
 } from 'lucide-react';
 
 const DEFAULT_HOURS = { mon_fri: '08:00-22:00', sat: '08:00-23:30', sun: '09:00-23:30' };
@@ -17,6 +17,8 @@ export default function OwnerBranchSettings() {
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null);
     const [showDangerConfirm, setShowDangerConfirm] = useState(false);
+    const [showSpecialForm, setShowSpecialForm] = useState(false);
+    const [newSpecial, setNewSpecial] = useState({ date: '', label: '', open: '08:00', close: '22:00', isClosed: false });
 
     // form state
     const [branch, setBranch] = useState(null);
@@ -45,6 +47,7 @@ export default function OwnerBranchSettings() {
                     mon_fri: b.openingHours?.mon_fri || DEFAULT_HOURS.mon_fri,
                     sat: b.openingHours?.sat || DEFAULT_HOURS.sat,
                     sun: b.openingHours?.sun || DEFAULT_HOURS.sun,
+                    special: b.openingHours?.special || [],
                 },
             });
             setDirty(false);
@@ -67,6 +70,25 @@ export default function OwnerBranchSettings() {
 
     const handleHours = (day, rawVal) => {
         setForm(f => ({ ...f, hours: { ...f.hours, [day]: rawVal } }));
+        setDirty(true);
+    };
+
+    const addSpecial = () => {
+        if (!newSpecial.date) return;
+        const entry = {
+            date: newSpecial.date,
+            label: newSpecial.label || newSpecial.date,
+            hours: newSpecial.isClosed ? null : `${newSpecial.open}-${newSpecial.close}`,
+            isClosed: newSpecial.isClosed,
+        };
+        setForm(f => ({ ...f, hours: { ...f.hours, special: [...(f.hours.special || []), entry] } }));
+        setNewSpecial({ date: '', label: '', open: '08:00', close: '22:00', isClosed: false });
+        setShowSpecialForm(false);
+        setDirty(true);
+    };
+
+    const removeSpecial = (idx) => {
+        setForm(f => ({ ...f, hours: { ...f.hours, special: f.hours.special.filter((_, i) => i !== idx) } }));
         setDirty(true);
     };
 
@@ -367,10 +389,94 @@ export default function OwnerBranchSettings() {
                                 );
                             })}
                         </div>
-                        <button className="mt-4 w-full flex items-center justify-center gap-2 border border-dashed border-blue-300 text-blue-500 hover:bg-blue-50 rounded-xl py-2.5 text-xs font-semibold transition-colors">
-                            <Plus size={14} />
-                            Thêm giờ đặc biệt / Ngày lễ
-                        </button>
+
+                        {/* Danh sách giờ đặc biệt đã thêm */}
+                        {(form.hours.special || []).length > 0 && (
+                            <div className="mt-4 space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 mb-1">Giờ đặc biệt đã thêm:</p>
+                                {form.hours.special.map((s, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2">
+                                        <CalendarDays size={13} className="text-orange-400 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold text-gray-700 truncate">{s.label}</p>
+                                            <p className="text-[11px] text-gray-500">
+                                                {new Date(s.date + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                {' · '}
+                                                {s.isClosed ? <span className="text-red-500 font-semibold">Đóng cửa</span> : <span className="text-green-600">{s.hours}</span>}
+                                            </p>
+                                        </div>
+                                        <button onClick={() => removeSpecial(idx)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Form thêm giờ đặc biệt */}
+                        {showSpecialForm ? (
+                            <div className="mt-4 border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-3">
+                                <p className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
+                                    <CalendarDays size={13} /> Thêm giờ đặc biệt / Ngày lễ
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Ngày <span className="text-red-400">*</span></label>
+                                        <input type="date"
+                                            value={newSpecial.date}
+                                            onChange={e => setNewSpecial(s => ({ ...s, date: e.target.value }))}
+                                            className="w-full px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Nhãn (tên ngày lễ)</label>
+                                        <input type="text"
+                                            value={newSpecial.label}
+                                            onChange={e => setNewSpecial(s => ({ ...s, label: e.target.value }))}
+                                            placeholder="VD: Tết Nguyên Đán"
+                                            className="w-full px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                                        />
+                                    </div>
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox"
+                                        checked={newSpecial.isClosed}
+                                        onChange={e => setNewSpecial(s => ({ ...s, isClosed: e.target.checked }))}
+                                        className="w-4 h-4 rounded border-gray-300 accent-blue-500"
+                                    />
+                                    <span className="text-xs font-semibold text-gray-700">Đóng cửa cả ngày</span>
+                                </label>
+                                {!newSpecial.isClosed && (
+                                    <div className="flex items-center gap-2">
+                                        <input type="time" value={newSpecial.open}
+                                            onChange={e => setNewSpecial(s => ({ ...s, open: e.target.value }))}
+                                            className="flex-1 px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400"
+                                        />
+                                        <span className="text-gray-400 text-xs">—</span>
+                                        <input type="time" value={newSpecial.close}
+                                            onChange={e => setNewSpecial(s => ({ ...s, close: e.target.value }))}
+                                            className="flex-1 px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex gap-2 pt-1">
+                                    <button onClick={() => setShowSpecialForm(false)}
+                                        className="flex-1 text-xs font-semibold text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg py-2 transition-colors">
+                                        Hủy
+                                    </button>
+                                    <button onClick={addSpecial} disabled={!newSpecial.date}
+                                        className="flex-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 rounded-lg py-2 transition-colors">
+                                        Thêm
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button onClick={() => setShowSpecialForm(true)}
+                                className="mt-4 w-full flex items-center justify-center gap-2 border border-dashed border-blue-300 text-blue-500 hover:bg-blue-50 rounded-xl py-2.5 text-xs font-semibold transition-colors">
+                                <Plus size={14} />
+                                Thêm giờ đặc biệt / Ngày lễ
+                            </button>
+                        )}
                     </div>
 
                     {/* ── Tóm tắt vận hành ── */}
