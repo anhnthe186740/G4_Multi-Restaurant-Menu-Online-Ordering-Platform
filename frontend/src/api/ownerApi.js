@@ -30,6 +30,18 @@ export const toggleOwnerBranch = (id) => ownerAxios.patch(`/owner/branches/${id}
 export const getOwnerPaymentHistory = (params) =>
   ownerAxios.get("/owner/payment-history", { params });
 
+// Reports
+export const getOwnerRevenueTrend = (params) =>
+  ownerAxios.get("/owner/reports/revenue-trend", { params });
+export const getOwnerBranchSummary = (params) =>
+  ownerAxios.get("/owner/reports/branch-summary", { params });
+export const getOwnerProductStats = (params) =>
+  ownerAxios.get("/owner/reports/product-stats", { params });
+export const getOwnerOrdersDetail = (params) =>
+  ownerAxios.get("/owner/reports/orders-detail", { params });
+export const getOwnerOrdersHeatmap = (params) =>
+  ownerAxios.get("/owner/reports/orders-heatmap", { params });
+
 // Menu management
 export const getOwnerMenuCategories = () => ownerAxios.get("/owner/menu/categories");
 export const getOwnerMenuItems = (params) => ownerAxios.get("/owner/menu/items", { params });
