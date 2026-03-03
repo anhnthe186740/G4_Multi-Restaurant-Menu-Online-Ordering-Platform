@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
 import { createOwnerBranch } from '../api/ownerApi';
@@ -13,6 +13,9 @@ export default function OwnerCreateBranch() {
     const navigate = useNavigate();
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null);
+    const [errors, setErrors] = useState({});
+    const [mapAddress, setMapAddress] = useState('');
+    const mapDebounceRef = useRef(null);
 
     const [form, setForm] = useState({
         name: '',
@@ -28,7 +31,33 @@ export default function OwnerCreateBranch() {
         setTimeout(() => setToast(null), 3500);
     };
 
-    const handleField = (key, val) => setForm(f => ({ ...f, [key]: val }));
+    // Validate từng trường
+    const validate = () => {
+        const errs = {};
+        if (!form.name.trim())
+            errs.name = 'Tên chi nhánh không được để trống';
+        if (form.phone && !/^(\+84|0)[3-9]\d{8}$/.test(form.phone.replace(/\s/g, '')))
+            errs.phone = 'Số điện thoại không hợp lệ (VD: 0912345678)';
+        if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+            errs.email = 'Email không đúng định dạng';
+        if (form.address && form.address.trim().length < 10)
+            errs.address = 'Địa chỉ quá ngắn, vui lòng nhập đầy đủ';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    // Cập nhật field + xoá lỗi tương ứng
+    const handleField = (key, val) => {
+        setForm(f => ({ ...f, [key]: val }));
+        if (errors[key]) setErrors(e => ({ ...e, [key]: undefined }));
+        // Debounce map update khi thay đổi địa chỉ
+        if (key === 'address') {
+            clearTimeout(mapDebounceRef.current);
+            mapDebounceRef.current = setTimeout(() => {
+                setMapAddress(val);
+            }, 800);
+        }
+    };
 
     const handleHours = (day, rawVal) =>
         setForm(f => ({ ...f, hours: { ...f.hours, [day]: rawVal } }));
@@ -40,8 +69,8 @@ export default function OwnerCreateBranch() {
     const buildHourStr = (open, close) => `${open}-${close}`;
 
     const handleSave = async () => {
-        if (!form.name.trim()) {
-            showToast('Vui lòng nhập tên chi nhánh', 'error');
+        if (!validate()) {
+            showToast('Vui lòng kiểm tra lại thông tin', 'error');
             return;
         }
         setSaving(true);
@@ -149,68 +178,89 @@ export default function OwnerCreateBranch() {
                                 <input
                                     value={form.name}
                                     onChange={e => handleField('name', e.target.value)}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                        ${errors.name ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                     placeholder="VD: Chi nhánh Quận 1"
                                     autoFocus
                                 />
+                                {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Số điện thoại</label>
+                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Số điện thoại <span className="text-red-400">*</span></label>
                                     <input
                                         value={form.phone}
                                         onChange={e => handleField('phone', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
-                                        placeholder="028 1234 5678"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                            ${errors.phone ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
+                                        placeholder="0912 345 678"
                                     />
+                                    {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Email liên hệ</label>
+                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Email liên hệ <span className="text-red-400">*</span></label>
                                     <input
                                         value={form.email}
                                         onChange={e => handleField('email', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                            ${errors.email ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                         placeholder="chinhanh@email.vn"
                                     />
+                                    {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Địa chỉ chi tiết</label>
+                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Địa chỉ chi tiết <span className="text-red-400">*</span></label>
                                 <textarea
                                     value={form.address}
                                     onChange={e => handleField('address', e.target.value)}
                                     rows={3}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all resize-none"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all resize-none
+                                        ${errors.address ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                     placeholder="Số nhà, Đường, Phường/Xã, Quận/Huyện, Tỉnh/TP"
                                 />
+                                {errors.address
+                                    ? <p className="mt-1.5 text-xs text-red-500">{errors.address}</p>
+                                    : <p className="mt-1.5 text-xs text-gray-400">Nhập đầy đủ để bản đồ hiển thị chính xác</p>
+                                }
                             </div>
                         </div>
                     </div>
 
-                    {/* ── Vị trí bản đồ (preview theo địa chỉ) ── */}
+                    {/* ── Vị trí trên bản đồ ── */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <MapPin size={16} className="text-blue-500" />
-                            <h2 className="font-bold text-gray-900 text-base">Xem trước vị trí</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <MapPin size={16} className="text-blue-500" />
+                                <h2 className="font-bold text-gray-900 text-base">Vị trí trên bản đồ</h2>
+                            </div>
+                            <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors">
+                                <MapPin size={12} />
+                                Cập nhật vị trí
+                            </button>
                         </div>
-                        <div className="relative rounded-xl overflow-hidden border border-gray-100" style={{ height: 200 }}>
-                            {form.address ? (
+                        {/* Map iframe dựa trên địa chỉ */}
+                        <div className="relative rounded-xl overflow-hidden border border-gray-100" style={{ height: 220 }}>
+                            {mapAddress ? (
                                 <iframe
-                                    title="map-preview"
+                                    key={mapAddress}
+                                    title="map"
                                     width="100%"
                                     height="100%"
                                     style={{ border: 0 }}
                                     loading="lazy"
-                                    src={`https://maps.google.com/maps?q=${encodeURIComponent(form.address)}&z=15&output=embed`}
+                                    src={`https://maps.google.com/maps?q=${encodeURIComponent(mapAddress)}&z=15&output=embed`}
                                 />
                             ) : (
-                                <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center gap-2">
+                                <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center gap-2">
                                     <MapPin size={32} className="text-gray-300" />
-                                    <p className="text-xs text-gray-400">Nhập địa chỉ để xem bản đồ</p>
+                                    <p className="text-xs text-gray-400">Nhập địa chỉ để hiển thị bản đồ</p>
                                 </div>
                             )}
                         </div>
-                        {form.address && <p className="text-xs text-gray-400 mt-2">📍 {form.address}</p>}
+                        {mapAddress && (
+                            <p className="text-xs text-gray-400 mt-2">📍 {mapAddress}</p>
+                        )}
                     </div>
                 </div>
 
@@ -286,7 +336,7 @@ export default function OwnerCreateBranch() {
                     <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
                         <h3 className="font-bold text-amber-700 text-sm mb-2">💡 Lưu ý</h3>
                         <ul className="text-xs text-amber-600 space-y-1.5 list-disc ml-4">
-                            <li>Tên chi nhánh là trường bắt buộc</li>
+                            <li>Thông tin cơ bản là phần bắt buộc</li>
                             <li>Sau khi tạo, bạn có thể chỉnh sửa thêm tại trang Cài đặt chi nhánh</li>
                             <li>Chi nhánh mới sẽ hiển thị ngay trong danh sách</li>
                         </ul>
