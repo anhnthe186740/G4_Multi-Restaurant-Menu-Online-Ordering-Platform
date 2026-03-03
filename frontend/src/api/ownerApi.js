@@ -58,4 +58,10 @@ export const deleteOwnerMenuCategory = (id) => ownerAxios.delete(`/owner/menu/ca
 // generic upload endpoint (must use FormData with field "file")
 export const uploadOwnerFile = (formData) => ownerAxios.post("/upload", formData);
 
+// Support Tickets (Owner ↔ Admin)
+export const createOwnerTicket = (data) => ownerAxios.post("/owner/tickets", data);
+export const getOwnerTickets = (params) => ownerAxios.get("/owner/tickets", { params });
+export const getOwnerTicketById = (id) => ownerAxios.get(`/owner/tickets/${id}`);
+export const replyOwnerTicket = (id, data) => ownerAxios.post(`/owner/tickets/${id}/reply`, data);
+
 export default ownerAxios;

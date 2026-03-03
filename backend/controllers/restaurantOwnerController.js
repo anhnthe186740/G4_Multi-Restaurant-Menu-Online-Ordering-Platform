@@ -1551,3 +1551,117 @@ export const toggleMenuItem = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+/* =================== SUPPORT TICKETS (Owner ↔ Admin) =================== */
+
+const parseMessages = (resolution) => {
+  if (!resolution) return [];
+  return resolution.split('\n').filter(Boolean).map(line => {
+    try { return JSON.parse(line); } catch { return null; }
+  }).filter(Boolean);
+};
+
+export const createOwnerTicket = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const { subject, description, priority } = req.body;
+    if (!subject?.trim()) return res.status(400).json({ message: 'Tiêu đề là bắt buộc' });
+
+    const firstMessage = JSON.stringify({ role: 'owner', text: description?.trim() || '', time: new Date().toISOString() });
+
+    const ticket = await prisma.supportTicket.create({
+      data: {
+        userID,
+        subject: subject.trim(),
+        description: description?.trim() || '',
+        priority: ['Low', 'Medium', 'High'].includes(priority) ? priority : 'Medium',
+        status: 'Open',
+        resolution: firstMessage,
+      },
+    });
+    res.status(201).json({ message: 'Đã gửi báo cáo thành công', ticketID: ticket.ticketID });
+  } catch (error) {
+    console.error('createOwnerTicket error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+export const getOwnerTickets = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const { page = 1, limit = 10, status } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const where = { userID, ...(status && status !== 'All' ? { status } : {}) };
+
+    const [total, tickets] = await Promise.all([
+      prisma.supportTicket.count({ where }),
+      prisma.supportTicket.findMany({
+        where, skip, take: parseInt(limit),
+        orderBy: { createdAt: 'desc' },
+        select: { ticketID: true, subject: true, priority: true, status: true, createdAt: true, resolution: true },
+      }),
+    ]);
+
+    const result = tickets.map(t => {
+      const msgs = parseMessages(t.resolution);
+      return {
+        ticketID: t.ticketID,
+        subject: t.subject,
+        priority: t.priority,
+        status: t.status,
+        createdAt: t.createdAt,
+        lastReply: msgs.at(-1) || null,
+        messageCount: msgs.length,
+      };
+    });
+
+    res.json({ tickets: result, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+  } catch (error) {
+    console.error('getOwnerTickets error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+export const getOwnerTicketById = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const ticketID = parseInt(req.params.id);
+    const ticket = await prisma.supportTicket.findFirst({ where: { ticketID, userID } });
+    if (!ticket) return res.status(404).json({ message: 'Không tìm thấy báo cáo' });
+
+    res.json({
+      ticketID: ticket.ticketID,
+      subject: ticket.subject,
+      description: ticket.description,
+      priority: ticket.priority,
+      status: ticket.status,
+      createdAt: ticket.createdAt,
+      messages: parseMessages(ticket.resolution),
+    });
+  } catch (error) {
+    console.error('getOwnerTicketById error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+export const replyOwnerTicket = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const ticketID = parseInt(req.params.id);
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ message: 'Nội dung không được để trống' });
+
+    const ticket = await prisma.supportTicket.findFirst({ where: { ticketID, userID } });
+    if (!ticket) return res.status(404).json({ message: 'Không tìm thấy báo cáo' });
+    if (ticket.status === 'Closed') return res.status(400).json({ message: 'Báo cáo đã đóng' });
+
+    const newMsg = JSON.stringify({ role: 'owner', text: text.trim(), time: new Date().toISOString() });
+    const updated = ticket.resolution ? `${ticket.resolution}\n${newMsg}` : newMsg;
+
+    await prisma.supportTicket.update({ where: { ticketID }, data: { resolution: updated } });
+    res.json({ message: 'Đã gửi phản hồi' });
+  } catch (error) {
+    console.error('replyOwnerTicket error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};

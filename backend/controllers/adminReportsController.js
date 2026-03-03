@@ -186,17 +186,15 @@ export const addReportResponse = async (req, res) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
-    const timestamp = new Date().toISOString();
-    const newResolution = ticket.resolution
-      ? `${ticket.resolution}\n\n[${timestamp}] Admin: ${response}`
-      : `[${timestamp}] Admin: ${response}`;
+    const newMsg = JSON.stringify({ role: "admin", text: response.trim(), time: new Date().toISOString() });
+    const updatedResolution = ticket.resolution ? `${ticket.resolution}\n${newMsg}` : newMsg;
 
     await prisma.supportTicket.update({
       where: { ticketID: parseInt(id) },
-      data: { resolution: newResolution, status: "InProgress" },
+      data: { resolution: updatedResolution, status: "InProgress" },
     });
 
-    res.json({ message: "Response added successfully", resolution: newResolution });
+    res.json({ message: "Response added successfully", resolution: updatedResolution });
   } catch (error) {
     if (error.code === "P2025") {
       return res.status(404).json({ message: "Report not found" });
