@@ -359,7 +359,7 @@ function BranchCard({ branch, toggling, onToggle, onSettings, onDelete }) {
                     </div>
                 </div>
 
-                {/* Action Buttons — split: Settings | Delete */}
+                {/* Action Buttons — split 50/50: Settings | Delete */}
                 <div className="flex gap-2">
                     <button
                         onClick={onSettings}
@@ -370,10 +370,10 @@ function BranchCard({ branch, toggling, onToggle, onSettings, onDelete }) {
                     </button>
                     <button
                         onClick={onDelete}
-                        title="Xóa chi nhánh"
-                        className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 hover:text-red-600 transition-colors text-sm font-semibold"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 hover:text-red-600 transition-colors text-sm font-semibold"
                     >
                         <Trash2 size={15} />
+                        Xóa
                     </button>
                 </div>
             </div>
