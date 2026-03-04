@@ -32,8 +32,8 @@ export default function RenewalModal({ isOpen, onClose, onSubmit, packages }) {
 
     useEffect(() => {
         if (formData.packageId) {
-            const pkg = packages.find(p => p.PackageID == formData.packageId);
-            setSelectedPackagePrice(pkg ? pkg.Price : 0);
+            const pkg = packages.find(p => p.packageID == formData.packageId);
+            setSelectedPackagePrice(pkg ? pkg.price : 0);
         } else {
             setSelectedPackagePrice(0);
         }
@@ -111,8 +111,8 @@ export default function RenewalModal({ isOpen, onClose, onSubmit, packages }) {
                         >
                             <option value="">Lựa chọn gói</option>
                             {packages.map(pkg => (
-                                <option key={pkg.PackageID} value={pkg.PackageID}>
-                                    {pkg.PackageName} ({pkg.Duration} Tháng)
+                                <option key={pkg.packageID} value={pkg.packageID}>
+                                    {pkg.packageName} ({pkg.duration} Tháng)
                                 </option>
                             ))}
                         </select>
