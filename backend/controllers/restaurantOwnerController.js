@@ -150,7 +150,7 @@ export const getDashboardStats = async (req, res) => {
     // Simulate Cost & Profit
     const totalCost = currentRevenue * 0.35;
     const netProfit = currentRevenue - totalCost;
-    
+
     const lastTotalCost = lastRevenue * 0.35;
     const lastNetProfit = lastRevenue - lastTotalCost;
     const profitGrowth = lastNetProfit > 0
@@ -605,7 +605,6 @@ export const getPaymentHistory = async (req, res) => {
       paymentMethod,
       status,
       search,
-      exportCsv,
     } = req.query;
 
     const pageNum = parseInt(page);
@@ -638,16 +637,22 @@ export const getPaymentHistory = async (req, res) => {
     if (paymentMethod && methodMap[paymentMethod]) tableFilters.paymentMethod = methodMap[paymentMethod];
     if (status) tableFilters.status = status;
 
-    // Search logic nâng cao
+    // Search logic nâng cao (Partial match for Order ID)
     const searchWhere = {};
     if (search) {
       const cleanSearch = search.replace(/#ORD-/i, "").trim();
-      const searchNum = parseInt(cleanSearch);
-      if (!isNaN(searchNum)) {
+      if (cleanSearch) {
+        // Tìm các OrderID thỏa mãn LIKE %cleanSearch% bằng raw query:
+        const matchedOrders = await prisma.$queryRaw`
+          SELECT OrderID FROM Orders 
+          WHERE CAST(OrderID AS CHAR) LIKE ${`%${cleanSearch}%`}
+        `;
+        const matchedIDs = matchedOrders.map(o => o.OrderID);
+
         searchWhere.invoice = {
           order: {
-            orderID: searchNum,
-          },
+            orderID: { in: matchedIDs }
+          }
         };
       }
     }
@@ -669,9 +674,8 @@ export const getPaymentHistory = async (req, res) => {
     // Tổng số bản ghi
     const totalCount = await prisma.transaction.count({ where });
 
-    // Nếu là export CSV - lấy tất cả không phân trang
-    const skipVal = exportCsv === "true" ? 0 : (pageNum - 1) * limitNum;
-    const takeVal = exportCsv === "true" ? undefined : limitNum;
+    const skipVal = (pageNum - 1) * limitNum;
+    const takeVal = limitNum;
 
     const transactions = await prisma.transaction.findMany({
       where,
@@ -691,27 +695,6 @@ export const getPaymentHistory = async (req, res) => {
       take: takeVal,
     });
 
-    // Nếu export CSV
-    if (exportCsv === "true") {
-      try {
-        const fields = [
-          { label: "Ngày", value: (row) => new Date(row.transactionTime).toLocaleString("vi-VN") },
-          { label: "Mã đơn hàng", value: (row) => `#ORD-${row.invoice?.order?.orderID || ""}` },
-          { label: "Chi nhánh", value: (row) => row.invoice?.order?.branch?.name || "" },
-          { label: "Phương thức", value: "paymentMethod" },
-          { label: "Số tiền", value: (row) => parseFloat(row.amount) },
-          { label: "Trạng thái", value: "status" },
-        ];
-        const parser = new Parser({ fields });
-        const csv = parser.parse(transactions);
-        res.header("Content-Type", "text/csv; charset=utf-8");
-        res.header("Content-Disposition", 'attachment; filename="lich-su-thanh-toan.csv"');
-        return res.send("\uFEFF" + csv);
-      } catch (csvErr) {
-        console.error("CSV export error:", csvErr);
-        return res.status(500).json({ message: "Lỗi xuất CSV" });
-      }
-    }
 
     // Tính tổng hợp (Dùng summaryWhere để Stat Cards không bị ảnh hưởng bởi filter Method/Status)
     const allForSummary = await prisma.transaction.findMany({
@@ -1135,12 +1118,12 @@ export const getProductRevenueStats = async (req, res) => {
           include: { category: { select: { name: true } } },
         });
         const revenue = parseFloat(g._sum.price || 0);
-        
+
         // Mock a trend for UI presentation (from -10% to +30%)
         // Or leave null and calculate real trend if possible, here using a determinist pseudo-random
         const seed = g.productID;
         const trendRaw = (seed % 40) - 10; // -10 to +29
-        
+
         return {
           productID: g.productID,
           name: product?.name || "Không xác định",
