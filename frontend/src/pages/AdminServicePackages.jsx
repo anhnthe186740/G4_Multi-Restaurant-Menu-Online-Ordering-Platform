@@ -22,6 +22,9 @@ export default function ServicePackagesPage() {
     const [activeTab, setActiveTab] = useState('packages'); // packages | status
     const itemsPerPage = 5;
 
+    // Filters for Status Tab
+    const [statusSearchQuery, setStatusSearchQuery] = useState('');
+
     // Modals state
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isRenewalOpen, setIsRenewalOpen] = useState(false);
@@ -97,6 +100,20 @@ export default function ServicePackagesPage() {
         }
     };
 
+    // Filtered status data
+    const filteredRestaurantStatuses = restaurantStatuses.filter(status => {
+        const matchesSearch =
+            status.RestaurantName.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
+            status.OwnerName.toLowerCase().includes(statusSearchQuery.toLowerCase());
+
+        return matchesSearch;
+    });
+
+    // Reset pagination when filter changes
+    useEffect(() => {
+        setCurrentStatusPage(1);
+    }, [statusSearchQuery]);
+
     return (
 
         <AdminLayout>
@@ -146,23 +163,13 @@ export default function ServicePackagesPage() {
                     {/* Package Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
                         {packages.map((pkg, index) => {
-                            const isPopular = pkg.duration === 12 || index === 1; // gói giữa = phổ biến nhất
                             return (
                                 <div
                                     key={pkg.packageID}
-                                    className={`relative bg-[#0d1612] border rounded-2xl p-6 flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${isPopular
-                                        ? 'border-[#00ff88] shadow-[0_0_30px_rgba(0,255,136,0.1)]'
-                                        : 'border-gray-800 hover:border-gray-600'
-                                        }`}
+                                    className="relative bg-[#0d1612] border border-gray-800 rounded-2xl p-6 flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:border-gray-600"
                                 >
-                                    {isPopular && (
-                                        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#00ff88] text-[#1a2b22] text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg">
-                                            Phổ biến nhất
-                                        </div>
-                                    )}
-
                                     <div className="mb-6">
-                                        <h3 className={`text-sm font-bold uppercase tracking-widest mb-4 ${isPopular ? 'text-[#00ff88]' : 'text-gray-400'}`}>
+                                        <h3 className="text-sm font-bold uppercase tracking-widest mb-4 text-gray-400">
                                             {pkg.packageName}
                                         </h3>
                                         <div className="flex items-baseline gap-1">
@@ -191,10 +198,7 @@ export default function ServicePackagesPage() {
                                     <div className="flex gap-2 mt-auto">
                                         <button
                                             onClick={() => handleEdit(pkg)}
-                                            className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 ${isPopular
-                                                ? 'bg-[#00ff88] text-[#1a2b22] hover:bg-[#00df76]'
-                                                : 'bg-white/5 text-white hover:bg-white/10'
-                                                }`}
+                                            className="flex-1 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-white/5 text-white hover:bg-white/10"
                                         >
                                             <span>✎</span> Chỉnh sửa
                                         </button>
@@ -295,9 +299,29 @@ export default function ServicePackagesPage() {
                 </>
             ) : (
                 <div className="bg-[#0d1612] rounded-2xl border border-gray-800 overflow-hidden animate-fade-in-up">
-                    <div className="p-6 border-b border-gray-800">
-                        <h3 className="text-lg font-bold text-white">Danh sách Trạng thái Đăng ký</h3>
-                        <p className="text-gray-400 text-sm">Quản lý thời hạn sử dụng dịch vụ của tất cả nhà hàng</p>
+                    <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 className="text-lg font-bold text-white">Danh sách Trạng thái Đăng ký</h3>
+                            <p className="text-gray-400 text-sm">Quản lý thời hạn sử dụng dịch vụ của tất cả nhà hàng</p>
+                        </div>
+
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            {/* Search Bar */}
+                            <div className="relative w-full md:w-80">
+                                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm nhà hàng, chủ sở hữu..."
+                                    className="w-full bg-[#1a2b22]/50 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:border-[#00ff88] focus:ring-1 focus:ring-[#00ff88]/20 focus:outline-none transition placeholder-gray-500"
+                                    value={statusSearchQuery}
+                                    onChange={(e) => setStatusSearchQuery(e.target.value)}
+                                />
+                            </div>
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
@@ -311,7 +335,7 @@ export default function ServicePackagesPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {restaurantStatuses.slice((currentStatusPage - 1) * itemsPerPage, currentStatusPage * itemsPerPage).map(status => (
+                                {filteredRestaurantStatuses.slice((currentStatusPage - 1) * itemsPerPage, currentStatusPage * itemsPerPage).map(status => (
                                     <tr key={status.RestaurantID} className="group hover:bg-white/[0.02] transition">
                                         <td className="py-4 px-6">
                                             <div className="text-white font-medium">{status.RestaurantName}</div>
@@ -348,10 +372,10 @@ export default function ServicePackagesPage() {
                                         </td>
                                     </tr>
                                 ))}
-                                {restaurantStatuses.length === 0 && (
+                                {filteredRestaurantStatuses.length === 0 && (
                                     <tr>
                                         <td colSpan="5" className="py-8 text-center text-gray-500">
-                                            Chưa có dữ liệu nhà hàng
+                                            Không tìm thấy nhà hàng nào phù hợp
                                         </td>
                                     </tr>
                                 )}
@@ -360,10 +384,10 @@ export default function ServicePackagesPage() {
                     </div>
 
                     {/* Pagination Controls for Status Table */}
-                    {restaurantStatuses.length > 0 && (
+                    {filteredRestaurantStatuses.length > 0 && (
                         <div className="p-4 border-t border-gray-800 flex justify-end items-center gap-2">
                             <span className="text-gray-500 text-sm mr-2">
-                                Trang {currentStatusPage} / {Math.ceil(restaurantStatuses.length / itemsPerPage)}
+                                Trang {currentStatusPage} / {Math.ceil(filteredRestaurantStatuses.length / itemsPerPage)}
                             </span>
                             <button
                                 onClick={() => setCurrentStatusPage(p => Math.max(1, p - 1))}
@@ -373,8 +397,8 @@ export default function ServicePackagesPage() {
                                 &lt;
                             </button>
                             <button
-                                onClick={() => setCurrentStatusPage(p => Math.min(Math.ceil(restaurantStatuses.length / itemsPerPage), p + 1))}
-                                disabled={currentStatusPage === Math.ceil(restaurantStatuses.length / itemsPerPage)}
+                                onClick={() => setCurrentStatusPage(p => Math.min(Math.ceil(filteredRestaurantStatuses.length / itemsPerPage), p + 1))}
+                                disabled={currentStatusPage === Math.ceil(filteredRestaurantStatuses.length / itemsPerPage)}
                                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
                             >
                                 &gt;

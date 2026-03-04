@@ -59,6 +59,7 @@ export const getAllRestaurants = async (req, res) => {
       ownerEmail: r.owner?.email,
       ownerPhone: r.owner?.phone,
       ownerStatus: r.owner?.status,
+      ownerLockReason: r.owner?.lockReason || null,
       registeredDate: r.owner?.createdAt,
       branchCount: r._count.branches,
       currentPackage: r.subscriptions[0]?.package?.packageName || null,
@@ -89,7 +90,7 @@ export const getRestaurantDetails = async (req, res) => {
       where: { restaurantID: parseInt(id) },
       include: {
         owner: {
-          select: { userID: true, username: true, fullName: true, email: true, phone: true, status: true, createdAt: true },
+          select: { userID: true, username: true, fullName: true, email: true, phone: true, status: true, lockReason: true, createdAt: true },
         },
         branches: {
           include: {
@@ -134,6 +135,7 @@ export const getRestaurantDetails = async (req, res) => {
         ownerEmail: restaurant.owner?.email,
         ownerPhone: restaurant.owner?.phone,
         ownerStatus: restaurant.owner?.status,
+        ownerLockReason: restaurant.owner?.lockReason || null,
         registeredDate: restaurant.owner?.createdAt,
       },
       branches: restaurant.branches.map((b) => ({
@@ -179,23 +181,12 @@ export const deactivateRestaurant = async (req, res) => {
       return res.status(400).json({ message: "Cannot deactivate: This restaurant has no associated owner account." });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { userID: restaurant.ownerUserID },
-        data: { status: "Inactive" },
-      });
-
-      if (reason) {
-        await tx.supportTicket.create({
-          data: {
-            userID: restaurant.ownerUserID,
-            subject: "Account Deactivated",
-            description: `Deactivation reason: ${reason}`,
-            priority: "High",
-            status: "Closed",
-          },
-        });
-      }
+    await prisma.user.update({
+      where: { userID: restaurant.ownerUserID },
+      data: {
+        status: "Inactive",
+        lockReason: reason || null,
+      },
     });
 
     res.json({ message: "Restaurant deactivated successfully" });
@@ -222,7 +213,10 @@ export const reactivateRestaurant = async (req, res) => {
 
     await prisma.user.update({
       where: { userID: restaurant.ownerUserID },
-      data: { status: "Active" },
+      data: {
+        status: "Active",
+        lockReason: null,
+      },
     });
 
     res.json({ message: "Restaurant reactivated successfully" });
