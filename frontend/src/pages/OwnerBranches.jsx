@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
-import { getOwnerBranches, toggleOwnerBranch } from '../api/ownerApi';
+import { getOwnerBranches, toggleOwnerBranch, deleteOwnerBranch } from '../api/ownerApi';
 import {
     GitBranch, MapPin, Phone, Mail, Table2,
     Settings, CheckCircle2, XCircle,
-    ShoppingBag, RefreshCw, Search, Plus
+    ShoppingBag, RefreshCw, Search, Plus, Trash2, AlertTriangle
 } from 'lucide-react';
 
 export default function OwnerBranches() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const newBranchId = location.state?.newBranchId ?? null;
     const [loading, setLoading] = useState(true);
     const [restaurantName, setRestaurantName] = useState('');
     const [branches, setBranches] = useState([]);
@@ -18,6 +20,10 @@ export default function OwnerBranches() {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'inactive'
 
+    // Delete confirm state
+    const [deleteTarget, setDeleteTarget] = useState(null); // branch object to delete
+    const [deleting, setDeleting] = useState(false);
+
     useEffect(() => { loadBranches(); }, []);
 
     const loadBranches = async () => {
@@ -25,7 +31,11 @@ export default function OwnerBranches() {
         try {
             const res = await getOwnerBranches();
             setRestaurantName(res.data.restaurantName || '');
-            setBranches(res.data.branches || []);
+            const list = res.data.branches || [];
+            if (newBranchId) {
+                list.sort((a, b) => (b.branchID === newBranchId ? 1 : 0) - (a.branchID === newBranchId ? 1 : 0));
+            }
+            setBranches(list);
         } catch (e) {
             showToast('Không thể tải danh sách chi nhánh', 'error');
         } finally {
@@ -56,6 +66,21 @@ export default function OwnerBranches() {
         }
     };
 
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            await deleteOwnerBranch(deleteTarget.branchID);
+            setBranches(prev => prev.filter(b => b.branchID !== deleteTarget.branchID));
+            showToast(`Đã xóa chi nhánh "${deleteTarget.name}"`, 'success');
+            setDeleteTarget(null);
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Không thể xóa chi nhánh', 'error');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     const activeBranches = branches.filter(b => b.isActive).length;
 
     // Client-side search + filter
@@ -80,6 +105,48 @@ export default function OwnerBranches() {
                         ? <CheckCircle2 size={16} />
                         : <XCircle size={16} />}
                     {toast.msg}
+                </div>
+            )}
+
+            {/* ===== DELETE CONFIRM MODAL ===== */}
+            {deleteTarget && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={20} className="text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Xác nhận xóa chi nhánh</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">Hành động này không thể hoàn tác.</p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-5">
+                            Bạn có chắc muốn xóa chi nhánh{' '}
+                            <strong className="text-gray-900">"{deleteTarget.name}"</strong>?
+                            Toàn bộ dữ liệu liên quan (bàn, đơn hàng...) sẽ bị xóa vĩnh viễn.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setDeleteTarget(null)}
+                                disabled={deleting}
+                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={handleDeleteConfirm}
+                                disabled={deleting}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                            >
+                                {deleting ? (
+                                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xóa...</>
+                                ) : (
+                                    <><Trash2 size={15} /> Xóa chi nhánh</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -200,6 +267,7 @@ export default function OwnerBranches() {
                             toggling={togglingId === branch.branchID}
                             onToggle={() => handleToggle(branch)}
                             onSettings={() => navigate(`/owner/branches/${branch.branchID}`)}
+                            onDelete={() => setDeleteTarget(branch)}
                         />
                     ))}
                 </div>
@@ -211,7 +279,7 @@ export default function OwnerBranches() {
 /* ============================================================
    BRANCH CARD COMPONENT
    ============================================================ */
-function BranchCard({ branch, toggling, onToggle, onSettings }) {
+function BranchCard({ branch, toggling, onToggle, onSettings, onDelete }) {
     return (
         <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden
             ${branch.isActive ? 'border-gray-100' : 'border-gray-200 opacity-80'}`}>
@@ -291,14 +359,23 @@ function BranchCard({ branch, toggling, onToggle, onSettings }) {
                     </div>
                 </div>
 
-                {/* Action Button */}
-                <button
-                    onClick={onSettings}
-                    className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
-                >
-                    <Settings size={15} />
-                    Cài đặt chi nhánh
-                </button>
+                {/* Action Buttons — split: Settings | Delete */}
+                <div className="flex gap-2">
+                    <button
+                        onClick={onSettings}
+                        className="flex-1 flex items-center justify-center gap-2 bg-gray-900 hover:bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                    >
+                        <Settings size={15} />
+                        Cài đặt
+                    </button>
+                    <button
+                        onClick={onDelete}
+                        title="Xóa chi nhánh"
+                        className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 hover:text-red-600 transition-colors text-sm font-semibold"
+                    >
+                        <Trash2 size={15} />
+                    </button>
+                </div>
             </div>
         </div>
     );

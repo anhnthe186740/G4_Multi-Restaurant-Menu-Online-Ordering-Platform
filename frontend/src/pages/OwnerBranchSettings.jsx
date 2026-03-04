@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
-import { getOwnerBranchById, updateOwnerBranch, toggleOwnerBranch } from '../api/ownerApi';
+import { getOwnerBranchById, updateOwnerBranch, toggleOwnerBranch, deleteOwnerBranch } from '../api/ownerApi';
 import {
     Info, Clock, MapPin, CheckCircle2, XCircle,
     ArrowLeft, Power, AlertTriangle, Plus, Save, Trash2, CalendarDays
@@ -16,7 +16,8 @@ export default function OwnerBranchSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null);
-    const [showDangerConfirm, setShowDangerConfirm] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [showSpecialForm, setShowSpecialForm] = useState(false);
     const [newSpecial, setNewSpecial] = useState({ date: '', label: '', open: '08:00', close: '22:00', isClosed: false });
 
@@ -143,6 +144,7 @@ export default function OwnerBranchSettings() {
             setBranch(b => ({ ...b, name: form.name, phone: form.phone, email: form.email, address: form.address, isActive: form.isActive, openingHours: form.hours }));
             setDirty(false);
             showToast('Lưu thay đổi thành công!');
+            setTimeout(() => navigate('/owner/branches'), 1000);
         } catch {
             showToast('Không thể lưu thay đổi', 'error');
         } finally {
@@ -150,20 +152,18 @@ export default function OwnerBranchSettings() {
         }
     };
 
-    const handleToggleStatus = async () => {
+    const handleDelete = async () => {
+        setDeleting(true);
         try {
-            const res = await toggleOwnerBranch(id);
-            setForm(f => ({ ...f, isActive: res.data.isActive }));
-            setBranch(b => ({ ...b, isActive: res.data.isActive }));
-            showToast(res.data.message);
-        } catch {
-            showToast('Không thể thay đổi trạng thái', 'error');
+            await deleteOwnerBranch(id);
+            showToast('Đã xóa chi nhánh thành công!');
+            setTimeout(() => navigate('/owner/branches'), 1000);
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Không thể xóa chi nhánh', 'error');
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(false);
         }
-    };
-
-    const handleDangerToggle = async () => {
-        setShowDangerConfirm(false);
-        await handleToggleStatus();
     };
 
     /* ─── Render helpers ─── */
@@ -194,8 +194,8 @@ export default function OwnerBranchSettings() {
                 </div>
             )}
 
-            {/* Danger confirm modal */}
-            {showDangerConfirm && (
+            {/* Delete confirm modal */}
+            {showDeleteConfirm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
                         <div className="flex items-center gap-3 mb-4">
@@ -203,21 +203,24 @@ export default function OwnerBranchSettings() {
                                 <AlertTriangle size={20} className="text-red-600" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900">Xác nhận tạm dừng chi nhánh</h3>
-                                <p className="text-sm text-gray-500 mt-0.5">Hành động này sẽ ảnh hưởng đến dữ liệu vận hành.</p>
+                                <h3 className="font-bold text-gray-900">Xác nhận xóa chi nhánh</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">Hành động này không thể hoàn tác.</p>
                             </div>
                         </div>
                         <p className="text-sm text-gray-600 mb-5">
-                            Việc tạm dừng chi nhánh <strong>{branch?.name}</strong> sẽ ngắt khả năng đặt hàng online và ẩn chi nhánh khỏi ứng dụng khách hàng.
+                            Bạn có chắc muốn xóa chi nhánh <strong>{branch?.name}</strong>?
+                            Toàn bộ dữ liệu liên quan (bàn, đơn hàng...) sẽ bị xóa vĩnh viễn.
                         </p>
                         <div className="flex gap-3">
-                            <button onClick={() => setShowDangerConfirm(false)}
-                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                            <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
+                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">
                                 Hủy bỏ
                             </button>
-                            <button onClick={handleDangerToggle}
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
-                                Xác nhận tạm dừng
+                            <button onClick={handleDelete} disabled={deleting}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                                {deleting
+                                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xóa...</>
+                                    : <><Trash2 size={15} /> Xóa chi nhánh</>}
                             </button>
                         </div>
                     </div>
@@ -275,7 +278,16 @@ export default function OwnerBranchSettings() {
                                 <p className="text-gray-400 text-xs mt-0.5">Điều chỉnh trạng thái đóng/mở cửa ngay lập tức trên ứng dụng</p>
                             </div>
                             <button
-                                onClick={handleToggleStatus}
+                                onClick={async () => {
+                                    try {
+                                        const res = await toggleOwnerBranch(id);
+                                        setForm(f => ({ ...f, isActive: res.data.isActive }));
+                                        setBranch(b => ({ ...b, isActive: res.data.isActive }));
+                                        showToast(res.data.message);
+                                    } catch {
+                                        showToast('Không thể thay đổi trạng thái', 'error');
+                                    }
+                                }}
                                 className={`relative w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none
                                     ${isActive ? 'bg-blue-500' : 'bg-gray-300'}`}
                             >
@@ -525,18 +537,20 @@ export default function OwnerBranchSettings() {
                     <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
                         <h2 className="font-bold text-red-600 text-base mb-1.5">Vùng nguy hiểm</h2>
                         <p className="text-xs text-red-400 mb-4">
-                            Việc xóa hoặc tạm dừng vĩnh viễn chi nhánh sẽ ảnh hưởng đến dữ liệu báo cáo lịch sử.
+                            Xóa chi nhánh sẽ xóa vĩnh viễn toàn bộ dữ liệu liên quan và không thể hoàn tác.
                         </p>
                         <button
-                            onClick={() => setShowDangerConfirm(true)}
-                            className="w-full flex items-center justify-center gap-2 border border-red-400 text-red-600 hover:bg-red-100 rounded-xl py-2.5 text-sm font-semibold transition-colors">
-                            <Power size={15} />
-                            {isActive ? 'Tạm dừng vĩnh viễn chi nhánh' : 'Kích hoạt lại chi nhánh'}
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="w-full flex items-center justify-center gap-2 border border-red-400 text-red-600 hover:bg-red-100 rounded-xl py-2.5 text-sm font-semibold transition-colors"
+                        >
+                            <Trash2 size={15} />
+                            Xóa chi nhánh này
                         </button>
                     </div>
 
                 </div>
             </div>
+
         </RestaurantOwnerLayout>
     );
 }

@@ -22,6 +22,7 @@ export const createOwnerBranch = (data) => ownerAxios.post("/owner/branches", da
 export const getOwnerBranchById = (id) => ownerAxios.get(`/owner/branches/${id}`);
 export const updateOwnerBranch = (id, data) => ownerAxios.put(`/owner/branches/${id}`, data);
 export const toggleOwnerBranch = (id) => ownerAxios.patch(`/owner/branches/${id}/toggle`);
+export const deleteOwnerBranch = (id) => ownerAxios.delete(`/owner/branches/${id}`);
 
 export default ownerAxios;
 

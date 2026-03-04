@@ -10,6 +10,7 @@ import {
   updateOwnerBranch,
   toggleOwnerBranch,
   createOwnerBranch,
+  deleteOwnerBranch,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -31,6 +32,7 @@ router.post("/branches", createOwnerBranch);
 router.get("/branches/:id", getOwnerBranchById);
 router.put("/branches/:id", updateOwnerBranch);
 router.patch("/branches/:id/toggle", toggleOwnerBranch);
+router.delete("/branches/:id", deleteOwnerBranch);
 
 export default router;
 

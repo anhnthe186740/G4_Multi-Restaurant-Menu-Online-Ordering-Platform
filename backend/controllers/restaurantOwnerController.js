@@ -490,3 +490,26 @@ export const toggleOwnerBranch = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+/* =================== DELETE BRANCH =================== */
+export const deleteOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    await prisma.branch.delete({ where: { branchID } });
+
+    res.json({ message: "Xóa chi nhánh thành công" });
+  } catch (error) {
+    console.error("deleteOwnerBranch error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};

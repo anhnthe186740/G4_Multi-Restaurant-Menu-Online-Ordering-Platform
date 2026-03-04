@@ -103,7 +103,7 @@ export default function OwnerCreateBranch() {
                 isActive: form.isActive,
             });
             showToast('Tạo chi nhánh thành công!');
-            setTimeout(() => navigate(`/owner/branches/${res.data.branchID}`), 1000);
+            setTimeout(() => navigate('/owner/branches', { state: { newBranchId: res.data.branchID } }), 1000);
         } catch (err) {
             showToast(err.response?.data?.message || 'Không thể tạo chi nhánh', 'error');
         } finally {
