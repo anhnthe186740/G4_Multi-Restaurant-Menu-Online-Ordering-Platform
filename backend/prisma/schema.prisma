@@ -89,7 +89,7 @@ enum InvoiceDetailStatus {
 enum PaymentMethod {
   Cash
   BankTransfer
-  E_Wallet @map("E-Wallet")
+  E_Wallet     @map("E-Wallet")
 }
 
 enum TransactionStatus {
@@ -98,10 +98,10 @@ enum TransactionStatus {
 }
 
 enum ServiceRequestType {
-  GoiMon  @map("Gọi món")
-  GoiNuoc @map("Gọi nước")
+  GoiMon    @map("Gọi món")
+  GoiNuoc   @map("Gọi nước")
   ThanhToan @map("Thanh toán")
-  Khac    @map("Khác")
+  Khac      @map("Khác")
 }
 
 enum TicketPriority {
@@ -127,24 +127,24 @@ model User {
   createdAt    DateTime   @default(now()) @map("CreatedAt")
 
   // Relations
-  ownedRestaurants         Restaurant[]         @relation("RestaurantOwner")
-  managedBranches          Branch[]             @relation("BranchManager")
-  registrationRequests     RegistrationRequest[] @relation("RequestOwner")
-  approvedRequests         RegistrationRequest[] @relation("RequestApprover")
-  createdOrders            Order[]
-  supportTickets           SupportTicket[]
+  ownedRestaurants     Restaurant[]          @relation("RestaurantOwner")
+  managedBranches      Branch[]              @relation("BranchManager")
+  registrationRequests RegistrationRequest[] @relation("RequestOwner")
+  approvedRequests     RegistrationRequest[] @relation("RequestApprover")
+  createdOrders        Order[]
+  supportTickets       SupportTicket[]
 
   @@map("Users")
 }
 
 // 2. ServicePackages
 model ServicePackage {
-  packageID           Int      @id @default(autoincrement()) @map("PackageID")
-  packageName         String   @map("PackageName") @db.VarChar(100)
-  price               Decimal  @map("Price") @db.Decimal(15, 2)
-  duration            Int?     @map("Duration")
-  featuresDescription String?  @map("FeaturesDescription") @db.Text
-  isActive            Boolean  @default(true) @map("IsActive")
+  packageID           Int     @id @default(autoincrement()) @map("PackageID")
+  packageName         String  @map("PackageName") @db.VarChar(100)
+  price               Decimal @map("Price") @db.Decimal(15, 2)
+  duration            Int?    @map("Duration")
+  featuresDescription String? @map("FeaturesDescription") @db.Text
+  isActive            Boolean @default(true) @map("IsActive")
 
   // Relations
   subscriptions Subscription[]
@@ -206,7 +206,7 @@ model Subscription {
   autoRenew      Boolean            @default(false) @map("AutoRenew")
 
   // Relations
-  restaurant Restaurant?    @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
+  restaurant Restaurant?     @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
   package    ServicePackage? @relation(fields: [packageID], references: [packageID])
 
   @@map("Subscriptions")
@@ -214,14 +214,14 @@ model Subscription {
 
 // 6. Branches
 model Branch {
-  branchID     Int     @id @default(autoincrement()) @map("BranchID")
-  restaurantID Int     @map("RestaurantID")
-  managerUserID Int?   @map("ManagerUserID")
-  name         String  @map("Name") @db.VarChar(255)
-  address      String? @map("Address") @db.VarChar(255)
-  phone        String? @map("Phone") @db.VarChar(20)
-  openingHours String? @map("OpeningHours") @db.VarChar(100)
-  isActive     Boolean @default(true) @map("IsActive")
+  branchID      Int     @id @default(autoincrement()) @map("BranchID")
+  restaurantID  Int     @map("RestaurantID")
+  managerUserID Int?    @map("ManagerUserID")
+  name          String  @map("Name") @db.VarChar(255)
+  address       String? @map("Address") @db.VarChar(255)
+  phone         String? @map("Phone") @db.VarChar(20)
+  openingHours  String? @map("OpeningHours") @db.Text
+  isActive      Boolean @default(true) @map("IsActive")
 
   // Relations
   restaurant      Restaurant       @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
@@ -397,13 +397,13 @@ model InvoiceDetail {
 
 // 16. Transactions
 model Transaction {
-  transactionID      Int               @id @default(autoincrement()) @map("TransactionID")
-  invoiceID          Int?              @map("InvoiceID")
-  paymentGatewayRef  String?           @map("PaymentGatewayRef") @db.VarChar(255)
-  amount             Decimal           @map("Amount") @db.Decimal(15, 2)
-  paymentMethod      PaymentMethod     @map("PaymentMethod")
-  status             TransactionStatus @default(Success) @map("Status")
-  transactionTime    DateTime          @default(now()) @map("TransactionTime")
+  transactionID     Int               @id @default(autoincrement()) @map("TransactionID")
+  invoiceID         Int?              @map("InvoiceID")
+  paymentGatewayRef String?           @map("PaymentGatewayRef") @db.VarChar(255)
+  amount            Decimal           @map("Amount") @db.Decimal(15, 2)
+  paymentMethod     PaymentMethod     @map("PaymentMethod")
+  status            TransactionStatus @default(Success) @map("Status")
+  transactionTime   DateTime          @default(now()) @map("TransactionTime")
 
   // Relations
   invoice Invoice? @relation(fields: [invoiceID], references: [invoiceID])

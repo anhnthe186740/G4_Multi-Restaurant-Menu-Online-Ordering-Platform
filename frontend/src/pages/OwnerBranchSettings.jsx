@@ -28,6 +28,7 @@ export default function OwnerBranchSettings() {
         hours: { ...DEFAULT_HOURS },
     });
     const [dirty, setDirty] = useState(false);
+    const [errors, setErrors] = useState({});
 
     useEffect(() => { loadBranch(); }, [id]);
 
@@ -66,6 +67,21 @@ export default function OwnerBranchSettings() {
     const handleField = (key, val) => {
         setForm(f => ({ ...f, [key]: val }));
         setDirty(true);
+        if (errors[key]) setErrors(e => ({ ...e, [key]: undefined }));
+    };
+
+    const validate = () => {
+        const errs = {};
+        if (!form.name.trim())
+            errs.name = 'Tên chi nhánh không được để trống';
+        if (form.phone && !/^(\+84|0)[2-9]\d{8}$/.test(form.phone.replace(/\s/g, '')))
+            errs.phone = 'Số điện thoại không hợp lệ (VD: 0912345678 hoặc 0241111111)';
+        if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+            errs.email = 'Email không đúng định dạng';
+        if (form.address && form.address.trim().length < 10)
+            errs.address = 'Địa chỉ quá ngắn, vui lòng nhập đầy đủ';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
     };
 
     const handleHours = (day, rawVal) => {
@@ -111,6 +127,10 @@ export default function OwnerBranchSettings() {
     };
 
     const handleSave = async () => {
+        if (!validate()) {
+            showToast('Vui lòng kiểm tra lại thông tin', 'error');
+            return;
+        }
         setSaving(true);
         try {
             await updateOwnerBranch(id, {
@@ -275,43 +295,51 @@ export default function OwnerBranchSettings() {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Tên chi nhánh</label>
+                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Tên chi nhánh <span className="text-red-400">*</span></label>
                                 <input
                                     value={form.name}
                                     onChange={e => handleField('name', e.target.value)}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                        ${errors.name ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                     placeholder="Tên chi nhánh"
                                 />
+                                {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Số điện thoại</label>
+                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Số điện thoại <span className="text-red-400">*</span></label>
                                     <input
                                         value={form.phone}
                                         onChange={e => handleField('phone', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
-                                        placeholder="028 1234 5678"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                            ${errors.phone ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
+                                        placeholder="0912 345 678"
                                     />
+                                    {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Email liên hệ</label>
+                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Email liên hệ <span className="text-red-400">*</span></label>
                                     <input
                                         value={form.email}
                                         onChange={e => handleField('email', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                            ${errors.email ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                         placeholder="chinhanh@email.vn"
                                     />
+                                    {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Địa chỉ chi tiết</label>
+                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Địa chỉ chi tiết <span className="text-red-400">*</span></label>
                                 <textarea
                                     value={form.address}
                                     onChange={e => handleField('address', e.target.value)}
                                     rows={3}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all resize-none"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all resize-none
+                                        ${errors.address ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                     placeholder="Số nhà, Đường, Phường/Xã, Quận/Huyện, Tỉnh/TP"
                                 />
+                                {errors.address && <p className="mt-1.5 text-xs text-red-500">{errors.address}</p>}
                             </div>
                         </div>
                     </div>
