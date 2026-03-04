@@ -358,15 +358,9 @@ export default function OwnerBranchSettings() {
 
                     {/* ── Vị trí trên bản đồ ── */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <MapPin size={16} className="text-blue-500" />
-                                <h2 className="font-bold text-gray-900 text-base">Vị trí trên bản đồ</h2>
-                            </div>
-                            <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors">
-                                <MapPin size={12} />
-                                Cập nhật vị trí
-                            </button>
+                        <div className="flex items-center gap-2 mb-4">
+                            <MapPin size={16} className="text-blue-500" />
+                            <h2 className="font-bold text-gray-900 text-base">Vị trí trên bản đồ</h2>
                         </div>
                         {/* Map iframe dựa trên địa chỉ */}
                         <div className="relative rounded-xl overflow-hidden border border-gray-100" style={{ height: 220 }}>
@@ -533,20 +527,6 @@ export default function OwnerBranchSettings() {
                         </div>
                     </div>
 
-                    {/* ── Vùng nguy hiểm ── */}
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-                        <h2 className="font-bold text-red-600 text-base mb-1.5">Vùng nguy hiểm</h2>
-                        <p className="text-xs text-red-400 mb-4">
-                            Xóa chi nhánh sẽ xóa vĩnh viễn toàn bộ dữ liệu liên quan và không thể hoàn tác.
-                        </p>
-                        <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="w-full flex items-center justify-center gap-2 border border-red-400 text-red-600 hover:bg-red-100 rounded-xl py-2.5 text-sm font-semibold transition-colors"
-                        >
-                            <Trash2 size={15} />
-                            Xóa chi nhánh này
-                        </button>
-                    </div>
 
                 </div>
             </div>

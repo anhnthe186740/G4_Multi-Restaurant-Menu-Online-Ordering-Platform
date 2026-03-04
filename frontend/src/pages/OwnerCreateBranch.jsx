@@ -248,15 +248,9 @@ export default function OwnerCreateBranch() {
 
                     {/* ── Vị trí trên bản đồ ── */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <MapPin size={16} className="text-blue-500" />
-                                <h2 className="font-bold text-gray-900 text-base">Vị trí trên bản đồ</h2>
-                            </div>
-                            <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors">
-                                <MapPin size={12} />
-                                Cập nhật vị trí
-                            </button>
+                        <div className="flex items-center gap-2 mb-4">
+                            <MapPin size={16} className="text-blue-500" />
+                            <h2 className="font-bold text-gray-900 text-base">Vị trí trên bản đồ</h2>
                         </div>
                         {/* Map iframe dựa trên địa chỉ */}
                         <div className="relative rounded-xl overflow-hidden border border-gray-100" style={{ height: 220 }}>
