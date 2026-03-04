@@ -57,7 +57,7 @@ function NewTicketModal({ onClose, onSubmit, loading }) {
                             value={form.subject}
                             onChange={e => set('subject', e.target.value)}
                             placeholder="Mô tả ngắn về vấn đề..."
-                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
                         />
                     </div>
                     <div>
@@ -67,7 +67,7 @@ function NewTicketModal({ onClose, onSubmit, loading }) {
                             onChange={e => set('description', e.target.value)}
                             placeholder="Mô tả chi tiết vấn đề bạn gặp phải..."
                             rows={5}
-                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none"
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none"
                         />
                     </div>
                     <div>
