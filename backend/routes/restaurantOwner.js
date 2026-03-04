@@ -27,6 +27,11 @@ import {
   updateMenuItem,
   deleteMenuItem,
   toggleMenuItem,
+  // Support Tickets
+  createOwnerTicket,
+  getOwnerTickets,
+  getOwnerTicketById,
+  replyOwnerTicket,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -75,5 +80,11 @@ router.post("/menu/items", createMenuItem);
 router.put("/menu/items/:id", updateMenuItem);
 router.delete("/menu/items/:id", deleteMenuItem);
 router.patch("/menu/items/:id/toggle", toggleMenuItem);
+
+// ===== SUPPORT TICKETS (Owner ↔ Admin) =====
+router.post("/tickets", createOwnerTicket);
+router.get("/tickets", getOwnerTickets);
+router.get("/tickets/:id", getOwnerTicketById);
+router.post("/tickets/:id/reply", replyOwnerTicket);
 
 export default router;
