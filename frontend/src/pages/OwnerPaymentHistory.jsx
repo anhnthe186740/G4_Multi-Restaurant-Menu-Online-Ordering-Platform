@@ -167,8 +167,6 @@ export default function OwnerPaymentHistory() {
     // Modal
     const [selectedTx, setSelectedTx] = useState(null);
 
-    // CSV loading
-    const [csvLoading, setCsvLoading] = useState(false);
 
     const buildParams = useCallback(() => {
         const params = { page, limit: LIMIT };
@@ -202,11 +200,14 @@ export default function OwnerPaymentHistory() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        setSearch(searchInput);
-        setPage(1);
-    };
+    // Real-time search with debounce
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setSearch(searchInput);
+            setPage(1);
+        }, 500); // 500ms debounce
+        return () => clearTimeout(handler);
+    }, [searchInput]);
 
     const handleReset = () => {
         setRangeKey('this_month');
@@ -219,42 +220,6 @@ export default function OwnerPaymentHistory() {
         setPage(1);
     };
 
-    const handleExportCSV = async () => {
-        setCsvLoading(true);
-        try {
-            const params = { ...buildParams(), exportCsv: 'true' };
-            const res = await getOwnerPaymentHistory(params);
-            // Backend trả về CSV string qua Content-Type text/csv
-            const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `lich-su-thanh-toan-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-        } catch {
-            // Fallback: xuất từ data hiện tại
-            const headers = ['Ngày,Mã đơn hàng,Chi nhánh,Phương thức,Số tiền,Trạng thái'];
-            const rows = transactions.map((t) => [
-                fmtDate(t.transactionTime),
-                `#ORD-${t.orderID || ''}`,
-                t.branchName || '',
-                METHOD_MAP[t.paymentMethod]?.label || t.paymentMethod,
-                t.amount,
-                STATUS_MAP[t.status]?.label || t.status,
-            ].join(','));
-            const csv = '\uFEFF' + [headers, ...rows].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `lich-su-thanh-toan-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-        } finally {
-            setCsvLoading(false);
-        }
-    };
 
     const totalPages = Math.max(1, Math.ceil(totalCount / LIMIT));
     const startIdx = (page - 1) * LIMIT + 1;
@@ -285,27 +250,16 @@ export default function OwnerPaymentHistory() {
                     <p className="text-sm text-gray-400 mt-0.5">Theo dõi toàn bộ giao dịch từ các chi nhánh</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* Search */}
-                    <form onSubmit={handleSearch} className="relative">
+                    <div className="relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Tìm mã đơn hàng..."
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
-                            className="pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 w-52 transition-all"
+                            className="pl-9 pr-4 py-2 text-sm text-black rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 w-52 transition-all"
                         />
-                    </form>
-                    {/* Export CSV */}
-                    <button
-                        onClick={handleExportCSV}
-                        disabled={csvLoading}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all shadow-md hover:shadow-lg active:scale-95"
-                        style={{ background: 'linear-gradient(135deg,#3b82f6,#2563eb)' }}
-                    >
-                        <Download size={14} />
-                        {csvLoading ? 'Đang xuất...' : 'Xuất CSV'}
-                    </button>
+                    </div>
                 </div>
             </div>
 
