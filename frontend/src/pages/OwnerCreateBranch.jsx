@@ -39,7 +39,7 @@ export default function OwnerCreateBranch() {
         if (!form.name.trim())
             errs.name = 'Tên chi nhánh không được để trống';
         if (form.phone && !/^(\+84|0)[2-9]\d{8}$/.test(form.phone.replace(/\s/g, '')))
-            errs.phone = 'Số điện thoại không hợp lệ (VD: 0912345678 hoặc 0241111111)';
+            errs.phone = 'Số điện thoại không hợp lệ (VD: 0912345678)';
         if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
             errs.email = 'Email không đúng định dạng';
         if (form.address && form.address.trim().length < 10)
