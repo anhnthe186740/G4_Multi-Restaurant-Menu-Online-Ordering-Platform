@@ -1648,3 +1648,22 @@ export const replyOwnerTicket = async (req, res) => {
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
+
+export const closeOwnerTicket = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const ticketID = parseInt(req.params.id);
+
+    const ticket = await prisma.supportTicket.findFirst({ where: { ticketID, userID } });
+    if (!ticket) return res.status(404).json({ message: 'Không tìm thấy báo cáo' });
+    if (ticket.status !== 'Open') {
+      return res.status(400).json({ message: 'Chỉ có thể đóng báo cáo khi chưa được tiếp nhận' });
+    }
+
+    await prisma.supportTicket.update({ where: { ticketID }, data: { status: 'Closed' } });
+    res.json({ message: 'Đã đóng báo cáo' });
+  } catch (error) {
+    console.error('closeOwnerTicket error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};

@@ -63,5 +63,6 @@ export const createOwnerTicket = (data) => ownerAxios.post("/owner/tickets", dat
 export const getOwnerTickets = (params) => ownerAxios.get("/owner/tickets", { params });
 export const getOwnerTicketById = (id) => ownerAxios.get(`/owner/tickets/${id}`);
 export const replyOwnerTicket = (id, data) => ownerAxios.post(`/owner/tickets/${id}/reply`, data);
+export const closeOwnerTicket = (id) => ownerAxios.patch(`/owner/tickets/${id}/close`);
 
 export default ownerAxios;

@@ -32,6 +32,7 @@ import {
   getOwnerTickets,
   getOwnerTicketById,
   replyOwnerTicket,
+  closeOwnerTicket,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -86,5 +87,6 @@ router.post("/tickets", createOwnerTicket);
 router.get("/tickets", getOwnerTickets);
 router.get("/tickets/:id", getOwnerTicketById);
 router.post("/tickets/:id/reply", replyOwnerTicket);
+router.patch("/tickets/:id/close", closeOwnerTicket);
 
 export default router;

@@ -1,10 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
-import { getOwnerTickets, getOwnerTicketById, createOwnerTicket } from '../api/ownerApi';
+import { getOwnerTickets, getOwnerTicketById, createOwnerTicket, closeOwnerTicket } from '../api/ownerApi';
 import {
     Plus, X, Clock, CheckCircle, AlertCircle,
-    FileText, RefreshCw, ChevronRight, MessageSquare,
+    FileText, RefreshCw, ChevronRight, ShieldAlert,
 } from 'lucide-react';
+
+/* ── Confirm Dialog ── */
+function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = 'Xác nhận', confirmCls = 'bg-blue-600 hover:bg-blue-700 text-white' }) {
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={onCancel}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="px-6 pt-6 pb-4 flex flex-col items-center text-center">
+                    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+                        <ShieldAlert size={22} className="text-blue-600" />
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 mb-1">{title}</h3>
+                    <p className="text-sm text-gray-500">{message}</p>
+                </div>
+                <div className="px-6 pb-5 flex gap-3">
+                    <button onClick={onCancel} className="flex-1 py-2 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">Hủy</button>
+                    <button onClick={onConfirm} className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${confirmCls}`}>{confirmLabel}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 /* ── helpers ── */
 const fmtDate = (d) =>
@@ -99,19 +120,15 @@ function NewTicketModal({ onClose, onSubmit, loading }) {
 }
 
 /* ── Detail Panel ── */
-function DetailPanel({ ticket, onClose }) {
+function DetailPanel({ ticket, onClose, onRequestClose }) {
     if (!ticket) return null;
+    const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
-    // Parse admin resolution (last admin message if JSON, or raw text)
-    let adminResponse = ticket.resolution || '';
-    if (adminResponse) {
-        try {
-            const lines = adminResponse.split('\n').filter(Boolean);
-            const lastAdminMsg = lines.map(l => { try { return JSON.parse(l); } catch { return null; } })
-                .filter(m => m && m.role === 'admin').at(-1);
-            if (lastAdminMsg) adminResponse = lastAdminMsg.text;
-        } catch { /* keep raw */ }
-    }
+    // Find the last admin message from the messages array returned by getOwnerTicketById
+    const adminMsg = ticket.messages
+        ? [...ticket.messages].reverse().find(m => m.role === 'admin')
+        : null;
+    const adminResponse = adminMsg?.text || '';
 
     return (
         <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -157,11 +174,19 @@ function DetailPanel({ ticket, onClose }) {
                     </div>
                 )}
 
-                {/* Waiting state */}
+                {/* Waiting state + Close button */}
                 {ticket.status === 'Open' && (
-                    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                        <Clock size={32} className="mb-2 opacity-40" />
-                        <p className="text-sm">Báo cáo đang chờ Admin tiếp nhận</p>
+                    <div className="space-y-3">
+                        <div className="flex flex-col items-center justify-center py-6 text-gray-400">
+                            <Clock size={32} className="mb-2 opacity-40" />
+                            <p className="text-sm">Báo cáo đang chờ Admin tiếp nhận</p>
+                        </div>
+                        <button
+                            onClick={() => setShowCloseConfirm(true)}
+                            className="w-full py-2 rounded-xl bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 text-sm font-semibold transition"
+                        >
+                            ❌ Đóng yêu cầu hỗ trợ
+                        </button>
                     </div>
                 )}
                 {ticket.status === 'InProgress' && (
@@ -172,6 +197,18 @@ function DetailPanel({ ticket, onClose }) {
                     </div>
                 )}
             </div>
+
+            {/* Close confirm dialog */}
+            {showCloseConfirm && (
+                <ConfirmDialog
+                    title="Đóng yêu cầu hỗ trợ?"
+                    message="Bạn có chắc chắn muốn đóng báo cáo này không? Hành động này không thể hoàn tác."
+                    confirmLabel="Đóng yêu cầu"
+                    confirmCls="bg-red-500 hover:bg-red-600 text-white"
+                    onCancel={() => setShowCloseConfirm(false)}
+                    onConfirm={() => { setShowCloseConfirm(false); onRequestClose(ticket.ticketID); }}
+                />
+            )}
         </div>
     );
 }
@@ -188,6 +225,7 @@ export default function OwnerTickets() {
     const [showNew, setShowNew] = useState(false);
     const [createLoading, setCreateLoading] = useState(false);
     const [toast, setToast] = useState(null);
+    const [pendingForm, setPendingForm] = useState(null); // for confirm dialog
 
     const LIMIT = 8;
 
@@ -240,6 +278,17 @@ export default function OwnerTickets() {
         }
     };
 
+    const handleCloseTicket = async (ticketID) => {
+        try {
+            await closeOwnerTicket(ticketID);
+            showToast('Đã đóng yêu cầu hỗ trợ');
+            setSelectedTicket(null);
+            fetchList(page);
+        } catch (e) {
+            showToast(e.response?.data?.message || 'Không thể đóng báo cáo', 'error');
+        }
+    };
+
     const totalPages = Math.ceil(total / LIMIT);
 
     return (
@@ -253,7 +302,19 @@ export default function OwnerTickets() {
                 </div>
             )}
 
-            {showNew && <NewTicketModal onClose={() => setShowNew(false)} onSubmit={handleCreate} loading={createLoading} />}
+            {showNew && <NewTicketModal onClose={() => setShowNew(false)} onSubmit={(form) => { setShowNew(false); setPendingForm(form); }} loading={false} />}
+
+            {/* Confirm send dialog */}
+            {pendingForm && (
+                <ConfirmDialog
+                    title="Xác nhận gửi báo cáo"
+                    message="Bạn có chắc chắn muốn gửi báo cáo này đến Admin hệ thống không?"
+                    confirmLabel="Gửi báo cáo"
+                    confirmCls="bg-blue-600 hover:bg-blue-700 text-white"
+                    onCancel={() => setPendingForm(null)}
+                    onConfirm={() => { handleCreate(pendingForm); setPendingForm(null); }}
+                />
+            )}
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -353,7 +414,11 @@ export default function OwnerTickets() {
                                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                             </div>
                         ) : (
-                            <DetailPanel ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
+                            <DetailPanel
+                                ticket={selectedTicket}
+                                onClose={() => setSelectedTicket(null)}
+                                onRequestClose={handleCloseTicket}
+                            />
                         )}
                     </div>
                 )}

@@ -9,8 +9,29 @@ import {
 } from '../api/adminApi';
 import {
     Search, RefreshCw, ChevronRight, FileText,
-    Clock, Loader2, CheckCircle2, XCircle, X, AlertTriangle
+    Clock, Loader2, CheckCircle2, XCircle, X, AlertTriangle, ShieldAlert
 } from 'lucide-react';
+
+/* ── Confirm Dialog ── */
+function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = 'Xác nhận', confirmCls }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]" onClick={onCancel}>
+            <div className="bg-[#142920] border border-[#1f3d2f] rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="px-6 pt-6 pb-4 flex flex-col items-center text-center">
+                    <div className="w-12 h-12 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 flex items-center justify-center mb-3">
+                        <ShieldAlert size={22} className="text-[#00ff88]" />
+                    </div>
+                    <h3 className="text-base font-bold text-white mb-1">{title}</h3>
+                    <p className="text-sm text-slate-400">{message}</p>
+                </div>
+                <div className="px-6 pb-5 flex gap-3">
+                    <button onClick={onCancel} className="flex-1 py-2 rounded-xl text-sm font-semibold text-slate-400 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Hủy</button>
+                    <button onClick={onConfirm} className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${confirmCls}`}>{confirmLabel}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 /* ── helpers ── */
 const fmtDate = (d) =>
@@ -42,7 +63,12 @@ function PriorityBadge({ priority }) {
 /* ── Detail Panel ── */
 function DetailPanel({ report, onClose, onAction, actionLoading }) {
     const [resolution, setResolution] = useState('');
-    const [confirmStep, setConfirmStep] = useState(false); // show textarea for Resolved
+    const [confirmStep, setConfirmStep] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null); // {status, resolution}
+
+    const triggerAction = (status, res = '') => {
+        setPendingAction({ status, resolution: res });
+    };
 
     const status = report?.Status;
 
@@ -136,7 +162,7 @@ function DetailPanel({ report, onClose, onAction, actionLoading }) {
                 {/* OPEN → button "Tiếp nhận" */}
                 {status === 'Open' && (
                     <button
-                        onClick={() => onAction('InProgress')}
+                        onClick={() => triggerAction('InProgress')}
                         disabled={actionLoading}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm transition disabled:opacity-50"
                     >
@@ -165,7 +191,7 @@ function DetailPanel({ report, onClose, onAction, actionLoading }) {
                             Hủy
                         </button>
                         <button
-                            onClick={() => onAction('Resolved', resolution)}
+                            onClick={() => triggerAction('Resolved', resolution)}
                             disabled={actionLoading}
                             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#00ff88] hover:bg-[#00d975] text-black font-semibold text-sm transition disabled:opacity-50"
                         >
@@ -184,6 +210,25 @@ function DetailPanel({ report, onClose, onAction, actionLoading }) {
                     </div>
                 )}
             </div>
+
+            {/* Confirm Dialog */}
+            {pendingAction && (
+                <ConfirmDialog
+                    title={pendingAction.status === 'InProgress' ? 'Tiếp nhận báo cáo?' : 'Xác nhận hoàn thành?'}
+                    message={pendingAction.status === 'InProgress'
+                        ? 'Bạn có chắc chắn muốn tiếp nhận và bắt đầu xử lý báo cáo này không?'
+                        : 'Sau khi xác nhận, phản hồi sẽ được gửi đến chủ nhà hàng và báo cáo sẽ đóng lại.'}
+                    confirmLabel={pendingAction.status === 'InProgress' ? 'Tiếp nhận' : 'Xác nhận & Gửi'}
+                    confirmCls={pendingAction.status === 'InProgress'
+                        ? 'bg-blue-500 hover:bg-blue-400 text-white'
+                        : 'bg-[#00ff88] hover:bg-[#00d975] text-black'}
+                    onCancel={() => setPendingAction(null)}
+                    onConfirm={() => {
+                        onAction(pendingAction.status, pendingAction.resolution);
+                        setPendingAction(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
