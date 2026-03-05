@@ -1,14 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
+import { getOwnerTickets, getOwnerTicketById, createOwnerTicket } from '../api/ownerApi';
 import {
-    getOwnerTickets,
-    getOwnerTicketById,
-    createOwnerTicket,
-    replyOwnerTicket,
-} from '../api/ownerApi';
-import {
-    MessageSquare, Plus, Send, X, Clock, CheckCircle,
-    AlertCircle, ChevronRight, RefreshCw, FileText,
+    Plus, X, Clock, CheckCircle, AlertCircle,
+    FileText, RefreshCw, ChevronRight, MessageSquare,
 } from 'lucide-react';
 
 /* ── helpers ── */
@@ -16,7 +11,7 @@ const fmtDate = (d) =>
     d ? new Date(d).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
 const STATUS_CFG = {
-    Open: { label: 'Mới mở', cls: 'bg-orange-100 text-orange-600 border border-orange-200' },
+    Open: { label: 'Mới gửi', cls: 'bg-orange-100 text-orange-600 border border-orange-200' },
     InProgress: { label: 'Đang xử lý', cls: 'bg-blue-100 text-blue-600 border border-blue-200' },
     Resolved: { label: 'Đã giải quyết', cls: 'bg-emerald-100 text-emerald-600 border border-emerald-200' },
     Closed: { label: 'Đã đóng', cls: 'bg-gray-100 text-gray-500 border border-gray-200' },
@@ -103,24 +98,20 @@ function NewTicketModal({ onClose, onSubmit, loading }) {
     );
 }
 
-/* ── Chat Panel ── */
-function ChatPanel({ ticket, onClose, onReply, replyLoading }) {
-    const [replyText, setReplyText] = useState('');
-    const bottomRef = useRef(null);
-
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [ticket?.messages]);
-
-    const handleSend = () => {
-        if (!replyText.trim()) return;
-        onReply(replyText);
-        setReplyText('');
-    };
-
+/* ── Detail Panel ── */
+function DetailPanel({ ticket, onClose }) {
     if (!ticket) return null;
 
-    const isClosed = ticket.status === 'Closed' || ticket.status === 'Resolved';
+    // Parse admin resolution (last admin message if JSON, or raw text)
+    let adminResponse = ticket.resolution || '';
+    if (adminResponse) {
+        try {
+            const lines = adminResponse.split('\n').filter(Boolean);
+            const lastAdminMsg = lines.map(l => { try { return JSON.parse(l); } catch { return null; } })
+                .filter(m => m && m.role === 'admin').at(-1);
+            if (lastAdminMsg) adminResponse = lastAdminMsg.text;
+        } catch { /* keep raw */ }
+    }
 
     return (
         <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -128,73 +119,59 @@ function ChatPanel({ ticket, onClose, onReply, replyLoading }) {
             <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                 <div className="flex-1 min-w-0 pr-3">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs text-gray-400 font-mono">#{String(ticket.ticketID).padStart(4, '0')}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">#{String(ticket.ticketID).padStart(4, '0')}</span>
                         <StatusBadge status={ticket.status} />
                         <PriorityBadge priority={ticket.priority} />
                     </div>
-                    <p className="text-gray-900 font-bold text-sm leading-snug truncate">{ticket.subject}</p>
+                    <p className="text-gray-900 font-bold text-sm">{ticket.subject}</p>
                     <p className="text-gray-400 text-xs mt-0.5">{fmtDate(ticket.createdAt)}</p>
                 </div>
-                <button onClick={onClose} className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
+                <button onClick={onClose} className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition">
                     <X size={16} />
                 </button>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-                {ticket.messages?.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Chưa có tin nhắn</div>
-                ) : (
-                    ticket.messages?.map((msg, i) => {
-                        const isOwner = msg.role === 'owner';
-                        return (
-                            <div key={i} className={`flex ${isOwner ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] ${isOwner ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                                    <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isOwner
-                                        ? 'bg-blue-600 text-white rounded-br-md'
-                                        : 'bg-gray-100 text-gray-800 rounded-bl-md'}`}>
-                                        {msg.text}
-                                    </div>
-                                    <span className="text-[10px] text-gray-400 px-1">
-                                        {isOwner ? 'Bạn' : '🛡️ Admin'} · {fmtDate(msg.time)}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-                <div ref={bottomRef} />
-            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {/* Description */}
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Nội dung báo cáo</p>
+                    <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed">
+                        {ticket.description || <span className="text-gray-400 italic">Không có nội dung</span>}
+                    </div>
+                </div>
 
-            {/* Reply box */}
-            {!isClosed ? (
-                <div className="px-4 py-3 border-t border-gray-100 shrink-0">
-                    <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200 px-3 py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/10 transition">
-                        <textarea
-                            value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                            placeholder="Nhập tin nhắn... (Enter để gửi)"
-                            rows={2}
-                            className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 focus:outline-none resize-none"
-                        />
-                        <button
-                            onClick={handleSend}
-                            disabled={!replyText.trim() || replyLoading}
-                            className="shrink-0 w-8 h-8 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center justify-center transition disabled:opacity-40"
-                        >
-                            <Send size={14} className="text-white" />
-                        </button>
+                {/* Admin response */}
+                {(ticket.status === 'Resolved' || ticket.status === 'Closed') && (
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Phản hồi từ Admin</p>
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <CheckCircle size={14} className="text-emerald-600" />
+                                <span className="text-xs font-semibold text-emerald-700">Admin đã phản hồi</span>
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed">
+                                {adminResponse || <span className="text-gray-400 italic">Không có ghi chú</span>}
+                            </p>
+                        </div>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1.5 px-1">Shift+Enter để xuống dòng</p>
-                </div>
-            ) : (
-                <div className="px-4 py-3 border-t border-gray-100 shrink-0">
-                    <div className={`text-center text-xs font-semibold py-2 rounded-xl ${ticket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
-                        {ticket.status === 'Resolved' ? '✓ Vấn đề đã được giải quyết' : 'Ticket đã đóng'}
+                )}
+
+                {/* Waiting state */}
+                {ticket.status === 'Open' && (
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                        <Clock size={32} className="mb-2 opacity-40" />
+                        <p className="text-sm">Báo cáo đang chờ Admin tiếp nhận</p>
                     </div>
-                </div>
-            )}
+                )}
+                {ticket.status === 'InProgress' && (
+                    <div className="flex flex-col items-center justify-center py-8 text-blue-400">
+                        <AlertCircle size={32} className="mb-2" />
+                        <p className="text-sm font-semibold">Admin đang xử lý báo cáo của bạn</p>
+                        <p className="text-xs text-gray-400 mt-1">Vui lòng chờ phản hồi...</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -210,13 +187,14 @@ export default function OwnerTickets() {
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [createLoading, setCreateLoading] = useState(false);
-    const [replyLoading, setReplyLoading] = useState(false);
     const [toast, setToast] = useState(null);
+
+    const LIMIT = 8;
 
     const fetchList = useCallback(async (p = 1) => {
         setLoading(true);
         try {
-            const params = { page: p, limit: 8 };
+            const params = { page: p, limit: LIMIT };
             if (filterStatus !== 'All') params.status = filterStatus;
             const res = await getOwnerTickets(params);
             setTickets(res.data.tickets || []);
@@ -262,22 +240,6 @@ export default function OwnerTickets() {
         }
     };
 
-    const handleReply = async (text) => {
-        if (!selectedTicket) return;
-        setReplyLoading(true);
-        try {
-            await replyOwnerTicket(selectedTicket.ticketID, { text });
-            const res = await getOwnerTicketById(selectedTicket.ticketID);
-            setSelectedTicket(res.data);
-            fetchList(page);
-        } catch (e) {
-            showToast(e.response?.data?.message || 'Không thể gửi phản hồi', 'error');
-        } finally {
-            setReplyLoading(false);
-        }
-    };
-
-    const LIMIT = 8;
     const totalPages = Math.ceil(total / LIMIT);
 
     return (
@@ -291,14 +253,13 @@ export default function OwnerTickets() {
                 </div>
             )}
 
-            {/* New Ticket Modal */}
             {showNew && <NewTicketModal onClose={() => setShowNew(false)} onSubmit={handleCreate} loading={createLoading} />}
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Báo cáo & Hỗ trợ</h1>
-                    <p className="text-gray-400 text-sm mt-0.5">Gửi báo cáo và trao đổi trực tiếp với Admin hệ thống</p>
+                    <p className="text-gray-400 text-sm mt-0.5">Gửi báo cáo đến Admin hệ thống và theo dõi trạng thái xử lý</p>
                 </div>
                 <button
                     onClick={() => setShowNew(true)}
@@ -309,9 +270,9 @@ export default function OwnerTickets() {
                 </button>
             </div>
 
-            <div className="flex gap-5 h-[calc(100vh-200px)] min-h-[500px]">
-                {/* ── LEFT: Ticket List ── */}
-                <div className={`flex flex-col ${selectedTicket ? 'w-[42%]' : 'w-full'} transition-all duration-300`}>
+            <div className="flex gap-5 min-h-[500px]" style={{ height: 'calc(100vh - 210px)' }}>
+                {/* LEFT: Ticket List */}
+                <div className={`flex flex-col ${selectedTicket ? 'w-[44%]' : 'w-full'} transition-all duration-300`}>
                     {/* Filters */}
                     <div className="flex items-center gap-2 mb-4">
                         {['All', 'Open', 'InProgress', 'Resolved', 'Closed'].map(s => (
@@ -329,7 +290,7 @@ export default function OwnerTickets() {
                     </div>
 
                     {/* List */}
-                    <div className="flex-1 overflow-y-auto space-y-2">
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1">
                         {loading ? (
                             Array.from({ length: 4 }).map((_, i) => (
                                 <div key={i} className="bg-white rounded-xl p-4 animate-pulse">
@@ -349,31 +310,20 @@ export default function OwnerTickets() {
                             tickets.map(t => (
                                 <div key={t.ticketID}
                                     onClick={() => openTicket(t.ticketID)}
-                                    className={`bg-white rounded-xl p-4 border cursor-pointer transition-all hover:shadow-md ${selectedTicket?.ticketID === t.ticketID
+                                    className={`bg-white rounded-xl p-4 border cursor-pointer transition-all hover:shadow-sm ${selectedTicket?.ticketID === t.ticketID
                                         ? 'border-blue-400 ring-2 ring-blue-500/20'
                                         : 'border-gray-100 hover:border-gray-200'}`}>
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                                 <span className="text-[10px] text-gray-400 font-mono">#{String(t.ticketID).padStart(4, '0')}</span>
                                                 <StatusBadge status={t.status} />
                                                 <PriorityBadge priority={t.priority} />
                                             </div>
                                             <p className="text-sm font-semibold text-gray-800 truncate">{t.subject}</p>
-                                            {t.lastReply && (
-                                                <p className="text-xs text-gray-400 mt-1 truncate">
-                                                    {t.lastReply.role === 'admin' ? '🛡️ Admin: ' : 'Bạn: '}{t.lastReply.text}
-                                                </p>
-                                            )}
+                                            <p className="text-xs text-gray-400 mt-1">{fmtDate(t.createdAt)}</p>
                                         </div>
-                                        <div className="shrink-0 text-right">
-                                            <p className="text-[10px] text-gray-400">{fmtDate(t.createdAt)}</p>
-                                            <div className="flex items-center gap-1 justify-end mt-1.5">
-                                                <MessageSquare size={11} className="text-gray-300" />
-                                                <span className="text-[10px] text-gray-400">{t.messageCount}</span>
-                                                <ChevronRight size={13} className="text-gray-300 ml-1" />
-                                            </div>
-                                        </div>
+                                        <ChevronRight size={16} className="text-gray-300 mt-1 shrink-0" />
                                     </div>
                                 </div>
                             ))
@@ -386,22 +336,16 @@ export default function OwnerTickets() {
                             <span className="text-xs text-gray-400">Tổng {total} báo cáo</span>
                             <div className="flex gap-2">
                                 <button onClick={() => fetchList(page - 1)} disabled={page <= 1}
-                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-500 disabled:opacity-40 hover:border-gray-300 transition">
-                                    Trước
-                                </button>
-                                <span className="px-3 py-1.5 text-xs text-gray-500">
-                                    {page}/{totalPages}
-                                </span>
+                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-500 disabled:opacity-40 hover:border-gray-300 transition">Trước</button>
+                                <span className="px-3 py-1.5 text-xs text-gray-500">{page}/{totalPages}</span>
                                 <button onClick={() => fetchList(page + 1)} disabled={page >= totalPages}
-                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-500 disabled:opacity-40 hover:border-gray-300 transition">
-                                    Sau
-                                </button>
+                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-500 disabled:opacity-40 hover:border-gray-300 transition">Sau</button>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* ── RIGHT: Chat Panel ── */}
+                {/* RIGHT: Detail Panel */}
                 {selectedTicket && (
                     <div className="flex-1 min-w-0">
                         {loadingDetail ? (
@@ -409,12 +353,7 @@ export default function OwnerTickets() {
                                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                             </div>
                         ) : (
-                            <ChatPanel
-                                ticket={selectedTicket}
-                                onClose={() => setSelectedTicket(null)}
-                                onReply={handleReply}
-                                replyLoading={replyLoading}
-                            />
+                            <DetailPanel ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
                         )}
                     </div>
                 )}

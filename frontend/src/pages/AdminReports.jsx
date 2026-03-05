@@ -7,493 +7,424 @@ import {
     updateReportStatus,
     addReportResponse
 } from '../api/adminApi';
+import {
+    Search, RefreshCw, ChevronRight, FileText,
+    Clock, Loader2, CheckCircle2, XCircle, X, AlertTriangle
+} from 'lucide-react';
 
+/* ── helpers ── */
+const fmtDate = (d) =>
+    d ? new Date(d).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+
+const STATUS_CFG = {
+    Open: { label: 'Mới gửi', cls: 'bg-orange-500/15 text-orange-400 border border-orange-500/25' },
+    InProgress: { label: 'Đang xử lý', cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/25' },
+    Resolved: { label: 'Đã hoàn thành', cls: 'bg-[#00ff88]/15 text-[#00ff88] border border-[#00ff88]/25' },
+    Closed: { label: 'Đã đóng', cls: 'bg-gray-500/15 text-gray-400 border border-gray-500/25' },
+};
+
+const PRIORITY_CFG = {
+    Low: { label: 'Thấp', cls: 'bg-green-500/10 text-green-400' },
+    Medium: { label: 'Trung bình', cls: 'bg-yellow-500/10 text-yellow-400' },
+    High: { label: 'Cao', cls: 'bg-red-500/10 text-red-400' },
+};
+
+function StatusBadge({ status }) {
+    const c = STATUS_CFG[status] || STATUS_CFG.Open;
+    return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.cls}`}>{c.label}</span>;
+}
+
+function PriorityBadge({ priority }) {
+    const c = PRIORITY_CFG[priority] || PRIORITY_CFG.Medium;
+    return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${c.cls}`}>{c.label}</span>;
+}
+
+/* ── Detail Panel ── */
+function DetailPanel({ report, onClose, onAction, actionLoading }) {
+    const [resolution, setResolution] = useState('');
+    const [confirmStep, setConfirmStep] = useState(false); // show textarea for Resolved
+
+    const status = report?.Status;
+
+    // Extract admin resolution text (latest admin message in JSON format, or raw)
+    const getAdminText = () => {
+        if (!report?.Resolution) return '';
+        const lines = report.Resolution.split('\n').filter(Boolean);
+        for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+                const msg = JSON.parse(lines[i]);
+                if (msg.role === 'admin') return msg.text;
+            } catch { /* continue */ }
+        }
+        return report.Resolution; // fallback raw
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-[#0f1612] border border-slate-700/50 rounded-xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-start justify-between px-5 py-4 border-b border-slate-800 shrink-0">
+                <div className="flex-1 min-w-0 pr-3">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="text-[10px] text-slate-500 font-mono">#{String(report.TicketID).padStart(4, '0')}</span>
+                        <StatusBadge status={status} />
+                        <PriorityBadge priority={report.Priority} />
+                    </div>
+                    <p className="text-white font-bold text-sm leading-snug">{report.Subject}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                        <span className="text-slate-400 text-xs">{report.UserName}</span>
+                        {report.RestaurantName && <span className="text-slate-600 text-xs">• {report.RestaurantName}</span>}
+                        <span className="text-slate-600 text-xs ml-auto">{fmtDate(report.CreatedAt)}</span>
+                    </div>
+                </div>
+                <button onClick={onClose} className="shrink-0 p-1.5 rounded-lg text-slate-500 hover:bg-slate-800 hover:text-white transition">
+                    <X size={16} />
+                </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                {/* Description */}
+                <div>
+                    <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Nội dung báo cáo</p>
+                    <div className="bg-slate-800/50 rounded-xl p-4 text-sm text-slate-300 leading-relaxed">
+                        {report.Description || <span className="text-slate-600 italic">Không có nội dung</span>}
+                    </div>
+                </div>
+
+                {/* Previous resolution (Resolved) */}
+                {(status === 'Resolved' || status === 'Closed') && (
+                    <div>
+                        <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Phản hồi đã gửi</p>
+                        <div className="bg-[#00ff88]/5 border border-[#00ff88]/20 rounded-xl p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <CheckCircle2 size={14} className="text-[#00ff88]" />
+                                <span className="text-xs font-semibold text-[#00ff88]">Đã hoàn thành</span>
+                            </div>
+                            <p className="text-sm text-slate-300 leading-relaxed">{getAdminText() || <span className="text-slate-600 italic">Không có ghi chú</span>}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* InProgress confirm step */}
+                {status === 'InProgress' && !confirmStep && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Loader2 size={14} className="text-blue-400 animate-spin" />
+                            <span className="text-xs font-semibold text-blue-400">Đang xử lý</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Báo cáo đã được tiếp nhận. Nhấn "Xác nhận hoàn thành" khi xử lý xong.</p>
+                    </div>
+                )}
+
+                {/* Resolve form */}
+                {status === 'InProgress' && confirmStep && (
+                    <div>
+                        <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Ghi chú phản hồi cho chủ nhà hàng</p>
+                        <textarea
+                            value={resolution}
+                            onChange={e => setResolution(e.target.value)}
+                            placeholder="Nhập nội dung phản hồi và kết quả xử lý..."
+                            rows={5}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]/40 resize-none"
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="px-5 py-4 border-t border-slate-800 shrink-0">
+                {/* OPEN → button "Tiếp nhận" */}
+                {status === 'Open' && (
+                    <button
+                        onClick={() => onAction('InProgress')}
+                        disabled={actionLoading}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm transition disabled:opacity-50"
+                    >
+                        <Clock size={15} />
+                        {actionLoading ? 'Đang xử lý...' : 'Tiếp nhận & Bắt đầu xử lý'}
+                    </button>
+                )}
+
+                {/* INPROGRESS → two buttons */}
+                {status === 'InProgress' && !confirmStep && (
+                    <button
+                        onClick={() => setConfirmStep(true)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#00ff88] hover:bg-[#00d975] text-black font-semibold text-sm transition"
+                    >
+                        <CheckCircle2 size={15} />
+                        Xác nhận hoàn thành
+                    </button>
+                )}
+
+                {status === 'InProgress' && confirmStep && (
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => { setConfirmStep(false); setResolution(''); }}
+                            className="px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white text-sm font-semibold transition"
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            onClick={() => onAction('Resolved', resolution)}
+                            disabled={actionLoading}
+                            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#00ff88] hover:bg-[#00d975] text-black font-semibold text-sm transition disabled:opacity-50"
+                        >
+                            <CheckCircle2 size={15} />
+                            {actionLoading ? 'Đang lưu...' : 'Xác nhận & Gửi phản hồi'}
+                        </button>
+                    </div>
+                )}
+
+                {/* Already resolved/closed */}
+                {(status === 'Resolved' || status === 'Closed') && (
+                    <div className={`text-center text-xs font-semibold py-2.5 rounded-xl ${status === 'Resolved'
+                        ? 'bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88]'
+                        : 'bg-slate-800 border border-slate-700 text-slate-500'}`}>
+                        {status === 'Resolved' ? '✓ Báo cáo đã được xử lý và phản hồi' : 'Báo cáo đã đóng'}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ── Stat Card ── */
+function StatCard({ label, count, color }) {
+    const colors = {
+        orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+        blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+        green: 'bg-[#00ff88]/10 border-[#00ff88]/20 text-[#00ff88]',
+        gray: 'bg-gray-500/10 border-gray-500/20 text-gray-400',
+    };
+    return (
+        <div className={`rounded-xl p-5 border ${colors[color]}`}>
+            <p className="text-slate-400 text-xs mb-1">{label}</p>
+            <p className="text-white text-2xl font-bold">{count}</p>
+        </div>
+    );
+}
+
+/* ── Main ── */
 export default function AdminReports() {
     const [reports, setReports] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({
-        status: 'All',
-        priority: 'All',
-        search: ''
-    });
-    const [pagination, setPagination] = useState({
-        currentPage: 1,
-        totalPages: 1,
-        totalRecords: 0,
-        limit: 10
-    });
+    const [search, setSearch] = useState('');
+    const [filterStatus, setFilterStatus] = useState('All');
+    const [filterPriority, setFilterPriority] = useState('All');
+    const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 });
+    const [selected, setSelected] = useState(null);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [toast, setToast] = useState(null);
 
-    // Modal states
-    const [selectedReport, setSelectedReport] = useState(null);
-    const [showDetailModal, setShowDetailModal] = useState(false);
-    const [showResponseModal, setShowResponseModal] = useState(false);
-    const [responseText, setResponseText] = useState('');
+    useEffect(() => { loadReports(); loadStats(); }, [filterStatus, filterPriority, search, pagination.currentPage]);
 
-    useEffect(() => {
-        loadReports();
-        loadStats();
-    }, [filters, pagination.currentPage]);
+    const showToast = (msg, type = 'success') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     const loadReports = async () => {
         try {
             setLoading(true);
-            const params = {
-                ...filters,
-                page: pagination.currentPage,
-                limit: pagination.limit
-            };
-
-            // Remove 'All' filters
-            if (params.status === 'All') delete params.status;
-            if (params.priority === 'All') delete params.priority;
-            if (!params.search) delete params.search;
-
-            const response = await getAllReports(params);
-            setReports(response.data.reports);
-            setPagination(response.data.pagination);
-        } catch (error) {
-            console.error('Error loading reports:', error);
-        } finally {
-            setLoading(false);
-        }
+            const params = { page: pagination.currentPage, limit: pagination.limit };
+            if (filterStatus !== 'All') params.status = filterStatus;
+            if (filterPriority !== 'All') params.priority = filterPriority;
+            if (search.trim()) params.search = search.trim();
+            const res = await getAllReports(params);
+            setReports(res.data.reports || []);
+            setPagination(p => ({ ...p, ...res.data.pagination }));
+        } catch { showToast('Không thể tải dữ liệu', 'error'); }
+        finally { setLoading(false); }
     };
 
     const loadStats = async () => {
+        try { const r = await getReportStats(); setStats(r.data); } catch { /* silent */ }
+    };
+
+    const openReport = async (id) => {
         try {
-            const response = await getReportStats();
-            setStats(response.data);
-        } catch (error) {
-            console.error('Error loading stats:', error);
-        }
+            const res = await getReportById(id);
+            setSelected(res.data);
+        } catch { showToast('Không thể tải chi tiết', 'error'); }
     };
 
-    const handleSearch = (e) => {
-        setFilters({ ...filters, search: e.target.value });
-        setPagination({ ...pagination, currentPage: 1 });
-    };
-
-    const handleFilterChange = (key, value) => {
-        setFilters({ ...filters, [key]: value });
-        setPagination({ ...pagination, currentPage: 1 });
-    };
-
-    const handleViewDetails = async (ticketId) => {
+    /* Action handler: change status + optionally send resolution */
+    const handleAction = async (newStatus, resolutionText = '') => {
+        if (!selected) return;
+        setActionLoading(true);
         try {
-            const response = await getReportById(ticketId);
-            setSelectedReport(response.data);
-            setShowDetailModal(true);
-        } catch (error) {
-            console.error('Error fetching report details:', error);
-        }
-    };
-
-    const handleStatusUpdate = async (ticketId, newStatus) => {
-        try {
-            await updateReportStatus(ticketId, { status: newStatus });
-            loadReports(); // Refresh list
-            if (showDetailModal && selectedReport?.TicketID === ticketId) {
-                handleViewDetails(ticketId); // Refresh modal
+            if (newStatus === 'Resolved' && resolutionText.trim()) {
+                // Send response then mark resolved
+                await addReportResponse(selected.TicketID, { response: resolutionText });
+                await updateReportStatus(selected.TicketID, { status: 'Resolved' });
+            } else {
+                await updateReportStatus(selected.TicketID, { status: newStatus });
             }
-        } catch (error) {
-            console.error('Error updating status:', error);
+            showToast(newStatus === 'Resolved' ? 'Đã hoàn thành và gửi phản hồi!' : 'Đã tiếp nhận báo cáo');
+            await openReport(selected.TicketID);
+            loadReports(); loadStats();
+        } catch (e) {
+            showToast(e.response?.data?.message || 'Có lỗi xảy ra', 'error');
+        } finally {
+            setActionLoading(false);
         }
     };
-
-    const handleAddResponse = async () => {
-        if (!responseText.trim()) return;
-
-        try {
-            await addReportResponse(selectedReport.TicketID, { response: responseText });
-            setResponseText('');
-            setShowResponseModal(false);
-            loadReports();
-            if (showDetailModal) {
-                handleViewDetails(selectedReport.TicketID);
-            }
-        } catch (error) {
-            console.error('Error adding response:', error);
-        }
-    };
-
-    const getStatusBadge = (status) => {
-        const configs = {
-            Open: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-            InProgress: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-            Resolved: 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20',
-            Closed: 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-        };
-        return configs[status] || configs.Open;
-    };
-
-    const getPriorityBadge = (priority) => {
-        const configs = {
-            Low: 'bg-green-500/10 text-green-400',
-            Medium: 'bg-yellow-500/10 text-yellow-400',
-            High: 'bg-red-500/10 text-red-400'
-        };
-        return configs[priority] || configs.Medium;
-    };
-
-    const getStatusLabel = (status) => {
-        const labels = {
-            Open: 'Mới mở',
-            InProgress: 'Xử lý',
-            Resolved: 'Hoàn thành',
-            Closed: 'Đóng'
-        };
-        return labels[status] || status;
-    };
-
-    if (loading && reports.length === 0) {
-        return (
-            <AdminLayout>
-                <div className="min-h-[60vh] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00ff88]"></div>
-                </div>
-            </AdminLayout>
-        );
-    }
 
     return (
         <AdminLayout>
+            {/* Toast */}
+            {toast && (
+                <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-xl shadow-xl text-sm font-semibold
+                    ${toast.type === 'error'
+                        ? 'bg-red-500/20 border border-red-500/40 text-red-300'
+                        : 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'}`}>
+                    {toast.type === 'error' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+                    {toast.msg}
+                </div>
+            )}
+
             {/* Header */}
             <div className="mb-6">
-                <h1 className="text-2xl font-bold text-white mb-2">Quản lý Report Hệ thống</h1>
-                <p className="text-gray-400 text-sm">Theo dõi và xử lý các yêu cầu hỗ trợ từ chủ nhà hàng</p>
+                <h1 className="text-2xl font-bold text-white">Quản lý Báo cáo</h1>
+                <p className="text-slate-500 text-sm mt-1">Tiếp nhận và xử lý báo cáo từ chủ nhà hàng</p>
             </div>
 
-            {/* Filters & Search */}
-            <div className="bg-[#142920] rounded-xl p-4 mb-6 border border-[#1f3d2f]">
-                <div className="grid grid-cols-4 gap-4">
-                    {/* Search */}
-                    <div className="col-span-2">
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm theo tiêu đề, nội dung..."
-                            value={filters.search}
-                            onChange={handleSearch}
-                            className="w-full bg-[#0f1612] border border-[#1a2b22] rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff88]/30"
-                        />
-                    </div>
-
-                    {/* Status Filter */}
-                    <select
-                        value={filters.status}
-                        onChange={(e) => handleFilterChange('status', e.target.value)}
-                        className="bg-[#0f1612] border border-[#1a2b22] rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-[#00ff88]/30"
-                    >
-                        <option value="All">Tất cả trạng thái</option>
-                        <option value="Open">Mới mở</option>
-                        <option value="InProgress">Đang xử lý</option>
-                        <option value="Resolved">Hoàn thành</option>
-                        <option value="Closed">Đã đóng</option>
-                    </select>
-
-                    {/* Priority Filter */}
-                    <select
-                        value={filters.priority}
-                        onChange={(e) => handleFilterChange('priority', e.target.value)}
-                        className="bg-[#0f1612] border border-[#1a2b22] rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-[#00ff88]/30"
-                    >
-                        <option value="All">Tất cả mức độ</option>
-                        <option value="Low">Thấp</option>
-                        <option value="Medium">Trung bình</option>
-                        <option value="High">Cao</option>
-                    </select>
-                </div>
-            </div>
-
-            {/* Statistics Cards */}
+            {/* Stats */}
             {stats && (
-                <div className="grid grid-cols-5 gap-4 mb-6">
-                    <StatCard
-                        title="Tổng tất cả report"
-                        count={stats.totalThisMonth}
-                        color="blue"
-                    />
-                    <StatCard
-                        title="Mới mở"
-                        count={stats.byStatus.Open}
-                        color="orange"
-                    />
-                    <StatCard
-                        title="Đang xử lý"
-                        count={stats.byStatus.InProgress}
-                        color="blue"
-                    />
-                    <StatCard
-                        title="Hoàn thành"
-                        count={stats.byStatus.Resolved}
-                        color="green"
-                    />
-                    <StatCard
-                        title="Đã đóng"
-                        count={stats.byStatus.Closed || 0}
-                        color="gray"
-                    />
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                    <StatCard label="Mới gửi" count={stats.byStatus.Open || 0} color="orange" />
+                    <StatCard label="Đang xử lý" count={stats.byStatus.InProgress || 0} color="blue" />
+                    <StatCard label="Đã hoàn thành" count={stats.byStatus.Resolved || 0} color="green" />
+                    <StatCard label="Tổng tất cả" count={stats.totalThisMonth || 0} color="gray" />
                 </div>
             )}
 
-            {/* Reports Table */}
-            <div className="bg-[#0f1612] rounded-xl border border-[#1a2b22] overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-[#142920] border-b border-[#1a2b22]">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase">REF</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Ưu tiên</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Người gửi</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Nội dung</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Trạng thái</th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#1a2b22]">
-                        {reports.map((report) => (
-                            <tr key={report.TicketID} className="hover:bg-[#1a2b22]/30 transition">
-                                <td className="px-6 py-4">
-                                    <span className="text-[#00ff88] font-mono text-sm">
-                                        #{String(report.TicketID).padStart(4, '0')}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getPriorityBadge(report.Priority)}`}>
-                                        {report.Priority}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div>
-                                        <p className="text-white text-sm font-medium">{report.UserName}</p>
-                                        <p className="text-gray-500 text-xs">{report.RestaurantName || 'N/A'}</p>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <p className="text-white text-sm font-medium line-clamp-1">{report.Subject}</p>
-                                    <p className="text-gray-500 text-xs line-clamp-1">{report.Description}</p>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`inline-block px-3 py-1 rounded-lg text-xs font-semibold border whitespace-nowrap ${getStatusBadge(report.Status)}`}>
-                                        {getStatusLabel(report.Status)}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button
-                                            onClick={() => handleViewDetails(report.TicketID)}
-                                            className="px-3 py-1 bg-[#00ff88]/10 text-[#00ff88] rounded-lg text-xs font-semibold hover:bg-[#00ff88]/20 transition"
-                                        >
-                                            Xem
-                                        </button>
-                                        {report.Status !== 'Resolved' && (
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedReport(report);
-                                                    setShowResponseModal(true);
-                                                }}
-                                                className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/20 transition"
-                                            >
-                                                Phản hồi
-                                            </button>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between px-6 py-4 border-t border-[#1a2b22]">
-                    <p className="text-gray-500 text-sm">
-                        Hiển thị {((pagination.currentPage - 1) * pagination.limit) + 1} - {Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)} trong tổng số {pagination.totalRecords}
-                    </p>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setPagination({ ...pagination, currentPage: pagination.currentPage - 1 })}
-                            disabled={pagination.currentPage === 1}
-                            className="px-4 py-2 bg-[#142920] text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1a2b22] transition"
-                        >
-                            Trước
-                        </button>
-                        <span className="px-4 py-2 text-white text-sm">
-                            Trang {pagination.currentPage} / {pagination.totalPages}
-                        </span>
-                        <button
-                            onClick={() => setPagination({ ...pagination, currentPage: pagination.currentPage + 1 })}
-                            disabled={pagination.currentPage >= pagination.totalPages}
-                            className="px-4 py-2 bg-[#142920] text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1a2b22] transition"
-                        >
-                            Sau
+            <div className="flex gap-5" style={{ height: 'calc(100vh - 290px)', minHeight: '480px' }}>
+                {/* LEFT: List */}
+                <div className={`flex flex-col ${selected ? 'w-[55%]' : 'w-full'} transition-all duration-300`}>
+                    {/* Filters */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="relative flex-1 max-w-xs">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                                type="text"
+                                placeholder="Tìm theo tiêu đề, tên..."
+                                value={search}
+                                onChange={e => { setSearch(e.target.value); setPagination(p => ({ ...p, currentPage: 1 })); }}
+                                className="w-full pl-9 pr-4 py-2 bg-[#0f1612] border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+                            />
+                        </div>
+                        <select
+                            value={filterStatus}
+                            onChange={e => { setFilterStatus(e.target.value); setPagination(p => ({ ...p, currentPage: 1 })); }}
+                            className="bg-[#0f1612] border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                            <option value="All">Tất cả trạng thái</option>
+                            <option value="Open">Mới gửi</option>
+                            <option value="InProgress">Đang xử lý</option>
+                            <option value="Resolved">Đã hoàn thành</option>
+                            <option value="Closed">Đã đóng</option>
+                        </select>
+                        <select
+                            value={filterPriority}
+                            onChange={e => { setFilterPriority(e.target.value); setPagination(p => ({ ...p, currentPage: 1 })); }}
+                            className="bg-[#0f1612] border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                            <option value="All">Tất cả ưu tiên</option>
+                            <option value="High">Cao</option>
+                            <option value="Medium">Trung bình</option>
+                            <option value="Low">Thấp</option>
+                        </select>
+                        <button onClick={loadReports} className="p-2 bg-[#0f1612] border border-slate-700 rounded-xl text-slate-400 hover:text-white transition">
+                            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                         </button>
                     </div>
+
+                    {/* Table */}
+                    <div className="flex-1 overflow-y-auto bg-[#0f1612] rounded-xl border border-slate-700/50 overflow-hidden">
+                        <table className="w-full">
+                            <thead className="sticky top-0 bg-[#0f1612] border-b border-slate-700/50">
+                                <tr className="text-left text-xs text-slate-500 uppercase tracking-wider">
+                                    <th className="px-4 py-3 font-semibold">REF</th>
+                                    <th className="px-4 py-3 font-semibold">Ưu tiên</th>
+                                    <th className="px-4 py-3 font-semibold">Nhà hàng</th>
+                                    <th className="px-4 py-3 font-semibold">Tiêu đề</th>
+                                    <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60">
+                                {loading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            {Array.from({ length: 5 }).map((_, j) => (
+                                                <td key={j} className="px-4 py-4"><div className="h-4 bg-slate-800 rounded w-3/4" /></td>
+                                            ))}
+                                        </tr>
+                                    ))
+                                ) : reports.length === 0 ? (
+                                    <tr><td colSpan={5} className="text-center py-16 text-slate-500">
+                                        <FileText size={36} className="mx-auto mb-3 opacity-30" />Không có báo cáo nào
+                                    </td></tr>
+                                ) : reports.map(r => (
+                                    <tr key={r.TicketID}
+                                        onClick={() => openReport(r.TicketID)}
+                                        className={`cursor-pointer hover:bg-slate-800/40 transition group
+                                            ${selected?.TicketID === r.TicketID ? 'border-l-4 border-l-emerald-500 bg-emerald-500/5' : 'border-l-4 border-l-transparent'}`}>
+                                        <td className="px-4 py-3.5">
+                                            <span className="text-emerald-500 font-mono text-xs">#{String(r.TicketID).padStart(4, '0')}</span>
+                                        </td>
+                                        <td className="px-4 py-3.5"><PriorityBadge priority={r.Priority} /></td>
+                                        <td className="px-4 py-3.5">
+                                            <p className="text-white text-sm font-medium">{r.UserName}</p>
+                                            <p className="text-slate-500 text-xs">{r.RestaurantName || '—'}</p>
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                            <p className="text-white text-sm font-medium line-clamp-1">{r.Subject}</p>
+                                            <p className="text-slate-500 text-xs line-clamp-1">{r.Description}</p>
+                                        </td>
+                                        <td className="px-4 py-3.5"><StatusBadge status={r.Status} /></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination */}
+                    {pagination.totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-3 pt-3">
+                            <span className="text-slate-500 text-xs">Tổng {pagination.totalRecords} báo cáo</span>
+                            <div className="flex gap-2">
+                                <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
+                                    disabled={pagination.currentPage <= 1}
+                                    className="px-3 py-1.5 bg-[#0f1612] border border-slate-700 rounded-lg text-xs text-slate-400 disabled:opacity-40 hover:text-white transition">Trước</button>
+                                <span className="px-3 py-1.5 text-xs text-slate-400">{pagination.currentPage}/{pagination.totalPages}</span>
+                                <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
+                                    disabled={pagination.currentPage >= pagination.totalPages}
+                                    className="px-3 py-1.5 bg-[#0f1612] border border-slate-700 rounded-lg text-xs text-slate-400 disabled:opacity-40 hover:text-white transition">Sau</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
 
-            {/* Detail Modal */}
-            {showDetailModal && selectedReport && (
-                <Modal onClose={() => setShowDetailModal(false)} title={`Report #${String(selectedReport.TicketID).padStart(4, '0')}`}>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-gray-400 text-sm">Tiêu đề</label>
-                            <p className="text-white font-medium">{selectedReport.Subject}</p>
-                        </div>
-                        <div>
-                            <label className="text-gray-400 text-sm">Mô tả</label>
-                            <p className="text-white">{selectedReport.Description}</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-gray-400 text-sm">Người gửi</label>
-                                <p className="text-white">{selectedReport.UserName}</p>
-                            </div>
-                            <div>
-                                <label className="text-gray-400 text-sm">Nhà hàng</label>
-                                <p className="text-white">{selectedReport.RestaurantName || 'N/A'}</p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-gray-400 text-sm">Ưu tiên</label>
-                                <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getPriorityBadge(selectedReport.Priority)}`}>
-                                    {selectedReport.Priority}
-                                </span>
-                            </div>
-                            <div>
-                                <label className="text-gray-400 text-sm block mb-1">Trạng thái</label>
-                                <select
-                                    value={selectedReport.Status}
-                                    onChange={(e) => handleStatusUpdate(selectedReport.TicketID, e.target.value)}
-                                    className="bg-[#0f1612] border border-[#1a2b22] rounded-lg px-3 py-1 text-sm text-white"
-                                >
-                                    <option value="Open">Mới mở</option>
-                                    <option value="InProgress">Đang xử lý</option>
-                                    <option value="Resolved">Hoàn thành</option>
-                                    <option value="Closed">Đã đóng</option>
-                                </select>
-                            </div>
-                        </div>
-                        {selectedReport.Resolution && (() => {
-                            const messages = selectedReport.Resolution.split('\n')
-                                .filter(Boolean)
-                                .map(line => { try { return JSON.parse(line); } catch { return null; } })
-                                .filter(Boolean);
-                            return messages.length > 0 ? (
-                                <div>
-                                    <label className="text-gray-400 text-sm block mb-2">Lịch sử trao đổi</label>
-                                    <div className="bg-[#0f1612] rounded-xl p-4 space-y-3 max-h-64 overflow-y-auto">
-                                        {messages.map((msg, i) => {
-                                            const isAdmin = msg.role === 'admin';
-                                            return (
-                                                <div key={i} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
-                                                    <div className={`max-w-[85%] flex flex-col gap-1 ${isAdmin ? 'items-end' : 'items-start'}`}>
-                                                        <div className={`px-3 py-2 rounded-xl text-sm leading-relaxed ${isAdmin
-                                                            ? 'bg-[#00ff88]/15 text-[#00ff88] border border-[#00ff88]/20'
-                                                            : 'bg-slate-700/60 text-slate-200'}`}>
-                                                            {msg.text}
-                                                        </div>
-                                                        <span className="text-[10px] text-gray-600 px-1">
-                                                            {isAdmin ? '🛡️ Admin' : '🏪 Chủ nhà hàng'} · {new Date(msg.time).toLocaleString('vi-VN')}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ) : null;
-                        })()}
-                    </div>
-                </Modal>
-            )}
-
-            {/* Response Modal */}
-            {showResponseModal && selectedReport && (
-                <Modal onClose={() => setShowResponseModal(false)} title="Thêm phản hồi">
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-gray-400 text-sm block mb-2">Report #{String(selectedReport.TicketID).padStart(4, '0')}</label>
-                            <p className="text-white font-medium mb-4">{selectedReport.Subject}</p>
-                        </div>
-                        <textarea
-                            value={responseText}
-                            onChange={(e) => setResponseText(e.target.value)}
-                            placeholder="Nhập phản hồi của bạn..."
-                            rows={6}
-                            className="w-full bg-[#0f1612] border border-[#1a2b22] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff88]/30 resize-none"
+                {/* RIGHT: Detail Panel */}
+                {selected && (
+                    <div className="flex-1 min-w-0">
+                        <DetailPanel
+                            report={selected}
+                            onClose={() => setSelected(null)}
+                            onAction={handleAction}
+                            actionLoading={actionLoading}
                         />
-                        <div className="flex gap-3 justify-end">
-                            <button
-                                onClick={() => setShowResponseModal(false)}
-                                className="px-4 py-2 bg-gray-500/10 text-gray-400 rounded-lg text-sm hover:bg-gray-500/20 transition"
-                            >
-                                Hủy
-                            </button>
-                            <button
-                                onClick={handleAddResponse}
-                                disabled={!responseText.trim()}
-                                className="px-4 py-2 bg-[#00ff88] text-black font-semibold rounded-lg text-sm hover:bg-[#00d975] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Gửi phản hồi
-                            </button>
-                        </div>
                     </div>
-                </Modal>
-            )}
+                )}
 
-            {/* Workflow Guidelines */}
-            <div className="mt-6 bg-[#0f1612] rounded-xl border border-[#1a2b22] p-6">
-                <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                    <span>ℹ️</span>
-                    <span>Quy trình xử lý Report</span>
-                </h3>
-                <ol className="space-y-2 text-gray-400 text-sm">
-                    <li>1. Kiểm tra nội dung và mức độ ưu tiên của report</li>
-                    <li>2. Cập nhật trạng thái sang "Đang xử lý" khi bắt đầu xem xét</li>
-                    <li>3. Thêm phản hồi cho chủ nhà hàng về tiến trình xử lý</li>
-                    <li>4. Sau khi giải quyết xong, cập nhật trạng thái "Đã giải quyết"</li>
-                </ol>
+                {/* Empty right placeholder */}
+                {!selected && (
+                    <div className="w-72 shrink-0 hidden lg:flex flex-col items-center justify-center bg-[#0f1612] border border-slate-700/50 border-dashed rounded-xl text-slate-600">
+                        <FileText size={36} className="mb-3 opacity-40" />
+                        <p className="text-sm">Chọn một báo cáo để xử lý</p>
+                    </div>
+                )}
             </div>
         </AdminLayout>
-    );
-}
-
-// Helper Components
-function StatCard({ title, count, color }) {
-    const colorConfigs = {
-        blue: 'bg-blue-500/10 border-blue-500/20',
-        orange: 'bg-orange-500/10 border-orange-500/20',
-        green: 'bg-[#00ff88]/10 border-[#00ff88]/20',
-        gray: 'bg-gray-500/10 border-gray-500/20'
-    };
-
-    return (
-        <div className={`rounded-xl p-6 border ${colorConfigs[color]}`}>
-            <p className="text-gray-400 text-sm mb-2">{title}</p>
-            <p className="text-white text-3xl font-bold">{count}</p>
-        </div>
-    );
-}
-
-function Modal({ children, onClose, title }) {
-    return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={onClose}>
-            <div
-                className="bg-[#0f1612] rounded-xl border border-[#1a2b22] max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="sticky top-0 bg-[#142920] px-6 py-4 border-b border-[#1a2b22] flex items-center justify-between">
-                    <h2 className="text-white font-bold text-lg">{title}</h2>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-white transition text-2xl"
-                    >
-                        ×
-                    </button>
-                </div>
-                <div className="p-6">
-                    {children}
-                </div>
-            </div>
-        </div>
     );
 }
