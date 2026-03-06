@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
 import { getOwnerBranches, toggleOwnerBranch, deleteOwnerBranch } from '../api/ownerApi';
@@ -19,6 +19,10 @@ export default function OwnerBranches() {
     const [toast, setToast] = useState(null);
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'inactive'
+
+    // Pagination
+    const PAGE_SIZE = 5;
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Delete confirm state
     const [deleteTarget, setDeleteTarget] = useState(null); // branch object to delete
@@ -94,6 +98,16 @@ export default function OwnerBranches() {
             return matchName && matchStatus;
         });
     }, [branches, search, filterStatus]);
+
+    // Reset page when filter/search changes
+    useEffect(() => { setCurrentPage(1); }, [search, filterStatus]);
+
+    // Pagination derived values
+    const totalPages = Math.max(1, Math.ceil(filteredBranches.length / PAGE_SIZE));
+    const pagedBranches = useMemo(() => {
+        const start = (currentPage - 1) * PAGE_SIZE;
+        return filteredBranches.slice(start, start + PAGE_SIZE);
+    }, [filteredBranches, currentPage]);
 
     return (
         <RestaurantOwnerLayout>
@@ -259,17 +273,71 @@ export default function OwnerBranches() {
                 </div>
             ) : (
                 /* ===== BRANCH GRID ===== */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {filteredBranches.map((branch) => (
-                        <BranchCard
-                            key={branch.branchID}
-                            branch={branch}
-                            toggling={togglingId === branch.branchID}
-                            onToggle={() => handleToggle(branch)}
-                            onSettings={() => navigate(`/owner/branches/${branch.branchID}`)}
-                            onDelete={() => setDeleteTarget(branch)}
-                        />
-                    ))}
+                <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                        {pagedBranches.map((branch) => (
+                            <BranchCard
+                                key={branch.branchID}
+                                branch={branch}
+                                toggling={togglingId === branch.branchID}
+                                onToggle={() => handleToggle(branch)}
+                                onSettings={() => navigate(`/owner/branches/${branch.branchID}`)}
+                                onDelete={() => setDeleteTarget(branch)}
+                            />
+                        ))}
+                    </div>
+
+                    {/* ===== PAGINATION BAR ===== */}
+                    {filteredBranches.length > 0 && (
+                        <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
+                            {/* Info */}
+                            <p className="text-sm text-gray-500">
+                                Hiển thị{' '}
+                                <span className="font-semibold text-gray-700">
+                                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredBranches.length)}
+                                </span>
+                                {' '}trong{' '}
+                                <span className="font-semibold text-gray-700">{filteredBranches.length}</span>
+                                {' '}chi nhánh
+                            </p>
+
+                            {/* Page buttons */}
+                            <div className="flex items-center gap-1">
+                                {/* Prev */}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    ‹ Trước
+                                </button>
+
+                                {/* Page numbers */}
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors
+                                            ${currentPage === page
+                                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                                                : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+
+                                {/* Next */}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Sau ›
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </RestaurantOwnerLayout>
