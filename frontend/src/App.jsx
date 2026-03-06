@@ -12,9 +12,16 @@ import RestaurantManagement from "./pages/RestaurantManagement";
 import AdminServicePackages from "./pages/AdminServicePackages";
 import AdminRequests from "./pages/AdminRequests";
 import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
+import OwnerSettings from "./pages/OwnerSettings";
+import RegisterRestaurant from "./pages/RegisterRestaurant";
+import PendingStatus from "./pages/PendingStatus";
 import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerCreateBranch from "./pages/OwnerCreateBranch";
+import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
+import OwnerReports from "./pages/OwnerReports";
+import OwnerMenu from "./pages/OwnerMenu";
+import OwnerTickets from "./pages/OwnerTickets";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -47,6 +54,9 @@ export default function App() {
             </AuthLayout>
           }
         />
+
+        <Route path="/register-restaurant" element={<RegisterRestaurant />} />
+        <Route path="/pending-status" element={<PendingStatus />} />
 
         <Route
           path="/admin/dashboard"
@@ -106,6 +116,15 @@ export default function App() {
         />
 
         <Route
+          path="/owner/settings"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerSettings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/owner/branches"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
@@ -128,6 +147,42 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerBranchSettings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/payment-history"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerPaymentHistory />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/reports"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerReports />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/menu"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerMenu />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/tickets"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerTickets />
             </ProtectedRoute>
           }
         />

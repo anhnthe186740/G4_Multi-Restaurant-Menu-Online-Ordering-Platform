@@ -20,7 +20,26 @@ import {
     TrendingUp,
     AlertCircle,
     RefreshCw,
+    Globe,
+    Tag,
+    Image,
+    Package,
+    ExternalLink,
 } from "lucide-react";
+
+// ─── PARSE FORM DATA từ adminNote ────────────────────────────────────────────
+function parseFormData(adminNote) {
+    console.log("[AdminRequests] adminNote:", adminNote); // DEBUG
+    if (!adminNote) return null;
+    const PREFIX = "__FORM_DATA__:";
+    if (!adminNote.startsWith(PREFIX)) return null;
+    try {
+        return JSON.parse(adminNote.slice(PREFIX.length));
+    } catch {
+        return null;
+    }
+}
+
 
 // ─── STATUS BADGE ────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -341,22 +360,93 @@ export default function AdminRequests() {
 
                             <div className="p-5 space-y-5 max-h-[calc(100vh-220px)] overflow-y-auto">
                                 {/* Thông tin nhà hàng */}
-                                <div>
-                                    <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-3">Thông tin nhà hàng</p>
-                                    <div className="bg-slate-800/40 rounded-xl p-4 space-y-3">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                                <Building2 size={16} />
-                                            </div>
+                                {(() => {
+                                    const fd = parseFormData(selected.adminNote);
+                                    return (
+                                        <div className="space-y-4">
+                                            {/* Gói đăng ký */}
+                                            {fd?.plan && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Gói đăng ký</span>
+                                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                                                        <Package size={10} className="inline mr-1" />{fd.plan}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Ảnh bìa */}
+                                            {fd?.coverImage && (
+                                                <div>
+                                                    <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">Ảnh bìa</p>
+                                                    <img
+                                                        src={fd.coverImage}
+                                                        alt="cover"
+                                                        className="w-full h-28 object-cover rounded-xl border border-slate-700"
+                                                        onError={e => { e.target.style.display = 'none'; }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Logo */}
+                                            {fd?.logo && (
+                                                <div className="flex items-center gap-3">
+                                                    <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold w-20 shrink-0">Logo</p>
+                                                    <img
+                                                        src={fd.logo}
+                                                        alt="logo"
+                                                        className="w-10 h-10 object-contain rounded-lg border border-slate-700 bg-slate-800"
+                                                        onError={e => { e.target.style.display = 'none'; }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Nhà hàng info */}
                                             <div>
-                                                <p className="text-white font-semibold text-sm">{selected.restaurantName || "Chưa có tên"}</p>
-                                                {selected.contactInfo && (
-                                                    <p className="text-slate-500 text-xs mt-0.5">{selected.contactInfo}</p>
-                                                )}
+                                                <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-3">Thông tin nhà hàng</p>
+                                                <div className="bg-slate-800/40 rounded-xl p-4 space-y-3">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                                            <Building2 size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white font-semibold text-sm">{selected.restaurantName || "Chưa có tên"}</p>
+                                                            {fd?.description && (
+                                                                <p className="text-slate-400 text-xs mt-1 leading-relaxed">{fd.description}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {fd?.website && (
+                                                        <div className="flex items-center gap-2 text-slate-400 text-xs">
+                                                            <Globe size={13} className="text-slate-500" />
+                                                            <a href={fd.website} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1">
+                                                                {fd.website} <ExternalLink size={11} />
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                    {fd?.taxCode && (
+                                                        <div className="flex items-center gap-2 text-slate-400 text-xs">
+                                                            <Tag size={13} className="text-slate-500" />
+                                                            <span>Mã số thuế: <span className="text-slate-200 font-mono">{fd.taxCode}</span></span>
+                                                        </div>
+                                                    )}
+                                                    {fd?.businessLicense && (
+                                                        <div className="flex items-center gap-2 text-slate-400 text-xs">
+                                                            <FileText size={13} className="text-slate-500" />
+                                                            {fd.businessLicense.startsWith('http') ? (
+                                                                <a href={fd.businessLicense} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1">
+                                                                    Xem giấy phép <ExternalLink size={11} />
+                                                                </a>
+                                                            ) : (
+                                                                <span>Giấy phép: {fd.businessLicense}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
+                                    );
+                                })()}
+
 
                                 {/* Thông tin chủ sở hữu */}
                                 <div>
@@ -417,8 +507,19 @@ export default function AdminRequests() {
                                     )}
                                 </div>
 
-                                {/* Admin note (nếu đã từ chối) */}
-                                {selected.adminNote && (
+                                {/* Ghi chú từ người dùng (userNote trong JSON) */}
+                                {(() => {
+                                    const fd = parseFormData(selected.adminNote);
+                                    return fd?.userNote ? (
+                                        <div className="bg-slate-800/30 border border-slate-700/40 rounded-xl p-3">
+                                            <p className="text-slate-400 text-xs font-semibold mb-1">Ghi chú từ người đăng ký:</p>
+                                            <p className="text-slate-300 text-xs leading-relaxed">{fd.userNote}</p>
+                                        </div>
+                                    ) : null;
+                                })()}
+
+                                {/* Admin note (nếu đã từ chối) — chỉ hiện khi là ghi chú thật của admin, không phải __FORM_DATA__ */}
+                                {selected.adminNote && !selected.adminNote.startsWith("__FORM_DATA__") && (
                                     <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
                                         <p className="text-red-400 text-xs font-semibold mb-1">Lý do từ chối:</p>
                                         <p className="text-slate-300 text-xs">{selected.adminNote}</p>

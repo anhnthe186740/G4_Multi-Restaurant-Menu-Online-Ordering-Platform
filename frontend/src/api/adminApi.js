@@ -49,6 +49,9 @@ export const getSubscriptionHistory = () => adminAxios.get("/admin/service-packa
 export const getRestaurantsForRenewal = () => adminAxios.get("/admin/service-packages/restaurants-for-renewal");
 export const getRestaurantStatuses = () => adminAxios.get("/admin/service-packages/active-subscriptions");
 
+// ✅ PUBLIC — không cần token, dùng cho homepage
+export const getPublicServicePackages = () => axios.get("http://localhost:5000/api/public/service-packages");
+
 // ========== REGISTRATION REQUESTS APIs ==========
 export const getRegistrationRequests = (params) => adminAxios.get("/admin/registration-requests", { params });
 export const approveRegistrationRequest = (id) => adminAxios.post(`/admin/registration-requests/${id}/approve`);

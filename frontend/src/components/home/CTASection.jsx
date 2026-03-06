@@ -1,4 +1,14 @@
+import { useNavigate } from "react-router-dom";
+
 export default function CTASection() {
+    const navigate = useNavigate();
+
+    const handleCTA = () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            navigate("/register");
+        }
+    };
     return (
         <section className="py-20 px-6">
             <div className="max-w-[1200px] mx-auto bg-gradient-to-r from-green-500 to-green-400 rounded-3xl p-12 md:p-20 text-center relative overflow-hidden">
@@ -12,7 +22,7 @@ export default function CTASection() {
                     </p>
 
                     <div className="flex flex-wrap justify-center gap-4">
-                        <button className="h-12 px-8 rounded-xl bg-[#02140c] text-green-400 font-bold hover:bg-[#08291a] transition shadow-xl">
+                        <button onClick={handleCTA} className="h-12 px-8 rounded-xl bg-[#02140c] text-green-400 font-bold hover:bg-[#08291a] transition shadow-xl">
                             Bắt đầu ngay
                         </button>
                         <button className="h-12 px-8 rounded-xl bg-white/20 text-[#02140c] font-bold border border-[#02140c]/20 hover:bg-white/30 transition">

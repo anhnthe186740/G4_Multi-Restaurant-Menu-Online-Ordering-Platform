@@ -13,6 +13,20 @@ export default function Header() {
     navigate("/login");
   };
 
+  // Điều hướng khi ấn "Hồ sơ" tùy theo role
+  const handleProfile = () => {
+    setOpen(false);
+    if (!user) return;
+    if (user.role === "RestaurantOwner") {
+      navigate("/owner/dashboard");
+    } else if (user.role === "Admin") {
+      navigate("/admin/dashboard");
+    } else {
+      // Staff / Customer: xem trạng thái đơn đăng ký
+      navigate("/pending-status");
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-[#02140c]/80 backdrop-blur border-b border-white/10">
       <div className="max-w-[1200px] mx-auto flex items-center justify-between px-6 py-4">
@@ -23,7 +37,7 @@ export default function Header() {
             <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
             </svg>
-            OderEat
+            RestoManager
           </div>
         </Link>
 
@@ -76,18 +90,13 @@ export default function Header() {
               {open && (
                 <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg
                   border border-gray-100 overflow-hidden">
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-3 text-sm hover:bg-gray-50"
+                  <button
+                    onClick={handleProfile}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >
-                    👤 Hồ sơ
-                  </Link>
-                  <Link
-                    to="/orders"
-                    className="block px-4 py-3 text-sm hover:bg-gray-50"
-                  >
-                    📦 Đơn hàng
-                  </Link>
+                    {user.role === "RestaurantOwner" ? "🏪 Quản lý nhà hàng" : "👤 Hồ sơ"}
+                  </button>
+
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50"

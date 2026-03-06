@@ -115,25 +115,25 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full my-8 max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-t-2xl flex items-center justify-between z-10">
+                <div className="sticky top-0 bg-white border-b-2 border-gray-100 p-6 rounded-t-2xl flex items-center justify-between z-10">
                     <div className="flex items-center gap-4">
                         {restaurant.Logo ? (
-                            <img src={restaurant.Logo} alt="" className="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-lg" />
+                            <img src={restaurant.Logo} alt="" className="w-16 h-16 rounded-xl object-cover border-2 border-gray-200 shadow-lg" />
                         ) : (
-                            <div className="w-16 h-16 rounded-xl bg-white/20 flex items-center justify-center">
-                                <Building className="w-8 h-8" />
+                            <div className="w-16 h-16 rounded-xl bg-blue-50 border-2 border-blue-100 flex items-center justify-center">
+                                <Building className="w-8 h-8 text-blue-500" />
                             </div>
                         )}
                         <div>
-                            <h2 className="text-2xl font-bold">{restaurant.Name}</h2>
-                            <p className="text-blue-100">ID: {restaurant.RestaurantID}</p>
+                            <h2 className="text-2xl font-bold text-gray-900">{restaurant.Name}</h2>
+                            <p className="text-gray-500 text-sm mt-0.5">ID: {restaurant.RestaurantID}</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
-                        <X className="w-6 h-6" />
+                        <X className="w-6 h-6 text-gray-700" />
                     </button>
                 </div>
 
@@ -190,6 +190,71 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                             <Building className="w-5 h-5 text-blue-600" />
                             Thông Tin Nhà Hàng
                         </h3>
+
+                        {/* ── Hình ảnh & giấy phép ── */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            {/* Ảnh bìa */}
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Ảnh bìa nhà hàng</p>
+                                {restaurant.CoverImage ? (
+                                    <img
+                                        src={restaurant.CoverImage}
+                                        alt="Ảnh bìa"
+                                        className="w-full h-36 object-cover rounded-lg border border-gray-200 shadow-sm"
+                                    />
+                                ) : (
+                                    <div className="w-full h-36 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-400">
+                                        <svg className="w-8 h-8 mb-1" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 19.5h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                                        <span className="text-xs">Chưa có ảnh bìa</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Logo */}
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Logo thương hiệu</p>
+                                {restaurant.Logo ? (
+                                    <div className="w-full h-36 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center shadow-sm p-4">
+                                        <img
+                                            src={restaurant.Logo}
+                                            alt="Logo"
+                                            className="max-h-full max-w-full object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-36 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-400">
+                                        <Building className="w-8 h-8 mb-1" />
+                                        <span className="text-xs">Chưa có logo</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Giấy phép kinh doanh */}
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Giấy phép kinh doanh</p>
+                                {restaurant.BusinessLicense ? (
+                                    <a
+                                        href={restaurant.BusinessLicense}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center justify-center w-full h-36 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition text-blue-600 cursor-pointer shadow-sm"
+                                    >
+                                        <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                        <span className="text-xs font-semibold">Xem giấy phép</span>
+                                        <span className="text-xs text-blue-400 mt-0.5 max-w-[120px] truncate text-center">
+                                            {restaurant.BusinessLicense.split('/').pop()}
+                                        </span>
+                                    </a>
+                                ) : (
+                                    <div className="w-full h-36 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center text-gray-400">
+                                        <svg className="w-8 h-8 mb-1" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                        <span className="text-xs">Chưa có giấy phép</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* ── Thông tin văn bản ── */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="text-sm font-semibold text-gray-600">Tên Nhà Hàng</label>
@@ -219,6 +284,7 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                             </div>
                         </div>
                     </div>
+
 
                     {/* Owner Info */}
                     <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
@@ -252,6 +318,17 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                             <div>
                                 <label className="text-sm font-semibold text-gray-600">Trạng Thái</label>
                                 <div className="mt-1">{getStatusBadge(restaurant.ownerStatus)}</div>
+                                {restaurant.ownerStatus === 'Inactive' && restaurant.ownerLockReason && (
+                                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                                        <svg className="mt-0.5 w-4 h-4 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-xs font-semibold text-red-700">Lý do khoá:</p>
+                                            <p className="text-xs text-red-600 mt-0.5">{restaurant.ownerLockReason}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -337,7 +414,6 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Bắt Đầu</th>
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Kết Thúc</th>
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Giá</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Auto Renew</th>
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Trạng Thái</th>
                                                 </tr>
                                             </thead>
@@ -348,13 +424,6 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                                                         <td className="px-4 py-3 text-sm text-gray-600">{formatDate(sub.StartDate).split(' ')[0]}</td>
                                                         <td className="px-4 py-3 text-sm text-gray-600">{formatDate(sub.EndDate).split(' ')[0]}</td>
                                                         <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatCurrency(sub.Price)}</td>
-                                                        <td className="px-4 py-3">
-                                                            {sub.AutoRenew ? (
-                                                                <span className="text-green-600 font-semibold">✓ Có</span>
-                                                            ) : (
-                                                                <span className="text-gray-400">✗ Không</span>
-                                                            )}
-                                                        </td>
                                                         <td className="px-4 py-3">{getStatusBadge(sub.Status)}</td>
                                                     </tr>
                                                 ))}
@@ -365,57 +434,6 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                             </div>
                         )}
                     </div>
-
-                    {/* Support Tickets */}
-                    <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
-                        <button
-                            onClick={() => toggleSection('tickets')}
-                            className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                        >
-                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <TicketCheck className="w-5 h-5 text-blue-600" />
-                                Tickets Hỗ Trợ ({tickets.length})
-                            </h3>
-                            {expandedSections.tickets ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                        </button>
-
-                        {expandedSections.tickets && (
-                            <div className="px-6 pb-6 space-y-3">
-                                {tickets.length === 0 ? (
-                                    <p className="text-gray-500 text-center py-4">Chưa có ticket nào</p>
-                                ) : (
-                                    tickets.map(ticket => (
-                                        <div key={ticket.TicketID} className="border-2 border-gray-200 rounded-lg p-4">
-                                            <div className="flex items-start justify-between mb-2">
-                                                <div className="flex-1">
-                                                    <h4 className="font-bold text-gray-800">{ticket.Subject}</h4>
-                                                    <p className="text-sm text-gray-600 mt-1">{ticket.Description}</p>
-                                                </div>
-                                                <div className="flex gap-2 ml-4">
-                                                    {getPriorityBadge(ticket.Priority)}
-                                                    {getStatusBadge(ticket.Status)}
-                                                </div>
-                                            </div>
-                                            <div className="text-xs text-gray-500 flex items-center gap-2 mt-2">
-                                                <Calendar className="w-3 h-3" />
-                                                {formatDate(ticket.CreatedAt)}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="sticky bottom-0 bg-gray-50 border-t-2 border-gray-200 p-6 rounded-b-2xl flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg"
-                    >
-                        Đóng
-                    </button>
                 </div>
             </div>
         </div>

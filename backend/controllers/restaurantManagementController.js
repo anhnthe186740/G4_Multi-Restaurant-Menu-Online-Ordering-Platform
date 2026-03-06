@@ -3,7 +3,7 @@ import prisma from "../config/prismaClient.js";
 /* ================= GET ALL RESTAURANTS ================= */
 export const getAllRestaurants = async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
+    const { status, search, package: packageName, page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
@@ -14,6 +14,15 @@ export const getAllRestaurants = async (req, res) => {
         { owner: { fullName: { contains: search } } },
         { owner: { email: { contains: search } } },
       ];
+    }
+    // Lọc theo gói dịch vụ: nhà hàng phải có ít nhất 1 subscription Active với packageName khớp
+    if (packageName) {
+      where.subscriptions = {
+        some: {
+          status: "Active",
+          package: { packageName },
+        },
+      };
     }
 
     const [totalRestaurants, restaurants] = await Promise.all([
@@ -50,6 +59,7 @@ export const getAllRestaurants = async (req, res) => {
       ownerEmail: r.owner?.email,
       ownerPhone: r.owner?.phone,
       ownerStatus: r.owner?.status,
+      ownerLockReason: r.owner?.lockReason || null,
       registeredDate: r.owner?.createdAt,
       branchCount: r._count.branches,
       currentPackage: r.subscriptions[0]?.package?.packageName || null,
@@ -80,7 +90,7 @@ export const getRestaurantDetails = async (req, res) => {
       where: { restaurantID: parseInt(id) },
       include: {
         owner: {
-          select: { userID: true, username: true, fullName: true, email: true, phone: true, status: true, createdAt: true },
+          select: { userID: true, username: true, fullName: true, email: true, phone: true, status: true, lockReason: true, createdAt: true },
         },
         branches: {
           include: {
@@ -102,11 +112,11 @@ export const getRestaurantDetails = async (req, res) => {
     // Get tickets from owner
     const tickets = restaurant.owner
       ? await prisma.supportTicket.findMany({
-          where: { userID: restaurant.owner.userID },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-          select: { ticketID: true, subject: true, description: true, priority: true, status: true, createdAt: true },
-        })
+        where: { userID: restaurant.owner.userID },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { ticketID: true, subject: true, description: true, priority: true, status: true, createdAt: true },
+      })
       : [];
 
     res.json({
@@ -114,6 +124,8 @@ export const getRestaurantDetails = async (req, res) => {
         RestaurantID: restaurant.restaurantID,
         Name: restaurant.name,
         Logo: restaurant.logo,
+        CoverImage: restaurant.coverImage,
+        BusinessLicense: restaurant.businessLicense,
         Description: restaurant.description,
         TaxCode: restaurant.taxCode,
         Website: restaurant.website,
@@ -123,6 +135,7 @@ export const getRestaurantDetails = async (req, res) => {
         ownerEmail: restaurant.owner?.email,
         ownerPhone: restaurant.owner?.phone,
         ownerStatus: restaurant.owner?.status,
+        ownerLockReason: restaurant.owner?.lockReason || null,
         registeredDate: restaurant.owner?.createdAt,
       },
       branches: restaurant.branches.map((b) => ({
@@ -168,23 +181,12 @@ export const deactivateRestaurant = async (req, res) => {
       return res.status(400).json({ message: "Cannot deactivate: This restaurant has no associated owner account." });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { userID: restaurant.ownerUserID },
-        data: { status: "Inactive" },
-      });
-
-      if (reason) {
-        await tx.supportTicket.create({
-          data: {
-            userID: restaurant.ownerUserID,
-            subject: "Account Deactivated",
-            description: `Deactivation reason: ${reason}`,
-            priority: "High",
-            status: "Closed",
-          },
-        });
-      }
+    await prisma.user.update({
+      where: { userID: restaurant.ownerUserID },
+      data: {
+        status: "Inactive",
+        lockReason: reason || null,
+      },
     });
 
     res.json({ message: "Restaurant deactivated successfully" });
@@ -211,7 +213,10 @@ export const reactivateRestaurant = async (req, res) => {
 
     await prisma.user.update({
       where: { userID: restaurant.ownerUserID },
-      data: { status: "Active" },
+      data: {
+        status: "Active",
+        lockReason: null,
+      },
     });
 
     res.json({ message: "Restaurant reactivated successfully" });
@@ -288,13 +293,15 @@ export const forceDeleteRestaurant = async (req, res) => {
 export const updateRestaurantInfo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, website, logo } = req.body;
+    const { name, description, website, logo, coverImage, businessLicense } = req.body;
 
     const data = {};
     if (name) data.name = name;
     if (description !== undefined) data.description = description;
     if (website !== undefined) data.website = website;
     if (logo !== undefined) data.logo = logo;
+    if (coverImage !== undefined) data.coverImage = coverImage;
+    if (businessLicense !== undefined) data.businessLicense = businessLicense;
 
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ message: "No fields to update" });

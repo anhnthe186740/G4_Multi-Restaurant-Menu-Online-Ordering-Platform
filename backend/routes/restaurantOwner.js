@@ -5,12 +5,38 @@ import {
   getTopProducts,
   getOrdersByHour,
   getBranchPerformance,
+  getOwnerRestaurantInfo,
+  updateOwnerRestaurantInfo,
   getOwnerBranches,
   getOwnerBranchById,
   updateOwnerBranch,
   toggleOwnerBranch,
+<<<<<<< feature/DanhSachChiNhanh
   createOwnerBranch,
   deleteOwnerBranch,
+=======
+  getPaymentHistory,
+  getRevenueByPeriod,
+  getBranchSummaryReport,
+  getProductRevenueStats,
+  getDetailedOrdersReport,
+  getOrdersHeatmap_Owner,
+  // Menu management
+  getMenuCategories,
+  createMenuCategory,
+  updateMenuCategory,
+  deleteMenuCategory,
+  getMenuItems,
+  createMenuItem,
+  updateMenuItem,
+  deleteMenuItem,
+  toggleMenuItem,
+  // Support Tickets
+  createOwnerTicket,
+  getOwnerTickets,
+  getOwnerTicketById,
+  replyOwnerTicket,
+>>>>>>> main
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -26,6 +52,10 @@ router.get("/dashboard/top-products", getTopProducts);
 router.get("/dashboard/orders-by-hour", getOrdersByHour);
 router.get("/dashboard/branch-performance", getBranchPerformance);
 
+// Restaurant info
+router.get("/restaurant", getOwnerRestaurantInfo);
+router.put("/restaurant", updateOwnerRestaurantInfo);
+
 // Branch Management
 router.get("/branches", getOwnerBranches);
 router.post("/branches", createOwnerBranch);
@@ -34,5 +64,34 @@ router.put("/branches/:id", updateOwnerBranch);
 router.patch("/branches/:id/toggle", toggleOwnerBranch);
 router.delete("/branches/:id", deleteOwnerBranch);
 
-export default router;
+// Payment History
+router.get("/payment-history", getPaymentHistory);
 
+// Reports
+router.get("/reports/revenue-trend", getRevenueByPeriod);
+router.get("/reports/branch-summary", getBranchSummaryReport);
+router.get("/reports/product-stats", getProductRevenueStats);
+router.get("/reports/orders-detail", getDetailedOrdersReport);
+router.get("/reports/orders-heatmap", getOrdersHeatmap_Owner);
+
+// ===== MENU MANAGEMENT =====
+// Categories
+router.get("/menu/categories", getMenuCategories);
+router.post("/menu/categories", createMenuCategory);
+router.put("/menu/categories/:id", updateMenuCategory);
+router.delete("/menu/categories/:id", deleteMenuCategory);
+
+// Products (menu items)
+router.get("/menu/items", getMenuItems);
+router.post("/menu/items", createMenuItem);
+router.put("/menu/items/:id", updateMenuItem);
+router.delete("/menu/items/:id", deleteMenuItem);
+router.patch("/menu/items/:id/toggle", toggleMenuItem);
+
+// ===== SUPPORT TICKETS (Owner ↔ Admin) =====
+router.post("/tickets", createOwnerTicket);
+router.get("/tickets", getOwnerTickets);
+router.get("/tickets/:id", getOwnerTicketById);
+router.post("/tickets/:id/reply", replyOwnerTicket);
+
+export default router;
