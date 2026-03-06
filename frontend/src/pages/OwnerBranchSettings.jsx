@@ -522,7 +522,6 @@ export default function OwnerBranchSettings() {
                                 value={isActive ? 'Sẵn sàng phục vụ' : 'Tạm dừng'}
                                 ok={isActive}
                             />
-                            <SummaryRow label="Đơn hàng online" value="Đang bật" ok={true} />
                             <SummaryRow label="Thời gian chuẩn bị TB" value="15 phút" ok={true} />
                         </div>
                     </div>
