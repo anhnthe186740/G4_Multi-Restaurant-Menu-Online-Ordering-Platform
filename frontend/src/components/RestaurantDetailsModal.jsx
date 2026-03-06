@@ -61,6 +61,11 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
         return new Date(dateString).toLocaleString('vi-VN');
     };
 
+    const formatDateOnly = (dateString) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('vi-VN');
+    };
+
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', {
             style: 'currency',
@@ -160,7 +165,7 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                         <div className="bg-white rounded-xl p-4 border-2 border-purple-200">
                             <div className="flex items-center gap-2 mb-2">
                                 <Building className="w-5 h-5 text-purple-600" />
-                                <span className="text-sm font-semibold text-gray-600">Bàn Ăn</span>
+                                <span className="text-sm font-semibold text-gray-600">Tổng Số Bàn Ăn</span>
                             </div>
                             <div className="text-2xl font-bold text-gray-800">{stats.totalTables}</div>
                         </div>
@@ -175,7 +180,7 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                             </div>
                             {stats.activeSubscription && (
                                 <div className="text-xs text-gray-500 mt-1">
-                                    HSD: {formatDate(stats.activeSubscription.EndDate).split(' ')[0]}
+                                    HSD: {formatDateOnly(stats.activeSubscription.EndDate)}
                                 </div>
                             )}
                         </div>
@@ -421,8 +426,8 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                                                 {subscriptions.map(sub => (
                                                     <tr key={sub.SubscriptionID} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 font-semibold text-gray-800">{sub.PackageName}</td>
-                                                        <td className="px-4 py-3 text-sm text-gray-600">{formatDate(sub.StartDate).split(' ')[0]}</td>
-                                                        <td className="px-4 py-3 text-sm text-gray-600">{formatDate(sub.EndDate).split(' ')[0]}</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-600">{formatDateOnly(sub.StartDate)}</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-600">{formatDateOnly(sub.EndDate)}</td>
                                                         <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatCurrency(sub.Price)}</td>
                                                         <td className="px-4 py-3">{getStatusBadge(sub.Status)}</td>
                                                     </tr>
