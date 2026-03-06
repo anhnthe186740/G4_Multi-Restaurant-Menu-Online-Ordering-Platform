@@ -31,12 +31,6 @@ export const getRestaurantStats = async (id) => {
     return response.data;
 };
 
-// Update restaurant info
-export const updateRestaurantInfo = async (id, data) => {
-    const response = await restaurantAxios.patch(`/${id}`, data);
-    return response.data;
-};
-
 // Soft delete (deactivate)
 export const deactivateRestaurant = async (id, reason) => {
     const response = await restaurantAxios.post(`/${id}/deactivate`, { reason });

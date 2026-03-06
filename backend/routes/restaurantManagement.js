@@ -5,7 +5,6 @@ import {
     deactivateRestaurant,
     reactivateRestaurant,
     forceDeleteRestaurant,
-    updateRestaurantInfo,
     getRestaurantStats
 } from "../controllers/restaurantManagementController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
@@ -24,9 +23,6 @@ router.get("/:id", getRestaurantDetails);
 
 // GET /api/restaurants/:id/stats - Get restaurant statistics
 router.get("/:id/stats", getRestaurantStats);
-
-// PATCH /api/restaurants/:id - Update restaurant info
-router.patch("/:id", updateRestaurantInfo);
 
 // POST /api/restaurants/:id/deactivate - Soft delete
 router.post("/:id/deactivate", deactivateRestaurant);

@@ -6,8 +6,11 @@ export const getAllRestaurants = async (req, res) => {
     const { status, search, package: packageName, page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    // lọc theo trạng thái+
     const where = {};
     if (status) where.owner = { status };
+
+    //tìm kiếm
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -289,38 +292,6 @@ export const forceDeleteRestaurant = async (req, res) => {
   }
 };
 
-/* ================= UPDATE RESTAURANT INFO ================= */
-export const updateRestaurantInfo = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, website, logo, coverImage, businessLicense } = req.body;
-
-    const data = {};
-    if (name) data.name = name;
-    if (description !== undefined) data.description = description;
-    if (website !== undefined) data.website = website;
-    if (logo !== undefined) data.logo = logo;
-    if (coverImage !== undefined) data.coverImage = coverImage;
-    if (businessLicense !== undefined) data.businessLicense = businessLicense;
-
-    if (Object.keys(data).length === 0) {
-      return res.status(400).json({ message: "No fields to update" });
-    }
-
-    await prisma.restaurant.update({
-      where: { restaurantID: parseInt(id) },
-      data,
-    });
-
-    res.json({ message: "Restaurant updated successfully" });
-  } catch (error) {
-    if (error.code === "P2025") {
-      return res.status(404).json({ message: "Restaurant not found" });
-    }
-    console.error("updateRestaurantInfo error:", error);
-    res.status(500).json({ message: error.message || "Server error" });
-  }
-};
 
 /* ================= GET RESTAURANT STATISTICS ================= */
 export const getRestaurantStats = async (req, res) => {

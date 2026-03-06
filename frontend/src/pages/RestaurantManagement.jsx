@@ -218,11 +218,6 @@ const RestaurantManagement = () => {
                         <option value="Active">Hoạt động</option>
                         <option value="Inactive">Bị khóa</option>
                     </select>
-
-                    <button className="bg-[#0f172a] border border-slate-700 text-slate-300 py-3 px-4 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2">
-                        <Filter size={18} />
-                        Bộ lọc khác
-                    </button>
                 </div>
             </div>
 
