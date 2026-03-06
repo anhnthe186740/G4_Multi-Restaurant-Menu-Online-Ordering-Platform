@@ -11,6 +11,10 @@ import {
   getOwnerBranchById,
   updateOwnerBranch,
   toggleOwnerBranch,
+<<<<<<< feature/DanhSachChiNhanh
+  createOwnerBranch,
+  deleteOwnerBranch,
+=======
   getPaymentHistory,
   getRevenueByPeriod,
   getBranchSummaryReport,
@@ -32,6 +36,7 @@ import {
   getOwnerTickets,
   getOwnerTicketById,
   replyOwnerTicket,
+>>>>>>> main
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -53,9 +58,11 @@ router.put("/restaurant", updateOwnerRestaurantInfo);
 
 // Branch Management
 router.get("/branches", getOwnerBranches);
+router.post("/branches", createOwnerBranch);
 router.get("/branches/:id", getOwnerBranchById);
 router.put("/branches/:id", updateOwnerBranch);
 router.patch("/branches/:id/toggle", toggleOwnerBranch);
+router.delete("/branches/:id", deleteOwnerBranch);
 
 // Payment History
 router.get("/payment-history", getPaymentHistory);

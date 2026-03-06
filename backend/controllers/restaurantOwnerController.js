@@ -579,6 +579,38 @@ export const updateOwnerBranch = async (req, res) => {
   }
 };
 
+<<<<<<< feature/DanhSachChiNhanh
+/* =================== CREATE BRANCH =================== */
+export const createOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const { name, address, phone, email, openingHours, isActive } = req.body;
+
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'Tên chi nhánh không được để trống' });
+    }
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
+
+    const hoursObj = { ...(openingHours || {}), email: email || '' };
+
+    const branch = await prisma.branch.create({
+      data: {
+        restaurantID: restaurant.restaurantID,
+        name: name.trim(),
+        address: address || null,
+        phone: phone || null,
+        openingHours: JSON.stringify(hoursObj),
+        isActive: isActive !== undefined ? isActive : true,
+      },
+    });
+
+    res.status(201).json({ message: 'Tạo chi nhánh thành công', branchID: branch.branchID });
+  } catch (error) {
+    console.error('createOwnerBranch error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+=======
 /* =================== GET PAYMENT HISTORY =================== */
 /**
  * GET /owner/payment-history
@@ -809,6 +841,7 @@ export const updateOwnerRestaurantInfo = async (req, res) => {
   } catch (error) {
     console.error("updateOwnerRestaurantInfo error:", error);
     res.status(500).json({ message: error.message || "Server error" });
+>>>>>>> main
   }
 };
 
@@ -843,15 +876,73 @@ export const toggleOwnerBranch = async (req, res) => {
   }
 };
 
+<<<<<<< feature/DanhSachChiNhanh
+/* =================== DELETE BRANCH =================== */
+export const deleteOwnerBranch = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const branchID = parseInt(req.params.id);
+=======
 /* =================== DETAILED ORDERS REPORT =================== */
 export const getDetailedOrdersReport = async (req, res) => {
   try {
     const userID = req.user.userId;
     const { startDate, endDate, branchID } = req.query;
+>>>>>>> main
 
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
 
+<<<<<<< feature/DanhSachChiNhanh
+    const branch = await prisma.branch.findFirst({
+      where: { branchID, restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+
+    // Lấy tất cả orderID của branch
+    const orders = await prisma.order.findMany({
+      where: { branchID },
+      select: { orderID: true },
+    });
+    const orderIDs = orders.map((o) => o.orderID);
+
+    if (orderIDs.length > 0) {
+      // Lấy tất cả invoiceID của các orders
+      const invoices = await prisma.invoice.findMany({
+        where: { orderID: { in: orderIDs } },
+        select: { invoiceID: true },
+      });
+      const invoiceIDs = invoices.map((i) => i.invoiceID);
+
+      if (invoiceIDs.length > 0) {
+        // Xóa InvoiceDetails → Transactions trước
+        await prisma.invoiceDetail.deleteMany({ where: { invoiceID: { in: invoiceIDs } } });
+        await prisma.transaction.deleteMany({ where: { invoiceID: { in: invoiceIDs } } });
+        await prisma.invoice.deleteMany({ where: { invoiceID: { in: invoiceIDs } } });
+      }
+
+      // Xóa OrderDetails, OrderTables
+      await prisma.orderDetail.deleteMany({ where: { orderID: { in: orderIDs } } });
+      await prisma.orderTable.deleteMany({ where: { orderID: { in: orderIDs } } });
+      await prisma.order.deleteMany({ where: { branchID } });
+    }
+
+    // Xóa ServiceRequests
+    await prisma.serviceRequest.deleteMany({ where: { branchID } });
+
+    // Tables cascade tự xóa ServiceRequests con, nhưng ta đã xóa rồi — an toàn
+    await prisma.table.deleteMany({ where: { branchID } });
+
+    // Cuối cùng xóa Branch
+    await prisma.branch.delete({ where: { branchID } });
+
+    res.json({ message: "Xóa chi nhánh thành công" });
+  } catch (error) {
+    console.error("deleteOwnerBranch error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+=======
     const ownerBranches = await prisma.branch.findMany({
       where: { restaurantID: restaurant.restaurantID },
       select: { branchID: true, name: true },
@@ -1648,3 +1739,4 @@ export const replyOwnerTicket = async (req, res) => {
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
+>>>>>>> main
