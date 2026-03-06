@@ -115,25 +115,25 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full my-8 max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-t-2xl flex items-center justify-between z-10">
+                <div className="sticky top-0 bg-white border-b-2 border-gray-100 p-6 rounded-t-2xl flex items-center justify-between z-10">
                     <div className="flex items-center gap-4">
                         {restaurant.Logo ? (
-                            <img src={restaurant.Logo} alt="" className="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-lg" />
+                            <img src={restaurant.Logo} alt="" className="w-16 h-16 rounded-xl object-cover border-2 border-gray-200 shadow-lg" />
                         ) : (
-                            <div className="w-16 h-16 rounded-xl bg-white/20 flex items-center justify-center">
-                                <Building className="w-8 h-8" />
+                            <div className="w-16 h-16 rounded-xl bg-blue-50 border-2 border-blue-100 flex items-center justify-center">
+                                <Building className="w-8 h-8 text-blue-500" />
                             </div>
                         )}
                         <div>
-                            <h2 className="text-2xl font-bold">{restaurant.Name}</h2>
-                            <p className="text-blue-100">ID: {restaurant.RestaurantID}</p>
+                            <h2 className="text-2xl font-bold text-gray-900">{restaurant.Name}</h2>
+                            <p className="text-gray-500 text-sm mt-0.5">ID: {restaurant.RestaurantID}</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
-                        <X className="w-6 h-6" />
+                        <X className="w-6 h-6 text-gray-700" />
                     </button>
                 </div>
 
@@ -414,7 +414,6 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Bắt Đầu</th>
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Kết Thúc</th>
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Giá</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Auto Renew</th>
                                                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700">Trạng Thái</th>
                                                 </tr>
                                             </thead>
@@ -425,13 +424,6 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                                                         <td className="px-4 py-3 text-sm text-gray-600">{formatDate(sub.StartDate).split(' ')[0]}</td>
                                                         <td className="px-4 py-3 text-sm text-gray-600">{formatDate(sub.EndDate).split(' ')[0]}</td>
                                                         <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatCurrency(sub.Price)}</td>
-                                                        <td className="px-4 py-3">
-                                                            {sub.AutoRenew ? (
-                                                                <span className="text-green-600 font-semibold">✓ Có</span>
-                                                            ) : (
-                                                                <span className="text-gray-400">✗ Không</span>
-                                                            )}
-                                                        </td>
                                                         <td className="px-4 py-3">{getStatusBadge(sub.Status)}</td>
                                                     </tr>
                                                 ))}
@@ -442,57 +434,6 @@ const RestaurantDetailsModal = ({ restaurantId, onClose, onUpdate }) => {
                             </div>
                         )}
                     </div>
-
-                    {/* Support Tickets */}
-                    <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
-                        <button
-                            onClick={() => toggleSection('tickets')}
-                            className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                        >
-                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <TicketCheck className="w-5 h-5 text-blue-600" />
-                                Tickets Hỗ Trợ ({tickets.length})
-                            </h3>
-                            {expandedSections.tickets ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                        </button>
-
-                        {expandedSections.tickets && (
-                            <div className="px-6 pb-6 space-y-3">
-                                {tickets.length === 0 ? (
-                                    <p className="text-gray-500 text-center py-4">Chưa có ticket nào</p>
-                                ) : (
-                                    tickets.map(ticket => (
-                                        <div key={ticket.TicketID} className="border-2 border-gray-200 rounded-lg p-4">
-                                            <div className="flex items-start justify-between mb-2">
-                                                <div className="flex-1">
-                                                    <h4 className="font-bold text-gray-800">{ticket.Subject}</h4>
-                                                    <p className="text-sm text-gray-600 mt-1">{ticket.Description}</p>
-                                                </div>
-                                                <div className="flex gap-2 ml-4">
-                                                    {getPriorityBadge(ticket.Priority)}
-                                                    {getStatusBadge(ticket.Status)}
-                                                </div>
-                                            </div>
-                                            <div className="text-xs text-gray-500 flex items-center gap-2 mt-2">
-                                                <Calendar className="w-3 h-3" />
-                                                {formatDate(ticket.CreatedAt)}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="sticky bottom-0 bg-gray-50 border-t-2 border-gray-200 p-6 rounded-b-2xl flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg"
-                    >
-                        Đóng
-                    </button>
                 </div>
             </div>
         </div>
