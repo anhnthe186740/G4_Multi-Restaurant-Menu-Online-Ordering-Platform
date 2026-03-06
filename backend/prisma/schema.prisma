@@ -223,11 +223,7 @@ model Branch {
   name          String  @map("Name") @db.VarChar(255)
   address       String? @map("Address") @db.VarChar(255)
   phone         String? @map("Phone") @db.VarChar(20)
-<<<<<<< feature/DanhSachChiNhanh
-  openingHours  String? @map("OpeningHours") @db.Text
-=======
   openingHours  String? @map("OpeningHours") @db.VarChar(100)
->>>>>>> main
   isActive      Boolean @default(true) @map("IsActive")
 
   // Relations

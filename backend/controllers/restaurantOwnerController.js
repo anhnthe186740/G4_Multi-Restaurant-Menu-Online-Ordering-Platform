@@ -579,7 +579,6 @@ export const updateOwnerBranch = async (req, res) => {
   }
 };
 
-<<<<<<< feature/DanhSachChiNhanh
 /* =================== CREATE BRANCH =================== */
 export const createOwnerBranch = async (req, res) => {
   try {
@@ -610,7 +609,9 @@ export const createOwnerBranch = async (req, res) => {
   } catch (error) {
     console.error('createOwnerBranch error:', error);
     res.status(500).json({ message: error.message || 'Server error' });
-=======
+  }
+};
+
 /* =================== GET PAYMENT HISTORY =================== */
 /**
  * GET /owner/payment-history
@@ -841,7 +842,6 @@ export const updateOwnerRestaurantInfo = async (req, res) => {
   } catch (error) {
     console.error("updateOwnerRestaurantInfo error:", error);
     res.status(500).json({ message: error.message || "Server error" });
->>>>>>> main
   }
 };
 
@@ -876,24 +876,15 @@ export const toggleOwnerBranch = async (req, res) => {
   }
 };
 
-<<<<<<< feature/DanhSachChiNhanh
 /* =================== DELETE BRANCH =================== */
 export const deleteOwnerBranch = async (req, res) => {
   try {
     const userID = req.user.userId;
     const branchID = parseInt(req.params.id);
-=======
-/* =================== DETAILED ORDERS REPORT =================== */
-export const getDetailedOrdersReport = async (req, res) => {
-  try {
-    const userID = req.user.userId;
-    const { startDate, endDate, branchID } = req.query;
->>>>>>> main
 
     const restaurant = await getOwnerRestaurant(userID);
     if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
 
-<<<<<<< feature/DanhSachChiNhanh
     const branch = await prisma.branch.findFirst({
       where: { branchID, restaurantID: restaurant.restaurantID },
     });
@@ -942,7 +933,16 @@ export const getDetailedOrdersReport = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
-=======
+
+/* =================== DETAILED ORDERS REPORT =================== */
+export const getDetailedOrdersReport = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const { startDate, endDate, branchID } = req.query;
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+
     const ownerBranches = await prisma.branch.findMany({
       where: { restaurantID: restaurant.restaurantID },
       select: { branchID: true, name: true },
@@ -1739,4 +1739,3 @@ export const replyOwnerTicket = async (req, res) => {
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
->>>>>>> main

@@ -11,10 +11,8 @@ import {
   getOwnerBranchById,
   updateOwnerBranch,
   toggleOwnerBranch,
-<<<<<<< feature/DanhSachChiNhanh
   createOwnerBranch,
   deleteOwnerBranch,
-=======
   getPaymentHistory,
   getRevenueByPeriod,
   getBranchSummaryReport,
@@ -36,7 +34,6 @@ import {
   getOwnerTickets,
   getOwnerTicketById,
   replyOwnerTicket,
->>>>>>> main
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
