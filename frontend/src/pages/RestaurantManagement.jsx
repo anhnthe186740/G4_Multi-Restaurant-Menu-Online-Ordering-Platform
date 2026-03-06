@@ -376,8 +376,8 @@ const RestaurantManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Footer (Mockup style) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Stats Footer */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-[#1e293b] rounded-xl p-5 border border-slate-700/50 shadow-lg flex items-center gap-4 relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/10 transition-colors"></div>
                     <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0 border border-emerald-500/20">
@@ -386,17 +386,6 @@ const RestaurantManagement = () => {
                     <div>
                         <div className="text-slate-400 text-sm font-medium mb-1">Tỷ lệ hoạt động</div>
                         <div className="text-2xl font-bold text-white">{activeRate}%</div>
-                    </div>
-                </div>
-
-                <div className="bg-[#1e293b] rounded-xl p-5 border border-yellow-700/30 shadow-lg flex items-center gap-4 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-yellow-500/10 transition-colors"></div>
-                    <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 shrink-0 border border-yellow-500/20">
-                        <AlertTriangle size={24} />
-                    </div>
-                    <div>
-                        <div className="text-slate-400 text-sm font-medium mb-1">Tài khoản bị report (24h)</div>
-                        <div className="text-2xl font-bold text-white">0 nhà hàng</div>
                     </div>
                 </div>
 
