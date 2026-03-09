@@ -13,7 +13,6 @@ export const getAllPackages = async (req, res) => {
     res.status(500).json({ message: "Lỗi khi tải danh sách gói dịch vụ" });
   }
 };
-
 // POST /api/admin/service-packages
 export const createPackage = async (req, res) => {
   // Frontend có thể gửi "Description" hoặc "FeaturesDescription"
