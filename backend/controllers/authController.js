@@ -7,6 +7,10 @@ import jwt from "jsonwebtoken";
 // Import Prisma client để thao tác với database
 import prisma from "../config/prismaClient.js";
 
+import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 // Hàm lấy JWT secret từ biến môi trường
 // Không khai báo cố định ở đầu file để đảm bảo khi .env load xong mới đọc giá trị
@@ -197,5 +201,102 @@ export const refreshToken = async (req, res) => {
   } catch (error) {
     console.error("refreshToken error:", error?.stack || error);
     res.status(500).json({ message: error?.message || "Lỗi server" });
+  }
+};
+
+
+/* ================= GOOGLE LOGIN ================= */
+export const googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: "Thiếu token Google" });
+
+    // Cần đảm bảo GOOGLE_CLIENT_ID đã có trong .env
+    const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    if (!CLIENT_ID) {
+      console.warn("Chưa cấu hình GOOGLE_CLIENT_ID trong .env");
+    }
+
+    // Lấy thông tin user từ Google sử dụng access_token
+    const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const { email, name } = userInfoResponse.data;
+
+    if (!email) {
+      return res.status(400).json({ message: "Không lấy được email từ Google" });
+    }
+
+    // Tìm user bằng email
+    let user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        userID: true,
+        fullName: true,
+        email: true,
+        role: true,
+        status: true,
+        lockReason: true,
+      },
+    });
+
+    // Nếu không tồn tại, tự động tạo tài khoản (mặc định lấy role Staff)
+    if (!user) {
+      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      const passwordHash = await bcrypt.hash(randomPassword, 10);
+
+      const newUser = await prisma.user.create({
+        data: {
+          username: email.split('@')[0] + "_" + Math.floor(Math.random() * 10000),
+          fullName: name || null,
+          email,
+          passwordHash,
+          role: "Staff",
+        },
+      });
+
+      user = {
+        userID: newUser.userID,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        role: newUser.role,
+        status: newUser.status,
+      }
+    }
+
+    // Kiểm tra khoá tài khoản
+    if (user.status === 'Inactive') {
+      return res.status(403).json({
+        message: "Tài khoản của bạn đã bị khoá",
+        lockReason: user.lockReason || "Không có lý do cụ thể",
+        locked: true,
+      });
+    }
+
+    // Tạo JWT token
+    const jwtToken = jwt.sign(
+      {
+        userId: user.userID,
+        role: user.role
+      },
+      getSecret(),
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      message: "Đăng nhập Google thành công",
+      token: jwtToken,
+      user: {
+        id: user.userID,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      },
+    });
+
+  } catch (error) {
+    console.error("googleLogin error:", error?.stack || error);
+    res.status(500).json({ message: error?.message || "Lỗi server khi đăng nhập Google" });
   }
 };

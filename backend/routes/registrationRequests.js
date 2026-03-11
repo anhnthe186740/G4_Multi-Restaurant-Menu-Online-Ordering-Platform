@@ -25,7 +25,7 @@ const optionalAuth = (req, res, next) => {
     }
     next();
 };
-
+ 
 // POST / — Public (nhưng đọc token nếu có để lưu userID)
 router.post("/", optionalAuth, createRegistrationRequest);
 

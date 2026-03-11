@@ -33,8 +33,8 @@ export default function Header() {
 
         {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl">
-          <div className="flex items-center gap-3 font-bold text-gray-1000 dark:text-white">
-            <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
+          <div className="flex items-center gap-3 font-bold text-white">
+            <svg className="w-6 h-6 text-green-500" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
             </svg>
             RestoManager

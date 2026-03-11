@@ -200,6 +200,12 @@ export default function OwnerSettings() {
                         <Save size={16} />
                         {saving ? "Đang lưu..." : "Lưu thay đổi"}
                     </button>
+                    <button type="button" onClick={() => navigate("/owner/review")}>review</button>
+                       
+                       <table>
+
+                          
+                         </table>
                 </div>
 
                 {/* ===== BỘ NHẬN DIỆN HÌNH ẢNH ===== */}
@@ -459,6 +465,9 @@ export default function OwnerSettings() {
                 </div>
 
             </div>
+
+
         </RestaurantOwnerLayout>
+
     );
 }

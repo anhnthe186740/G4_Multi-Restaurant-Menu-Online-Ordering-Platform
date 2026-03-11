@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { loginApi } from "../api/authApi";
+import { loginApi, loginWithGoogleApi } from "../api/authApi";
+import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -12,6 +13,46 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [lockedInfo, setLockedInfo] = useState(null);
+
+    const loginGoogle = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setLoading(true);
+            setError(null);
+            setLockedInfo(null);
+            try {
+                const response = await loginWithGoogleApi(tokenResponse.access_token);
+                if (response?.data?.token) {
+                    localStorage.setItem("token", response.data.token);
+                    localStorage.setItem("user", JSON.stringify(response.data.user));
+
+                    const role = response.data.user?.role;
+                    if (redirectPath) {
+                        navigate(redirectPath);
+                    } else if (role === "Admin") {
+                        navigate("/admin/dashboard");
+                    } else if (role === "RestaurantOwner") {
+                        navigate("/owner/dashboard");
+                    } else {
+                        navigate("/");
+                    }
+                } else {
+                    setError("Không nhận được token từ server");
+                }
+            } catch (err) {
+                const data = err.response?.data;
+                if (data?.locked) {
+                    setLockedInfo({ lockReason: data.lockReason });
+                } else {
+                    setError(data?.message || "Lỗi đăng nhập Google");
+                }
+            } finally {
+                setLoading(false);
+            }
+        },
+        onError: () => {
+            setError("Đăng nhập Google thất bại");
+        }
+    });
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -230,13 +271,15 @@ export default function Login() {
                         <div className="flex justify-center">
                             <button
                                 type="button"
+                                onClick={() => loginGoogle()}
+                                disabled={loading}
                                 className="flex items-center justify-center gap-3
                                 h-12 w-full rounded-xl
                                 border border-[#133827]
                                 bg-[#031a11] text-gray-300
                                 text-sm font-semibold
                                 hover:bg-[#0a2e22] hover:border-[#2d4b3b] hover:text-white
-                                transition-all"
+                                transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <svg className="w-5 h-5" viewBox="0 0 48 48">
                                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.02 1.54 7.4 2.82l5.47-5.47C33.58 3.7 29.18 1.5 24 1.5 14.98 1.5 7.44 7.98 4.69 16.55l6.98 5.42C13.1 15.3 18.13 9.5 24 9.5z" />

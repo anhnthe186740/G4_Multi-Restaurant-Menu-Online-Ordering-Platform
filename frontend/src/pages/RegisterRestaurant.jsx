@@ -323,7 +323,7 @@ export default function RegisterRestaurant() {
                                             <p className="text-xs font-medium text-center">Tải logo lên</p>
                                             <p className="text-xs mt-1 text-gray-600">PNG trong suốt</p>
                                         </div>
-                                    )}
+                                    )} 
                                     {logoPreview && (
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                                             <span className="text-white text-xs font-semibold">Thay đổi logo</span>

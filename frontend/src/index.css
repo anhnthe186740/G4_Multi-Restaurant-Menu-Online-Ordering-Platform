@@ -1,14 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@config "../tailwind.config.js";
 
 /* CSS global */
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  
+
   /* 🔥 QUAN TRỌNG: Ép màu nền tối ngay từ đầu */
-  background-color: #02140c; 
+  background-color: #02140c;
   color: #ffffff;
 }
 
@@ -28,16 +28,19 @@ input:focus {
 }
 
 ::-webkit-scrollbar-track {
-  background: #02140c; /* Màu nền tối */
+  background: #02140c;
+  /* Màu nền tối */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #00c04b; /* Màu xanh Neon chủ đạo */
+  background: #00c04b;
+  /* Màu xanh Neon chủ đạo */
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00a841; /* Đậm hơn khi hover */
+  background: #00a841;
+  /* Đậm hơn khi hover */
 }
 
 /* Utility classes */

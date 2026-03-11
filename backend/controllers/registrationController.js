@@ -31,7 +31,7 @@ export const createRegistrationRequest = async (req, res) => {
                 ...(submittingUserID && { ownerUserID: submittingUserID }),
             },
         });
-
+ 
         res.status(201).json({
             message: "Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn trong 1-2 ngày làm việc.",
             requestID: request.requestID,

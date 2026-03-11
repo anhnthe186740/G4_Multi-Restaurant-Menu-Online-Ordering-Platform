@@ -55,6 +55,7 @@ export const getPublicServicePackages = () => axios.get("http://localhost:5000/a
 // ========== REGISTRATION REQUESTS APIs ==========
 export const getRegistrationRequests = (params) => adminAxios.get("/admin/registration-requests", { params });
 export const approveRegistrationRequest = (id) => adminAxios.post(`/admin/registration-requests/${id}/approve`);
+//Gọi thư viện Axios để gửi Request xuống mạng
 export const rejectRegistrationRequest = (id, adminNote) => adminAxios.post(`/admin/registration-requests/${id}/reject`, { adminNote });
 
 export default adminAxios;

@@ -132,19 +132,26 @@ export default function AdminRequests() {
 
     // ── approve ────────────────────────────────────────────────────────────────
     const handleApprove = async () => {
-        if (!selected || actionLoading) return;
-        setActionLoading(true);
-        try {
-            await approveRegistrationRequest(selected.requestID);
-            showToast("Đã phê duyệt yêu cầu thành công!");
-            setSelected(null);
-            fetchData(pagination.page);
-        } catch (err) {
-            showToast(err.response?.data?.message || "Có lỗi xảy ra", "error");
-        } finally {
-            setActionLoading(false);
-        }
-    };
+    // 1. Chặn bấm nhiều lần
+    if (!selected || actionLoading) return;
+    setActionLoading(true);
+
+    try {
+        // 2. Gọi hàm call API bằng ID của đơn được chọn
+        await approveRegistrationRequest(selected.requestID);
+
+        // 3. Nếu API trả về thành công (không có lỗi)
+        showToast("Đã phê duyệt yêu cầu thành công!");
+        setSelected(null); // Bỏ chọn đơn đó trên màn hình
+
+        // 4. Load (F5) lại danh sách đơn để cập nhật bảng giao diện
+        fetchData(pagination.page);
+    } catch (err) {
+        showToast(err.response?.data?.message || "Có lỗi xảy ra", "error");
+    } finally {
+        setActionLoading(false);
+    }
+};
 
     // ── reject ─────────────────────────────────────────────────────────────────
     const handleReject = async () => {
