@@ -22,6 +22,7 @@ import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
 import OwnerReports from "./pages/OwnerReports";
 import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
+import BranchManagerDashboard from "./pages/BranchManagerDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -183,6 +184,16 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerTickets />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ===== BRANCH MANAGER ROUTES ===== */}
+        <Route
+          path="/manager/dashboard"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <BranchManagerDashboard />
             </ProtectedRoute>
           }
         />

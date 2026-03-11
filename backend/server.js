@@ -11,6 +11,7 @@ import adminServicePackageRoutes from "./routes/adminServicePackages.js";
 import { getAllPackages } from "./controllers/adminServicePackageController.js";
 import registrationRequestRoutes from "./routes/registrationRequests.js";
 import restaurantOwnerRoutes from "./routes/restaurantOwner.js";
+import branchManagerRoutes from "./routes/branchManager.js";
 import uploadRoutes from "./routes/upload.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,6 +54,7 @@ app.use("/api/admin/service-packages", adminServicePackageRoutes);
 // Public route — phải đặt TRƯỚC router admin để được khớp trước adminOnly
 app.use("/api/admin/registration-requests", registrationRequestRoutes);
 app.use("/api/owner", restaurantOwnerRoutes);
+app.use("/api/manager", branchManagerRoutes);
 app.use("/api/upload", uploadRoutes);
 
 
