@@ -5,6 +5,12 @@ import {
   getManagerOrderStatus,
   getManagerTopProducts,
   getManagerOrdersHeatmap,
+  getTables,
+  createTable,
+  updateTable,
+  updateTableStatus,
+  deleteTable,
+  mergeTables,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -20,4 +26,14 @@ router.get("/dashboard/order-status",   getManagerOrderStatus);
 router.get("/dashboard/top-products",   getManagerTopProducts);
 router.get("/dashboard/orders-heatmap", getManagerOrdersHeatmap);
 
+// Tables
+router.get("/tables",              getTables);
+router.post("/tables",             createTable);
+router.post("/tables/merge",       mergeTables);       // ← đặt TRƯỚC /:id
+router.put("/tables/:id",          updateTable);
+router.patch("/tables/:id/status", updateTableStatus);
+router.delete("/tables/:id",       deleteTable);
+
 export default router;
+
+
