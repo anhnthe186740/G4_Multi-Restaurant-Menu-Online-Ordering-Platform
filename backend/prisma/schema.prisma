@@ -134,6 +134,7 @@ model User {
   approvedRequests     RegistrationRequest[] @relation("RequestApprover")
   createdOrders        Order[]
   supportTickets       SupportTicket[]
+  resetTokens          PasswordResetToken[]
 
   @@map("Users")
 }
@@ -446,4 +447,17 @@ model SupportTicket {
   user User? @relation(fields: [userID], references: [userID])
 
   @@map("SupportTickets")
+}
+// 19. PasswordResetTokens
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement()) @map("ID")
+  userID    Int      @map("UserID")
+  token     String   @unique @map("Token") @db.VarChar(255)
+  expiresAt DateTime @map("ExpiresAt")
+  createdAt DateTime @default(now()) @map("CreatedAt")
+
+  // Relations
+  user User @relation(fields: [userID], references: [userID], onDelete: Cascade)
+
+  @@map("PasswordResetTokens")
 }
