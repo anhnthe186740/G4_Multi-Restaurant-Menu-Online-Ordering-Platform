@@ -14,48 +14,54 @@ export default function AdminDashboard() {
     const [overview, setOverview] = useState(null);
     const [packageData, setPackageData] = useState([]);
     const [paymentHistory, setPaymentHistory] = useState([]);
+    const [payPage, setPayPage] = useState(1);
+    const [payPagination, setPayPagination] = useState({ currentPage: 1, totalPages: 1, totalRecords: 0, limit: 5 });
+    const [payLoading, setPayLoading] = useState(false);
 
-    useEffect(() => {
-        loadDashboardData();
-    }, []);
+    // ── Effects ──
+    useEffect(() => { loadDashboardData(); }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchPayments(payPage); }, [payPage]);
 
-    const loadDashboardData = async () => {
+    // ── Fetch payment history ──
+    async function fetchPayments(page) {
+        setPayLoading(true);
+        try {
+            const { data } = await getPaymentHistory({ page, limit: 5 });
+            if (Array.isArray(data)) {
+                setPaymentHistory(data);
+                setPayPagination({ currentPage: page, totalPages: 1, totalRecords: data.length, limit: 5 });
+            } else {
+                setPaymentHistory(data.payments ?? []);
+                setPayPagination(data.pagination ?? { currentPage: page, totalPages: 1, totalRecords: 0, limit: 5 });
+            }
+        } catch (e) {
+            console.error('Payment history error:', e);
+        } finally {
+            setPayLoading(false);
+        }
+    }
+
+    // ── Load overview + chart ──
+    async function loadDashboardData() {
         setLoading(true);
         try {
-            // Chạy độc lập — một API lỗi không ảnh hưởng API khác
-            const results = await Promise.allSettled([
+            const [overviewRes, packageRes] = await Promise.allSettled([
                 getDashboardOverview(),
                 getPackageDistribution(),
-                getPaymentHistory()
             ]);
-
-            const [overviewRes, packageRes, paymentsRes] = results;
-
-            if (overviewRes.status === 'fulfilled') {
-                setOverview(overviewRes.value.data);
-            } else {
-                console.error('Overview error:', overviewRes.reason);
-            }
-
+            if (overviewRes.status === 'fulfilled') setOverview(overviewRes.value.data);
             if (packageRes.status === 'fulfilled') {
                 const pkgData = packageRes.value.data;
-                console.log('Package distribution data:', pkgData);
                 setPackageData(Array.isArray(pkgData) ? pkgData : []);
-            } else {
-                console.error('Package distribution error:', packageRes.reason);
-            }
-
-            if (paymentsRes.status === 'fulfilled') {
-                setPaymentHistory(paymentsRes.value.data);
-            } else {
-                console.error('Payment history error:', paymentsRes.reason);
             }
         } catch (error) {
             console.error('Error loading dashboard:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }
+
 
     if (loading) {
         return (
@@ -191,9 +197,20 @@ export default function AdminDashboard() {
                         </button>
                     </div>
 
-                    <div className="space-y-3">
-                        {paymentHistory && paymentHistory.length > 0 ? (
-                            paymentHistory.slice(0, 5).map((payment, index) => (
+                    <div className="space-y-3 min-h-[220px]">
+                        {payLoading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="flex items-center gap-3 p-3 animate-pulse">
+                                    <div className="w-10 h-10 rounded-lg bg-[#1a2b22]" />
+                                    <div className="flex-1 space-y-1.5">
+                                        <div className="h-3 bg-[#1a2b22] rounded w-2/3" />
+                                        <div className="h-2 bg-[#1a2b22] rounded w-1/3" />
+                                    </div>
+                                    <div className="h-3 bg-[#1a2b22] rounded w-16" />
+                                </div>
+                            ))
+                        ) : paymentHistory && paymentHistory.length > 0 ? (
+                            paymentHistory.map((payment, index) => (
                                 <div key={payment.SubscriptionID} className="flex items-center justify-between p-3 rounded-lg hover:bg-[#1a2b22]/30 transition">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#00ff88]/20 to-[#00c04b]/20 flex items-center justify-center">
@@ -230,9 +247,21 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Pagination */}
-                    <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-[#1a2b22]">
-                        <button className="w-8 h-8 rounded-lg bg-[#1a2b22] text-gray-400 hover:text-white transition">‹</button>
-                        <button className="w-8 h-8 rounded-lg bg-[#1a2b22] text-gray-400 hover:text-white transition">›</button>
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#1a2b22]">
+                        <span className="text-gray-500 text-xs">Tổng {payPagination.totalRecords} giao dịch</span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPayPage(p => Math.max(1, p - 1))}
+                                disabled={payPage <= 1 || payLoading}
+                                className="w-8 h-8 rounded-lg bg-[#1a2b22] text-gray-400 hover:text-white disabled:opacity-40 transition font-bold"
+                            >‹</button>
+                            <span className="text-gray-400 text-xs px-1">{payPage}/{payPagination.totalPages || 1}</span>
+                            <button
+                                onClick={() => setPayPage(p => Math.min(payPagination.totalPages, p + 1))}
+                                disabled={payPage >= payPagination.totalPages || payLoading}
+                                className="w-8 h-8 rounded-lg bg-[#1a2b22] text-gray-400 hover:text-white disabled:opacity-40 transition font-bold"
+                            >›</button>
+                        </div>
                     </div>
                 </div>
             </div>

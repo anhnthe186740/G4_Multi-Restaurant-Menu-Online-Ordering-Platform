@@ -66,4 +66,11 @@ export const getOwnerTickets = (params) => ownerAxios.get("/owner/tickets", { pa
 export const getOwnerTicketById = (id) => ownerAxios.get(`/owner/tickets/${id}`);
 export const replyOwnerTicket = (id, data) => ownerAxios.post(`/owner/tickets/${id}/reply`, data);
 
+// Staff / Branch Manager Management
+export const getOwnerManagers = () => ownerAxios.get("/owner/managers");
+export const createOwnerManager = (data) => ownerAxios.post("/owner/managers", data);
+export const updateOwnerManager = (id, data) => ownerAxios.put(`/owner/managers/${id}`, data);
+export const toggleOwnerManager = (id) => ownerAxios.patch(`/owner/managers/${id}/toggle`);
+export const deleteOwnerManager = (id) => ownerAxios.delete(`/owner/managers/${id}`);
+
 export default ownerAxios;

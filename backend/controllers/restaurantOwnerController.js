@@ -1739,3 +1739,215 @@ export const replyOwnerTicket = async (req, res) => {
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
+
+/* =================== GET OWNER MANAGERS =================== */
+/**
+ * GET /owner/managers
+ * Trả về danh sách tài khoản BranchManager thuộc các chi nhánh của owner.
+ */
+export const getOwnerManagers = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
+
+    // Lấy tất cả branch IDs của restaurant này
+    const branches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      select: { branchID: true, name: true, managerUserID: true },
+    });
+
+    const managerUserIDs = branches
+      .map(b => b.managerUserID)
+      .filter(id => id !== null && id !== undefined);
+
+    // Lấy tất cả user có role BranchManager thuộc nhà hàng này
+    const managers = await prisma.user.findMany({
+      where: {
+        role: 'BranchManager',
+        userID: managerUserIDs.length > 0 ? { in: managerUserIDs } : undefined,
+        managedBranches: {
+          some: { restaurantID: restaurant.restaurantID }
+        }
+      },
+      select: {
+        userID: true,
+        username: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        status: true,
+        createdAt: true,
+        managedBranches: {
+          where: { restaurantID: restaurant.restaurantID },
+          select: { branchID: true, name: true },
+        },
+      },
+    });
+
+    const result = managers.map(m => ({
+      id: m.userID,
+      username: m.username,
+      fullName: m.fullName,
+      email: m.email,
+      phone: m.phone,
+      isActive: m.status === 'Active',
+      createdAt: m.createdAt,
+      branchId: m.managedBranches[0]?.branchID || null,
+      branchName: m.managedBranches[0]?.name || null,
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error('getOwnerManagers error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+/* =================== CREATE OWNER MANAGER =================== */
+/**
+ * POST /owner/managers
+ * Tạo tài khoản BranchManager mới và gán vào chi nhánh được chọn.
+ */
+export const createOwnerManager = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const { fullName, username, email, phone, password, branchId, isActive } = req.body;
+
+    // Validate bắt buộc
+    if (!username || !email || !password || !branchId) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ thông tin bắt buộc' });
+    }
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
+
+    // Kiểm tra chi nhánh thuộc nhà hàng này
+    const branch = await prisma.branch.findFirst({
+      where: { branchID: parseInt(branchId), restaurantID: restaurant.restaurantID },
+    });
+    if (!branch) return res.status(404).json({ message: 'Chi nhánh không tồn tại hoặc không thuộc nhà hàng của bạn' });
+
+    // Kiểm tra username/email trùng
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ username }, { email }] },
+    });
+    if (existingUser) {
+      if (existingUser.username === username)
+        return res.status(400).json({ message: 'Tên đăng nhập đã tồn tại' });
+      return res.status(400).json({ message: 'Email đã tồn tại' });
+    }
+
+    // Mã hóa mật khẩu
+    const bcrypt = (await import('bcrypt')).default;
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Tạo user mới với role BranchManager
+    const newUser = await prisma.user.create({
+      data: {
+        username: username.trim(),
+        fullName: fullName || null,
+        email: email.trim(),
+        phone: phone || null,
+        passwordHash,
+        role: 'BranchManager',
+        status: isActive === false ? 'Inactive' : 'Active',
+      },
+    });
+
+    // Gán manager vào chi nhánh
+    await prisma.branch.update({
+      where: { branchID: branch.branchID },
+      data: { managerUserID: newUser.userID },
+    });
+
+    res.status(201).json({
+      message: 'Tạo tài khoản quản lý thành công',
+      manager: {
+        id: newUser.userID,
+        username: newUser.username,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        branchId: branch.branchID,
+        branchName: branch.name,
+      },
+    });
+  } catch (error) {
+    console.error('createOwnerManager error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+/* =================== TOGGLE OWNER MANAGER STATUS =================== */
+/**
+ * PATCH /owner/managers/:id/toggle
+ * Bật/tắt trạng thái Active/Inactive của tài khoản manager.
+ */
+export const toggleOwnerManager = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const managerID = parseInt(req.params.id);
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
+
+    // Kiểm tra manager thuộc nhà hàng này
+    const manager = await prisma.user.findFirst({
+      where: {
+        userID: managerID,
+        role: 'BranchManager',
+        managedBranches: { some: { restaurantID: restaurant.restaurantID } },
+      },
+    });
+    if (!manager) return res.status(404).json({ message: 'Không tìm thấy tài khoản quản lý' });
+
+    const newStatus = manager.status === 'Active' ? 'Inactive' : 'Active';
+    await prisma.user.update({
+      where: { userID: managerID },
+      data: { status: newStatus },
+    });
+
+    res.json({ message: `Tài khoản đã được ${newStatus === 'Active' ? 'kích hoạt' : 'tạm dừng'}`, status: newStatus });
+  } catch (error) {
+    console.error('toggleOwnerManager error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+/* =================== DELETE OWNER MANAGER =================== */
+/**
+ * DELETE /owner/managers/:id
+ * Xóa tài khoản manager và xóa gán khỏi chi nhánh.
+ */
+export const deleteOwnerManager = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const managerID = parseInt(req.params.id);
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
+
+    const manager = await prisma.user.findFirst({
+      where: {
+        userID: managerID,
+        role: 'BranchManager',
+        managedBranches: { some: { restaurantID: restaurant.restaurantID } },
+      },
+    });
+    if (!manager) return res.status(404).json({ message: 'Không tìm thấy tài khoản quản lý' });
+
+    // Xóa gán manager khỏi chi nhánh trước
+    await prisma.branch.updateMany({
+      where: { managerUserID: managerID, restaurantID: restaurant.restaurantID },
+      data: { managerUserID: null },
+    });
+
+    // Xóa tài khoản
+    await prisma.user.delete({ where: { userID: managerID } });
+
+    res.json({ message: 'Đã xóa tài khoản quản lý' });
+  } catch (error) {
+    console.error('deleteOwnerManager error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};

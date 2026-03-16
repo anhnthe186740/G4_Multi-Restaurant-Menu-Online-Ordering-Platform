@@ -34,6 +34,11 @@ import {
   getOwnerTickets,
   getOwnerTicketById,
   replyOwnerTicket,
+  // Manager / Staff Management
+  getOwnerManagers,
+  createOwnerManager,
+  toggleOwnerManager,
+  deleteOwnerManager,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -90,5 +95,11 @@ router.post("/tickets", createOwnerTicket);
 router.get("/tickets", getOwnerTickets);
 router.get("/tickets/:id", getOwnerTicketById);
 router.post("/tickets/:id/reply", replyOwnerTicket);
+
+// ===== MANAGER / STAFF MANAGEMENT =====
+router.get("/managers", getOwnerManagers);
+router.post("/managers", createOwnerManager);
+router.patch("/managers/:id/toggle", toggleOwnerManager);
+router.delete("/managers/:id", deleteOwnerManager);
 
 export default router;
