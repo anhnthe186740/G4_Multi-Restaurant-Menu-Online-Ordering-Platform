@@ -22,6 +22,8 @@ import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
 import OwnerReports from "./pages/OwnerReports";
 import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
+import OwnerStaff from "./pages/OwnerStaff";
+import OwnerCreateManager from "./pages/OwnerCreateManager";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
@@ -211,6 +213,24 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/owner/staff"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerStaff />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/staff/new"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerCreateManager />
+            </ProtectedRoute>
+          }
+        />
+
         {/* ===== BRANCH MANAGER ROUTES ===== */}
         <Route
           path="/manager/dashboard"
@@ -229,15 +249,7 @@ export default function App() {
           }
         />
 
-        {/* ===== BRANCH MANAGER ROUTES ===== */}
-        <Route
-          path="/manager/dashboard"
-          element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <BranchManagerDashboard />
-            </ProtectedRoute>
-          }
-        />
+
       </Routes>
     </BrowserRouter>
   );
