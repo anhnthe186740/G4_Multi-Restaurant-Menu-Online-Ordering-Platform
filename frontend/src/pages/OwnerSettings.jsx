@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import RestaurantOwnerLayout from "../components/owner/RestaurantOwnerLayout";
-import { Save, Upload, FileText, Info, Shield, BookOpen, User, MapPin, Phone, Clock, Loader2 } from "lucide-react";
+import { Save, Upload, FileText, Info, Shield, BookOpen, User, MapPin, Phone, Clock, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 import { getOwnRestaurantInfo, updateOwnRestaurantInfo } from "../api/ownerApi";
+import axios from "axios";
 
 export default function OwnerSettings() {
     const coverRef = useRef(null);
@@ -38,6 +39,17 @@ export default function OwnerSettings() {
     const [logoPreview, setLogoPreview] = useState(null);
     const [licenseFile, setLicenseFile] = useState(null);
     const [uploadingImg, setUploadingImg] = useState(""); // "cover" | "logo" | "license" | ""
+
+    // Change password state
+    const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "", otp: "" });
+    const [pwShow, setPwShow] = useState({ current: false, new: false, confirm: false });
+    const [pwLoading, setPwLoading] = useState(false);
+    const [pwMessage, setPwMessage] = useState("");
+    const [pwError, setPwError] = useState("");
+    
+    // OTP Form Step
+    const [isOtpStep, setIsOtpStep] = useState(false);
+    const [otpCountdown, setOtpCountdown] = useState(0);
 
     // Load restaurant data on mount
     useEffect(() => {
@@ -162,6 +174,68 @@ export default function OwnerSettings() {
     };
 
     const formatDate = (d) => d ? new Date(d).toLocaleString("vi-VN") : "N/A";
+
+    // Xử lý countdown OTP
+    useEffect(() => {
+        let timer;
+        if (otpCountdown > 0) {
+            timer = setInterval(() => {
+                setOtpCountdown(prev => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [otpCountdown]);
+
+    const handleRequestOtp = async (e) => {
+        e.preventDefault();
+        setPwMessage("");
+        setPwError("");
+        if (!pwForm.currentPassword) { setPwError("Vui lòng nhập mật khẩu hiện tại"); return; }
+        if (pwForm.newPassword.length < 8) { setPwError("Mật khẩu mới tối thiểu 8 ký tự"); return; }
+        if (pwForm.newPassword !== pwForm.confirmPassword) { setPwError("Mật khẩu xác nhận không khớp"); return; }
+
+        setPwLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await axios.post("http://localhost:5000/api/auth/send-change-password-otp", {
+                currentPassword: pwForm.currentPassword,
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            setPwMessage(res.data.message);
+            setIsOtpStep(true);
+            setOtpCountdown(60); // Đếm ngược 60s
+        } catch (err) {
+            setPwError(err.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại.");
+        } finally {
+            setPwLoading(false);
+        }
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        setPwMessage("");
+        setPwError("");
+        if (!pwForm.otp || pwForm.otp.length !== 6) { setPwError("Mã OTP phải gồm 6 chữ số"); return; }
+        
+        setPwLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await axios.post("http://localhost:5000/api/auth/change-password", {
+                currentPassword: pwForm.currentPassword,
+                newPassword: pwForm.newPassword,
+                otp: pwForm.otp,
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            
+            setPwMessage(res.data.message);
+            // Reset toàn bộ form
+            setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "", otp: "" });
+            setIsOtpStep(false);
+            setOtpCountdown(0);
+        } catch (err) {
+            setPwError(err.response?.data?.message || "Mã OTP không hợp lệ, vui lòng thử lại.");
+        } finally {
+            setPwLoading(false);
+        }
+    };
 
     const statusBadge = (status) => {
         const styles = {
@@ -426,6 +500,114 @@ export default function OwnerSettings() {
                             {statusBadge(ownerInfo.ownerStatus)}
                         </div>
                     </div>
+                </div>
+
+                {/* ===== ĐỔI MẬT KHẨU ===== */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-5">
+                        <Lock size={16} className="text-blue-500" />
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Đổi mật khẩu</h2>
+                    </div>
+                    <form onSubmit={isOtpStep ? handleChangePassword : handleRequestOtp} className="space-y-4 max-w-md">
+                        {/* Step 1: Input passwords */}
+                        <div className={isOtpStep ? "hidden" : "space-y-4"}>
+                            {["currentPassword", "newPassword", "confirmPassword"].map((field) => {
+                                const labels = { currentPassword: "Mật khẩu hiện tại", newPassword: "Mật khẩu mới", confirmPassword: "Xác nhận mật khẩu mới" };
+                                const placeholders = { currentPassword: "Nhập mật khẩu hiện tại", newPassword: "Nhập mật khẩu mới (tối thiểu 8 ký tự)", confirmPassword: "Nhập lại mật khẩu mới" };
+                                const showKey = field === "currentPassword" ? "current" : field === "newPassword" ? "new" : "confirm";
+                                return (
+                                    <div key={field}>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">{labels[field]}</label>
+                                        <div className="relative">
+                                            <input
+                                                type={pwShow[showKey] ? "text" : "password"}
+                                                value={pwForm[field]}
+                                                onChange={(e) => setPwForm(prev => ({ ...prev, [field]: e.target.value }))}
+                                                placeholder={placeholders[field]}
+                                                required={!isOtpStep}
+                                                className="w-full h-10 px-3 pr-10 rounded-lg border border-gray-200 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setPwShow(prev => ({ ...prev, [showKey]: !prev[showKey] }))}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            >
+                                                {pwShow[showKey] ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Step 2: Input OTP */}
+                        {isOtpStep && (
+                            <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg space-y-4">
+                                <p className="text-sm text-blue-800 font-medium">Bảo mật tài khoản: Mã xác nhận đã được gửi đến email của bạn.</p>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nhập mã OTP (6 số)</label>
+                                    <input
+                                        type="text"
+                                        maxLength="6"
+                                        value={pwForm.otp}
+                                        onChange={(e) => setPwForm(prev => ({ ...prev, otp: e.target.value.replace(/[^0-9]/g, "") }))}
+                                        placeholder="Ví dụ: 123456"
+                                        required={isOtpStep}
+                                        className="w-full h-10 px-3 rounded-lg border border-gray-200 text-center tracking-widest text-lg font-semibold text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                                    />
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsOtpStep(false)}
+                                        className="text-gray-500 hover:text-gray-700 transition"
+                                    >
+                                        &larr; Quay lại
+                                    </button>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={handleRequestOtp}
+                                        disabled={otpCountdown > 0 || pwLoading}
+                                        className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 transition"
+                                    >
+                                        {otpCountdown > 0 ? `Gửi lại mã sau ${otpCountdown}s` : "Gửi lại mã"}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {pwMessage && (
+                            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+                                ✅ {pwMessage}
+                            </div>
+                        )}
+                        {pwError && (
+                            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+                                ❌ {pwError}
+                            </div>
+                        )}
+                        
+                        {!isOtpStep ? (
+                            <button
+                                type="submit"
+                                disabled={pwLoading}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition disabled:opacity-60"
+                            >
+                                <Lock size={15} />
+                                {pwLoading ? "Đang xử lý..." : "Gửi mã xác nhận"}
+                            </button>
+                        ) : (
+                            <button
+                                type="submit"
+                                disabled={pwLoading || pwForm.otp.length < 6}
+                                className="w-full flex justify-center items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow transition disabled:opacity-60"
+                            >
+                                <Lock size={15} />
+                                {pwLoading ? "Đang cập nhật..." : "Xác nhận & Đổi mật khẩu"}
+                            </button>
+                        )}
+                    </form>
                 </div>
 
                 {/* ===== CHI NHÁNH (read-only) ===== */}
