@@ -9,6 +9,9 @@ import prisma from "../config/prismaClient.js";
 
 import { OAuth2Client } from 'google-auth-library';
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
+import { sendResetEmail, sendPasswordChangedEmail, sendOtpEmail } from "../config/emailService.js";
+
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
@@ -300,3 +303,176 @@ export const googleLogin = async (req, res) => {
     res.status(500).json({ message: error?.message || "Lỗi server khi đăng nhập Google" });
   }
 };
+
+/* ================= FORGOT PASSWORD ================= */
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Vui lòng cung cấp email" });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // For security, don't reveal if user exists or not
+      return res.json({ message: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được liên kết đặt lại mật khẩu." });
+    }
+
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userID: user.userID,
+        token: token,
+        expiresAt: expiresAt,
+      },
+    });
+
+    await sendResetEmail(email, token);
+
+    return res.json({ message: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được liên kết đặt lại mật khẩu." });
+  } catch (error) {
+    console.error("forgotPassword error:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+/* ================= RESET PASSWORD ================= */
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ message: "Thiếu thông tin yêu cầu" });
+
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!resetToken || resetToken.expiresAt < new Date()) {
+      return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { userID: resetToken.userID },
+      data: { passwordHash },
+    });
+
+    await prisma.passwordResetToken.delete({ where: { id: resetToken.id } });
+
+    // Gửi email thông báo đổi mật khẩu thành công
+    await sendPasswordChangedEmail(resetToken.user.email);
+
+    return res.json({ message: "Đặt lại mật khẩu thành công" });
+  } catch (error) {
+    console.error("resetPassword error:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+/* ================= SEND CHANGE PASSWORD OTP (authenticated) ================= */
+export const sendChangePasswordOtp = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?.userID;
+    if (!userId) return res.status(401).json({ message: "Không xác thực được người dùng" });
+
+    const { currentPassword } = req.body;
+    if (!currentPassword) return res.status(400).json({ message: "Vui lòng nhập mật khẩu hiện tại" });
+
+    const user = await prisma.user.findUnique({
+      where: { userID: parseInt(userId) },
+      select: { userID: true, email: true, passwordHash: true },
+    });
+
+    if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
+    if (!user.email) return res.status(400).json({ message: "Tài khoản của bạn chưa có email để gửi mã" });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) return res.status(400).json({ message: "Mật khẩu hiện tại không đúng" });
+
+    // Tạo OTP 6 chữ số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Xoá các token OTP cũ của user này nếu có kẹt lại
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        userID: user.userID,
+        token: { startsWith: "OTP_" }
+      }
+    });
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userID: user.userID,
+        token: `OTP_${otp}`, // Lưu với prefix để phân biệt với token reset password thường
+        expiresAt: expiresAt,
+      },
+    });
+
+    await sendOtpEmail(user.email, otp);
+
+    return res.json({ message: "Mã OTP đã được gửi về email của bạn." });
+  } catch (error) {
+    console.error("sendChangePasswordOtp error:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+/* ================= CHANGE PASSWORD (authenticated) ================= */
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?.userID;
+    if (!userId) return res.status(401).json({ message: "Không xác thực được người dùng" });
+
+    const { currentPassword, newPassword, otp } = req.body;
+    if (!currentPassword || !newPassword || !otp)
+      return res.status(400).json({ message: "Vui lòng cung cấp đầy đủ thông tin (mật khẩu hiện tại, mật khẩu mới, OTP)" });
+
+    if (newPassword.length < 8)
+      return res.status(400).json({ message: "Mật khẩu mới tối thiểu 8 ký tự" });
+
+    const user = await prisma.user.findUnique({
+      where: { userID: parseInt(userId) },
+      select: { userID: true, email: true, passwordHash: true },
+    });
+
+    if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) return res.status(400).json({ message: "Mật khẩu hiện tại không đúng" });
+
+    // Kiểm tra OTP
+    const resetToken = await prisma.passwordResetToken.findFirst({
+      where: {
+        userID: user.userID,
+        token: `OTP_${otp}`
+      }
+    });
+
+    if (!resetToken) {
+      return res.status(400).json({ message: "Mã OTP không hợp lệ hoặc đã hết hạn" });
+    }
+
+    if (resetToken.expiresAt < new Date()) {
+      return res.status(400).json({ message: "Mã OTP đã hết hạn. Vui lòng gửi lại mã mới." });
+    }
+
+    // Cập nhật mật khẩu mới
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({ where: { userID: user.userID }, data: { passwordHash } });
+
+    // Xoá token OTP đã dùng
+    await prisma.passwordResetToken.delete({ where: { id: resetToken.id } });
+
+    // Gửi email thông báo đổi mật khẩu thành công
+    if (user.email) {
+      await sendPasswordChangedEmail(user.email);
+    }
+
+    return res.json({ message: "Đổi mật khẩu thành công. Email xác nhận đã được gửi đến địa chỉ email của bạn." });
+  } catch (error) {
+    console.error("changePassword error:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};

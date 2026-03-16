@@ -24,6 +24,8 @@ import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
 import OwnerStaff from "./pages/OwnerStaff";
 import OwnerCreateManager from "./pages/OwnerCreateManager";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
 import TableManagement from "./pages/TableManagement";
 import CustomerMenu from "./pages/CustomerMenu";
@@ -56,6 +58,24 @@ export default function App() {
           element={
             <AuthLayout>
               <Register />
+            </AuthLayout>
+          }
+        />
+
+        <Route
+          path="/forgot-password"
+          element={
+            <AuthLayout>
+              <ForgotPassword />
+            </AuthLayout>
+          }
+        />
+
+        <Route
+          path="/reset-password"
+          element={
+            <AuthLayout>
+              <ResetPassword />
             </AuthLayout>
           }
         />
@@ -229,15 +249,7 @@ export default function App() {
           }
         />
 
-        {/* ===== BRANCH MANAGER ROUTES ===== */}
-        <Route
-          path="/manager/dashboard"
-          element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <BranchManagerDashboard />
-            </ProtectedRoute>
-          }
-        />
+
       </Routes>
     </BrowserRouter>
   );

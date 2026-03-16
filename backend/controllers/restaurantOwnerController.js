@@ -1195,12 +1195,14 @@ export const getProductRevenueStats = async (req, res) => {
           orderTime: { gte: start, lte: end },
         },
       },
-      _sum: { quantity: true, price: true },
-      orderBy: { _sum: { price: "desc" } },
+      _sum: { quantity: true, unitPrice: true },
+      orderBy: { _sum: { unitPrice: "desc" } },
+
       take: 10,
     });
 
-    const totalRevenue = grouped.reduce((s, g) => s + parseFloat(g._sum.price || 0), 0);
+    const totalRevenue = grouped.reduce((s, g) => s + parseFloat(g._sum.unitPrice || 0), 0);
+
 
     const result = await Promise.all(
       grouped.map(async (g) => {
@@ -1208,7 +1210,8 @@ export const getProductRevenueStats = async (req, res) => {
           where: { productID: g.productID },
           include: { category: { select: { name: true } } },
         });
-        const revenue = parseFloat(g._sum.price || 0);
+        const revenue = parseFloat(g._sum.unitPrice || 0);
+
 
         // Mock a trend for UI presentation (from -10% to +30%)
         // Or leave null and calculate real trend if possible, here using a determinist pseudo-random

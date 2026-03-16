@@ -1,4 +1,4 @@
-import "./env.js";   // ← PHẢI là import đầu tiên để load .env trước khi các middleware đọc process.env
+import "./env.js";
 import express from "express";
 import cors from "cors";
 import path from "path";
