@@ -17,4 +17,13 @@ export const getManagerOrderStatus      = (period = "today") => managerAxios.get
 export const getManagerTopProducts      = ()                  => managerAxios.get("/manager/dashboard/top-products");
 export const getManagerOrdersHeatmap    = ()                  => managerAxios.get("/manager/dashboard/orders-heatmap");
 
+// Tables
+export const getManagerTables          = ()         => managerAxios.get("/manager/tables");
+export const createManagerTable        = (data)     => managerAxios.post("/manager/tables", data);
+export const mergeManagerTables        = (sourceTableId, targetTableId) => managerAxios.post("/manager/tables/merge", { sourceTableId, targetTableId });
+export const updateManagerTable        = (id, data) => managerAxios.put(`/manager/tables/${id}`, data);
+export const updateManagerTableStatus  = (id, status) => managerAxios.patch(`/manager/tables/${id}/status`, { status });
+export const deleteManagerTable        = (id)       => managerAxios.delete(`/manager/tables/${id}`);
+
 export default managerAxios;
+

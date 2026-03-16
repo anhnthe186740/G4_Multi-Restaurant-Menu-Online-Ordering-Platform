@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-    LayoutDashboard, ClipboardList, Bell, Settings, LogOut, UtensilsCrossed
+    LayoutDashboard, ClipboardList, Bell, Settings, LogOut, UtensilsCrossed, LayoutGrid
 } from 'lucide-react';
 
 export default function BranchManagerSidebar() {
@@ -8,10 +8,11 @@ export default function BranchManagerSidebar() {
     const navigate = useNavigate();
 
     const menuItems = [
-        { icon: LayoutDashboard, label: 'Tổng quan', path: '/manager/dashboard' },
-        { icon: ClipboardList,   label: 'Đơn hàng',  path: '/manager/orders' },
-        { icon: Bell,            label: 'Yêu cầu phục vụ', path: '/manager/service-requests' },
-        { icon: Settings,        label: 'Cài đặt',   path: '/manager/settings' },
+        { icon: LayoutDashboard, label: 'Tổng quan',         path: '/manager/dashboard' },
+        { icon: LayoutGrid,      label: 'Sơ đồ bàn',        path: '/manager/tables' },
+        { icon: ClipboardList,   label: 'Đơn hàng',          path: '/manager/orders' },
+        { icon: Bell,            label: 'Yêu cầu phục vụ',  path: '/manager/service-requests' },
+        { icon: Settings,        label: 'Cài đặt',           path: '/manager/settings' },
     ];
 
     const isActive = (path) => location.pathname.startsWith(path);
