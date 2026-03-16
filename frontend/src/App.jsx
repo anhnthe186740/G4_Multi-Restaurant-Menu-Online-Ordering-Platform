@@ -24,6 +24,7 @@ import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
 import TableManagement from "./pages/TableManagement";
+import CustomerMenu from "./pages/CustomerMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -59,6 +60,7 @@ export default function App() {
 
         <Route path="/register-restaurant" element={<RegisterRestaurant />} />
         <Route path="/pending-status" element={<PendingStatus />} />
+        <Route path="/menu" element={<CustomerMenu />} />
 
         <Route
           path="/admin/dashboard"

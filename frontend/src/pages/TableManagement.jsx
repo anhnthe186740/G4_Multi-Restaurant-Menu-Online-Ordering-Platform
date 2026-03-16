@@ -2,8 +2,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
-    MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw,
+    MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
     getManagerTables,
     createManagerTable,
@@ -70,8 +71,21 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
         .map(id => allTables.find(t => t.id === id)?.name || `#${id}`)
         .join(', ');
 
+    const handleCardClick = (e) => {
+        // Tránh bị đè khi bấm vào các nút bên trong (3 chấm, thanh toán, v.v)
+        if (e.target.closest('button')) return;
+        
+        if (occupied) {
+            window.location.href = `/menu?tableId=${table.id}`;
+        }
+    };
+
     return (
-        <div className={`relative bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${isMerged ? 'border-amber-300 hover:border-amber-400' :
+        <div 
+            onClick={handleCardClick}
+            className={`relative bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${
+                occupied ? 'cursor-pointer' : ''
+            } ${isMerged ? 'border-amber-300 hover:border-amber-400' :
             occupied ? 'border-red-200 hover:border-red-300' :
                 'border-gray-100 hover:border-emerald-200'
             }`}>
@@ -283,6 +297,82 @@ function DeleteModal({ table, onClose, onConfirm }) {
     );
 }
 
+/* ─── Modal In Mã QR ──────────────────────────────────────────────────────── */
+function PrintQRModal({ tables, onClose }) {
+    const handlePrint = () => {
+        window.print();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm print:bg-transparent print:static print:block print:inset-auto">
+            {/* Vùng chỉ hiển thị khi không in */}
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col print:hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                        <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                            <QrCode className="text-emerald-600" size={20} />
+                            In Mã QR Bàn ({tables.length} bàn)
+                        </h2>
+                        <p className="text-xs text-gray-500 mt-1">Mã QR dẫn khách hàng đến menu đặt món.</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
+                        <X size={20} className="text-gray-500" />
+                    </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {tables.map(table => (
+                            <div key={table.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
+                                <h3 className="font-bold text-gray-800 mb-3 text-lg">{table.name}</h3>
+                                <div className="p-3 bg-white border-2 border-dashed border-gray-200 rounded-xl">
+                                    <QRCodeSVG 
+                                        value={`${window.location.origin}/menu?tableId=${table.id}`} 
+                                        size={120}
+                                        level="H"
+                                        includeMargin={false}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-3 max-w-[150px] truncate" title={`${window.location.origin}/menu?tableId=${table.id}`}>
+                                    Sức chứa: {table.capacity} khách
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-white rounded-b-2xl">
+                    <button onClick={onClose}
+                        className="px-5 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+                        Đóng
+                    </button>
+                    <button onClick={handlePrint}
+                        className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition flex items-center gap-2">
+                        <Printer size={16} /> Xác nhận in
+                    </button>
+                </div>
+            </div>
+
+            {/* Vùng chỉ hiển thị khi in (ẩn ở màn hình bình thường) */}
+            <div className="hidden print:block print:w-full print:bg-white">
+                <div className="grid grid-cols-3 gap-8 p-4">
+                    {tables.map(table => (
+                        <div key={table.id} className="flex flex-col items-center justify-center p-4 border-2 border-gray-800 rounded-2xl break-inside-avoid mb-6">
+                            <h2 className="text-2xl font-black mb-4 text-center">{table.name}</h2>
+                            <QRCodeSVG 
+                                value={`${window.location.origin}/menu?tableId=${table.id}`} 
+                                size={180}
+                                level="H"
+                            />
+                            <p className="mt-4 text-sm font-medium text-center">Quét mã để đặt món</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ─── Toast thông báo ──────────────────────────────────────────────────────── */
 function Toast({ message, onClose }) {
     useEffect(() => {
@@ -309,6 +399,7 @@ export default function TableManagement() {
     const [editTable, setEditTable] = useState(null);
     const [deleteTable, setDeleteTable] = useState(null);
     const [mergeSource, setMergeSource] = useState(null);
+    const [printQRModal, setPrintQRModal] = useState(false);
     const [toast, setToast] = useState(null);
 
     const showToast = (msg) => setToast(msg);
@@ -495,7 +586,15 @@ export default function TableManagement() {
                         </div>
                         {/* Nút hành động */}
                         <div className="flex items-center gap-2">
-                            <button className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition" title="In mã QR">
+                            <button 
+                                onClick={() => setPrintQRModal(true)}
+                                disabled={displayed.length === 0}
+                                className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-xl transition ${
+                                    displayed.length > 0 
+                                    ? 'border-gray-200 hover:bg-gray-50 text-gray-600' 
+                                    : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+                                }`} 
+                                title="In mã QR">
                                 <QrCode size={14} /> <span className="hidden sm:inline">In mã QR</span>
                             </button>
                         </div>
@@ -541,6 +640,7 @@ export default function TableManagement() {
             {editTable && <TableFormModal table={editTable} onClose={() => setEditTable(null)} onSave={handleEdit} />}
             {deleteTable && <DeleteModal table={deleteTable} onClose={() => setDeleteTable(null)} onConfirm={handleDelete} />}
             {mergeSource && <MergeBillModal sourceTable={mergeSource} occupiedTables={occupiedTables} onClose={() => setMergeSource(null)} onConfirm={handleMerge} />}
+            {printQRModal && <PrintQRModal tables={displayed} onClose={() => setPrintQRModal(false)} />}
             {toast && <Toast message={toast} onClose={() => setToast(null)} />}
         </BranchManagerLayout>
     );
