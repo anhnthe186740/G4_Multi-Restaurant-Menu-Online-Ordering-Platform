@@ -239,12 +239,13 @@ model Branch {
 
 // 7. Tables
 model Table {
-  tableID   Int         @id @default(autoincrement()) @map("TableID")
-  branchID  Int         @map("BranchID")
-  tableName String?     @map("TableName") @db.VarChar(50)
-  capacity  Int?        @map("Capacity")
-  status    TableStatus @default(Available) @map("Status")
-  qrCode    String?     @map("QRCode") @db.Text
+  tableID       Int         @id @default(autoincrement()) @map("TableID")
+  branchID      Int         @map("BranchID")
+  tableName     String?     @map("TableName") @db.VarChar(50)
+  capacity      Int?        @map("Capacity")
+  status        TableStatus @default(Available) @map("Status")
+  qrCode        String?     @map("QRCode") @db.Text
+  mergedGroupId String?     @map("MergedGroupId") @db.VarChar(50)  // NULL = không gộp; cùng giá trị = cùng nhóm gộp
 
   // Relations
   branch          Branch           @relation(fields: [branchID], references: [branchID], onDelete: Cascade)

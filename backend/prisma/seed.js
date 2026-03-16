@@ -623,7 +623,7 @@ async function main() {
   // =============================================
   const paidOrders = allCreatedOrders.filter(o => o.status !== 'Cancelled');
   const paymentMethods = ['Cash', 'BankTransfer', 'E_Wallet'];
-  const txStatuses   = ['Success', 'Success', 'Success', 'Success', 'Failed'];
+  const txStatuses = ['Success', 'Success', 'Success', 'Success', 'Failed'];
 
   let invoiceCount = 0;
   let txCount = 0;

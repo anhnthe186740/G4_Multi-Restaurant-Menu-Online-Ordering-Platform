@@ -32,6 +32,8 @@ export default function Login() {
                         navigate("/admin/dashboard");
                     } else if (role === "RestaurantOwner") {
                         navigate("/owner/dashboard");
+                    } else if (role === "BranchManager") {
+                        navigate("/manager/dashboard");
                     } else {
                         navigate("/");
                     }
@@ -78,6 +80,8 @@ export default function Login() {
                     navigate("/admin/dashboard");
                 } else if (role === "RestaurantOwner") {
                     navigate("/owner/dashboard");
+                } else if (role === "BranchManager") {
+                    navigate("/manager/dashboard");
                 } else {
                     navigate("/");
                 }
