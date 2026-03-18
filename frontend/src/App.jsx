@@ -24,6 +24,7 @@ import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
 import OwnerStaff from "./pages/OwnerStaff";
 import OwnerCreateManager from "./pages/OwnerCreateManager";
+import RestaurantServicePackage from "./pages/RestaurantServicePackage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
@@ -137,6 +138,15 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <RestaurantOwnerDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/service-packages"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <RestaurantServicePackage />
             </ProtectedRoute>
           }
         />
