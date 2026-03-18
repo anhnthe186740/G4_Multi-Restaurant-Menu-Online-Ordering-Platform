@@ -3,9 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { getMenuByTable } from '../api/publicApi';
 import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle } from 'lucide-react';
 
-export default function CustomerMenu() {
+export default function CustomerMenu({ tableIdProp }) {
     const [searchParams] = useSearchParams();
-    const tableId = searchParams.get('tableId');
+    const tableId = tableIdProp || searchParams.get('tableId');
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -39,7 +39,7 @@ export default function CustomerMenu() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="h-full min-h-[500px] bg-gray-50 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                     <p className="text-gray-500 font-medium">Đang tải thực đơn...</p>
@@ -50,7 +50,7 @@ export default function CustomerMenu() {
 
     if (error || !data) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="h-full min-h-[500px] bg-gray-50 flex items-center justify-center p-4">
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-red-100 max-w-md w-full text-center">
                     <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <AlertCircle size={40} className="text-red-500" />
@@ -71,9 +71,9 @@ export default function CustomerMenu() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24">
+        <div className="h-full bg-gray-50 pb-24 relative">
             {/* Header / Cover Image */}
-            <div className="relative h-64 bg-gray-900">
+            <div className="relative h-64 bg-gray-900 shrink-0">
                 {restaurant.coverImage ? (
                     <img src={restaurant.coverImage} alt="Cover" className="w-full h-full object-cover opacity-60" />
                 ) : (
@@ -115,7 +115,7 @@ export default function CustomerMenu() {
             </div>
 
             {/* Thanh Danh mục (Sticky) */}
-            <div className="sticky top-0 z-40 bg-white shadow-sm mt-4 border-b border-gray-100">
+            <div className="sticky top-0 z-30 bg-white shadow-sm mt-4 border-b border-gray-100">
                 <div className="flex overflow-x-auto hide-scrollbar px-4 py-3 gap-2">
                     {categories.map((cat) => (
                         <button
@@ -187,8 +187,8 @@ export default function CustomerMenu() {
             </div>
 
             {/* Giỏ hàng nổi (Floating Cart - UI tạm) */}
-            <div className="fixed bottom-6 left-0 right-0 px-4 pointer-events-none z-50 flex justify-center max-w-3xl mx-auto">
-                <button className="pointer-events-auto bg-gray-900 text-white shadow-2xl rounded-2xl py-3 px-6 flex items-center gap-3 w-full hover:bg-black transition-colors transform hover:-translate-y-1 duration-200">
+            <div className="sticky bottom-6 left-0 right-0 px-4 mt-6 z-40 flex justify-center max-w-3xl mx-auto">
+                <button className="bg-gray-900 text-white shadow-2xl rounded-2xl py-3 px-6 flex items-center gap-3 w-full hover:bg-black transition-colors transform hover:-translate-y-1 duration-200">
                     <div className="relative">
                         <ShoppingCart size={20} />
                         <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>

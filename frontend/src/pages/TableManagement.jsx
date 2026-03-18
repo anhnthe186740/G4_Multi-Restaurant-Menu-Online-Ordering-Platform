@@ -13,6 +13,7 @@ import {
     updateManagerTableStatus,
     deleteManagerTable,
 } from '../api/managerApi';
+import CustomerMenu from './CustomerMenu';
 
 /* ─── Badge trạng thái ─────────────────────────────────────────────────────── */
 function StatusBadge({ status }) {
@@ -62,7 +63,7 @@ function ThreeDotMenu({ onMerge, onEdit, onDelete }) {
 }
 
 /* ─── Card bàn ────────────────────────────────────────────────────── */
-function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCheckout }) {
+function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer }) {
     const occupied = table.status === 'Đang ngồi';
     // mergedWith giờ là mảng các ID
     const mergedIds = Array.isArray(table.mergedWith) ? table.mergedWith : [];
@@ -76,7 +77,7 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
         if (e.target.closest('button')) return;
         
         if (occupied) {
-            window.location.href = `/menu?tableId=${table.id}`;
+            onOpenMenuDrawer(table.id);
         }
     };
 
@@ -401,6 +402,7 @@ export default function TableManagement() {
     const [mergeSource, setMergeSource] = useState(null);
     const [printQRModal, setPrintQRModal] = useState(false);
     const [toast, setToast] = useState(null);
+    const [menuDrawerTableId, setMenuDrawerTableId] = useState(null);
 
     const showToast = (msg) => setToast(msg);
 
@@ -618,6 +620,7 @@ export default function TableManagement() {
                                     onDelete={() => setDeleteTable(table)}
                                     onSelect={() => handleSelect(table)}
                                     onCheckout={() => handleCheckout(table)}
+                                    onOpenMenuDrawer={(id) => setMenuDrawerTableId(id)}
                                 />
                             ))}
                             {/* Card thêm nhanh */}
@@ -642,6 +645,35 @@ export default function TableManagement() {
             {mergeSource && <MergeBillModal sourceTable={mergeSource} occupiedTables={occupiedTables} onClose={() => setMergeSource(null)} onConfirm={handleMerge} />}
             {printQRModal && <PrintQRModal tables={displayed} onClose={() => setPrintQRModal(false)} />}
             {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+            {/* Menu Drawer */}
+            <div 
+                className={`fixed inset-y-0 right-0 w-full md:w-[450px] bg-white shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col ${menuDrawerTableId ? 'translate-x-0' : 'translate-x-full'}`}
+            >
+                {menuDrawerTableId && (
+                    <div className="relative flex-1 flex flex-col overflow-hidden">
+                        {/* Nút đóng Drawer định vị tuyệt đối bên trên nội dung */}
+                        <button 
+                            onClick={() => setMenuDrawerTableId(null)}
+                            className="absolute top-4 right-4 z-[70] p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-md focus:outline-none"
+                        >
+                            <X size={20} />
+                        </button>
+                        {/* Box bọc CustomerMenu */}
+                        <div className="flex-1 overflow-y-auto">
+                            <CustomerMenu tableIdProp={menuDrawerTableId} />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Backdrop phủ đen đằng sau */}
+            {menuDrawerTableId && (
+                <div 
+                    className="fixed inset-0 bg-black/30 z-[50] backdrop-blur-sm transition-opacity"
+                    onClick={() => setMenuDrawerTableId(null)}
+                />
+            )}
         </BranchManagerLayout>
     );
 }
