@@ -11,6 +11,7 @@ import {
   updateTableStatus,
   deleteTable,
   mergeTables,
+  confirmManagerOrder,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -33,6 +34,7 @@ router.post("/tables/merge",       mergeTables);       // ← đặt TRƯỚC /:
 router.put("/tables/:id",          updateTable);
 router.patch("/tables/:id/status", updateTableStatus);
 router.delete("/tables/:id",       deleteTable);
+router.post("/confirm-order",      confirmManagerOrder);
 
 export default router;
 

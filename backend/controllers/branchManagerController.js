@@ -594,4 +594,100 @@ export const mergeTables = async (req, res) => {
   }
 };
 
+/* ── POST /api/manager/confirm-order ──────────────────────────────────────
+   Body: { tableId, items: [{productID, quantity, price}] }
+   Logic: 
+    1. Tạo/Tìm Order hiện tại của bàn
+    2. Thêm OrderDetails
+    3. Cập nhật trạng thái Bàn -> Occupied
+──────────────────────────────────────────────────────────────────────────── */
+export const confirmManagerOrder = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { tableId, items } = req.body;
+    if (!tableId || !items || !items.length) {
+      return res.status(400).json({ message: "Thiếu thông tin bàn hoặc món ăn." });
+    }
+
+    const tId = parseInt(tableId);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Tìm xem bàn có Order nào đang mở (Open/Serving) không
+      const activeOrderTable = await tx.orderTable.findFirst({
+        where: {
+          tableID: tId,
+          order: { orderStatus: { in: ["Open", "Serving"] } }
+        },
+        include: { order: true }
+      });
+
+      let orderID;
+      const totalAmountToAdd = items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.price)), 0);
+
+      if (activeOrderTable) {
+        // Gộp vào order cũ
+        orderID = activeOrderTable.orderID;
+        await tx.order.update({
+          where: { orderID },
+          data: { totalAmount: { increment: totalAmountToAdd } }
+        });
+      } else {
+        // Tạo order mới
+        const newOrder = await tx.order.create({
+          data: {
+            branchID,
+            createdBy: req.user.userId,
+            totalAmount: totalAmountToAdd,
+            orderStatus: "Serving",
+            paymentStatus: "Unpaid",
+          }
+        });
+        orderID = newOrder.orderID;
+        
+        await tx.orderTable.create({
+          data: { orderID, tableID: tId }
+        });
+      }
+
+      // 2. Tạo OrderDetails cho các món mới
+      await tx.orderDetail.createMany({
+        data: items.map(item => ({
+          orderID,
+          productID: item.productID,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.price),
+          itemStatus: "Served" // Vì quản lý gọi nên coi như đã phục vụ
+        }))
+      });
+
+      // 3. Cập nhật trạng thái Bàn -> Occupied
+      const table = await tx.table.findUnique({ where: { tableID: tId } });
+      if (table.mergedGroupId) {
+        await tx.table.updateMany({
+          where: { mergedGroupId: table.mergedGroupId, branchID },
+          data: { status: "Occupied" }
+        });
+      } else {
+        await tx.table.update({
+          where: { tableID: tId },
+          data: { status: "Occupied" }
+        });
+      }
+
+      return { orderID };
+    });
+
+    res.json({
+      message: "Xác nhận order thành công (v3)!",
+      ...result
+    });
+
+  } catch (err) {
+    console.error("confirmManagerOrder error:", err);
+    res.status(500).json({ message: err.message || "Lỗi xác nhận order" });
+  }
+};
+
 
