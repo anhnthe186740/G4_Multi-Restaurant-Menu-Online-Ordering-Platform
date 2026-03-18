@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getMenuByTable } from '../api/publicApi';
-import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle } from 'lucide-react';
+import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle, CheckCircle } from 'lucide-react';
+import { confirmManagerOrder } from '../api/managerApi';
 
-export default function CustomerMenu({ tableIdProp }) {
+export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const [searchParams] = useSearchParams();
     const tableId = tableIdProp || searchParams.get('tableId');
 
@@ -11,6 +12,44 @@ export default function CustomerMenu({ tableIdProp }) {
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
     const [activeCategory, setActiveCategory] = useState(null);
+    const [cart, setCart] = useState([]);
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    // Cart Logic
+    const addToCart = (product) => {
+        setCart(prev => {
+            const existing = prev.find(item => item.productID === product.productID);
+            if (existing) {
+                return prev.map(item =>
+                    item.productID === product.productID
+                        ? { ...item, quantity: item.quantity + 1 }
+                        : item
+                );
+            }
+            return [...prev, { ...product, quantity: 1 }];
+        });
+    };
+
+    const updateQuantity = (productID, delta) => {
+        setCart(prev => {
+            return prev.map(item => {
+                if (item.productID === productID) {
+                    const newQty = Math.max(0, item.quantity + delta);
+                    return { ...item, quantity: newQty };
+                }
+                return item;
+            }).filter(item => item.quantity > 0);
+        });
+    };
+
+    const getCartTotal = () => {
+        return cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+    };
+
+    const getCartCount = () => {
+        return cart.reduce((sum, item) => sum + item.quantity, 0);
+    };
 
     useEffect(() => {
         if (!tableId) {
@@ -173,7 +212,10 @@ export default function CustomerMenu({ tableIdProp }) {
                                             </div>
                                             <div className="flex items-center justify-between mt-2">
                                                 <p className="font-extrabold text-emerald-600">{formatPrice(p.price)}</p>
-                                                <button className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition shadow-sm border border-emerald-100">
+                                                <button 
+                                                    onClick={() => addToCart(p)}
+                                                    className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition shadow-sm border border-emerald-100"
+                                                >
                                                     <ShoppingCart size={14} className="ml-[-1px]" />
                                                 </button>
                                             </div>
@@ -187,16 +229,108 @@ export default function CustomerMenu({ tableIdProp }) {
             </div>
 
             {/* Giỏ hàng nổi (Floating Cart - UI tạm) */}
-            <div className="sticky bottom-6 left-0 right-0 px-4 mt-6 z-40 flex justify-center max-w-3xl mx-auto">
-                <button className="bg-gray-900 text-white shadow-2xl rounded-2xl py-3 px-6 flex items-center gap-3 w-full hover:bg-black transition-colors transform hover:-translate-y-1 duration-200">
-                    <div className="relative">
-                        <ShoppingCart size={20} />
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
+            {cart.length > 0 && (
+                <div className="sticky bottom-6 left-0 right-0 px-4 mt-6 z-40 flex justify-center max-w-3xl mx-auto">
+                    <button 
+                        onClick={() => setIsCheckoutOpen(true)}
+                        className="bg-gray-900 text-white shadow-2xl rounded-2xl py-3 px-6 flex items-center gap-3 w-full hover:bg-black transition-colors transform hover:-translate-y-1 duration-200"
+                    >
+                        <div className="relative">
+                            <ShoppingCart size={20} />
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                {getCartCount()}
+                            </span>
+                        </div>
+                        <span className="font-bold text-sm">Xem giỏ hàng</span>
+                        <span className="ml-auto font-black text-emerald-400">
+                            {formatPrice(getCartTotal())}
+                        </span>
+                    </button>
+                </div>
+            )}
+
+            {/* Checkout Modal / Overlay (Dành cho Quản lý thanh toán hộ) */}
+            {isCheckoutOpen && (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-gray-800">Chi tiết đơn hàng</h2>
+                            <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition">
+                                <AlertCircle size={20} className="text-gray-400 rotate-45" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {cart.map(item => (
+                                <div key={item.productID} className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+                                        {item.imageURL ? <img src={item.imageURL} alt={item.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ChefHat size={20} /></div>}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-gray-800 truncate">{item.name}</p>
+                                        <p className="text-sm text-emerald-600 font-bold">{formatPrice(item.price)}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3 bg-gray-50 p-1 rounded-lg border border-gray-100">
+                                        <button onClick={() => updateQuantity(item.productID, -1)} className="w-6 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100">-</button>
+                                        <span className="font-bold text-sm min-w-[20px] text-center">{item.quantity}</span>
+                                        <button onClick={() => updateQuantity(item.productID, 1)} className="w-6 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100">+</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="px-6 py-6 bg-gray-50 border-t border-gray-100 space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500 font-medium">Tạm tính</span>
+                                <span className="text-lg font-bold text-gray-800">{formatPrice(getCartTotal())}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-emerald-600">
+                                <span className="font-medium">Giảm giá</span>
+                                <span className="font-bold">0 đ</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                                <span className="text-xl font-black text-gray-900">Tổng cộng</span>
+                                <span className="text-2xl font-black text-emerald-600">{formatPrice(getCartTotal())}</span>
+                            </div>
+
+                            <button
+                                disabled={isProcessing}
+                                onClick={async () => {
+                                    setIsProcessing(true);
+                                    try {
+                                        await confirmManagerOrder({
+                                            tableId: tableId,
+                                            items: cart.map(item => ({
+                                                productID: item.productID,
+                                                quantity: item.quantity,
+                                                price: item.price
+                                            }))
+                                        });
+                                        setIsCheckoutOpen(false);
+                                        setCart([]);
+                                        if (onCheckoutSuccess) onCheckoutSuccess("Đã xác nhận order thành công!");
+                                    } catch (err) {
+                                        console.error("Order error", err);
+                                        alert("Lỗi xác nhận order: " + (err.response?.data?.message || err.message));
+                                    } finally {
+                                        setIsProcessing(false);
+                                    }
+                                }}
+                                className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition flex items-center justify-center gap-2 ${
+                                    isProcessing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                }`}
+                            >
+                                {isProcessing ? (
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <ShoppingCart size={20} />
+                                )}
+                                {isProcessing ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN ORDER'}
+                            </button>
+                        </div>
                     </div>
-                    <span className="font-bold text-sm">Xem giỏ hàng</span>
-                    <span className="ml-auto font-black text-emerald-400">0 đ</span>
-                </button>
-            </div>
+                </div>
+            )}
             
         </div>
     );

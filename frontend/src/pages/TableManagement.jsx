@@ -648,7 +648,7 @@ export default function TableManagement() {
 
             {/* Menu Drawer */}
             <div 
-                className={`fixed inset-y-0 right-0 w-full md:w-[450px] bg-white shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col ${menuDrawerTableId ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed inset-y-0 right-0 w-full md:w-[600px] bg-white shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col ${menuDrawerTableId ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 {menuDrawerTableId && (
                     <div className="relative flex-1 flex flex-col overflow-hidden">
@@ -661,7 +661,14 @@ export default function TableManagement() {
                         </button>
                         {/* Box bọc CustomerMenu */}
                         <div className="flex-1 overflow-y-auto">
-                            <CustomerMenu tableIdProp={menuDrawerTableId} />
+                            <CustomerMenu 
+                                tableIdProp={menuDrawerTableId} 
+                                onCheckoutSuccess={(msg) => {
+                                    showToast(msg || "Đã xác nhận order thành công!");
+                                    setMenuDrawerTableId(null);
+                                    loadTables();
+                                }}
+                            />
                         </div>
                     </div>
                 )}
