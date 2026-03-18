@@ -23,7 +23,7 @@ function StatusBadge({ status }) {
 }
 
 /* ─── Menu 3 chấm ──────────────────────────────────────────────────────────── */
-function ThreeDotMenu({ onMerge, onEdit, onDelete }) {
+function ThreeDotMenu({ onMerge, onEdit, onDelete, onPrint }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -52,6 +52,11 @@ function ThreeDotMenu({ onMerge, onEdit, onDelete }) {
                         <Pencil size={13} /> Chỉnh sửa
                     </button>
                     <div className="border-t border-gray-100 my-1" />
+                    <button onClick={() => { setOpen(false); onPrint(); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700">
+                        <QrCode size={13} /> In mã QR
+                    </button>
+                    <div className="border-t border-gray-100 my-1" />
                     <button onClick={() => { setOpen(false); onDelete(); }}
                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-red-50 text-red-500">
                         <Trash2 size={13} /> Xoá bàn
@@ -63,7 +68,7 @@ function ThreeDotMenu({ onMerge, onEdit, onDelete }) {
 }
 
 /* ─── Card bàn ────────────────────────────────────────────────────── */
-function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer }) {
+function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer, onPrintQR }) {
     const occupied = table.status === 'Đang ngồi';
     // mergedWith giờ là mảng các ID
     const mergedIds = Array.isArray(table.mergedWith) ? table.mergedWith : [];
@@ -102,13 +107,12 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
                     </div>
                     <div className="flex items-center gap-1">
                         <StatusBadge status={table.status} />
-                        {occupied ? (
-                            <ThreeDotMenu onMerge={onMerge} onEdit={onEdit} onDelete={onDelete} />
-                        ) : (
-                            <button onClick={onEdit} className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition">
-                                <MoreVertical size={15} />
-                            </button>
-                        )}
+                        <ThreeDotMenu 
+                            onMerge={onMerge} 
+                            onEdit={onEdit} 
+                            onDelete={onDelete} 
+                            onPrint={onPrintQR} 
+                        />
                     </div>
                 </div>
 
@@ -298,74 +302,122 @@ function DeleteModal({ table, onClose, onConfirm }) {
     );
 }
 
-/* ─── Modal In Mã QR ──────────────────────────────────────────────────────── */
+/* ─── Modal In Mã QR – Hỗ trợ chọn bàn ────────────────────────────────────── */
 function PrintQRModal({ tables, onClose }) {
+    const [selectedIds, setSelectedIds] = useState(tables.map(t => t.id));
+
+    const toggleTable = (id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const toggleAll = () => {
+        if (selectedIds.length === tables.length) setSelectedIds([]);
+        else setSelectedIds(tables.map(t => t.id));
+    };
+
+    const tablesToPrint = tables.filter(t => selectedIds.includes(t.id));
+
     const handlePrint = () => {
         window.print();
     };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm print:bg-transparent print:static print:block print:inset-auto">
-            {/* Vùng chỉ hiển thị khi không in */}
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col print:hidden">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <style dangerouslySetInnerHTML={{ __html: `
+                @media print {
+                    @page { margin: 10mm; size: A4 portrait; }
+                    body { margin: 0; padding: 0; background: white !important; }
+                    nav, aside, header, footer, .print-hidden, .no-print { display: none !important; }
+                }
+            ` }} />
+            
+            {/* Giao diện chọn bàn (Ẩn khi in) */}
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col print:hidden no-print">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-emerald-50/50">
                     <div>
-                        <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                        <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2 uppercase tracking-tight">
                             <QrCode className="text-emerald-600" size={20} />
-                            In Mã QR Bàn ({tables.length} bàn)
+                            QUẢN LÝ IN MÃ QR ({selectedIds.length}/{tables.length})
                         </h2>
-                        <p className="text-xs text-gray-500 mt-1">Mã QR dẫn khách hàng đến menu đặt món.</p>
+                        <p className="text-xs text-gray-500 mt-1">Chọn các bàn bạn muốn in tem QR.</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
-                        <X size={20} className="text-gray-500" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={toggleAll} className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition">
+                            {selectedIds.length === tables.length ? 'Bỏ chọn hết' : 'Chọn tất cả'}
+                        </button>
+                        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition ml-2">
+                            <X size={20} className="text-gray-500" />
+                        </button>
+                    </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {tables.map(table => (
-                            <div key={table.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
-                                <h3 className="font-bold text-gray-800 mb-3 text-lg">{table.name}</h3>
-                                <div className="p-3 bg-white border-2 border-dashed border-gray-200 rounded-xl">
-                                    <QRCodeSVG 
-                                        value={`${window.location.origin}/menu?tableId=${table.id}`} 
-                                        size={120}
-                                        level="H"
-                                        includeMargin={false}
-                                    />
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {tables.map(table => {
+                            const isSelected = selectedIds.includes(table.id);
+                            return (
+                                <div 
+                                    key={table.id} 
+                                    onClick={() => toggleTable(table.id)}
+                                    className={`bg-white p-4 rounded-2xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center text-center relative ${
+                                        isSelected ? 'border-emerald-500 bg-emerald-50/20' : 'border-gray-100 hover:border-emerald-200'
+                                    }`}
+                                >
+                                    <div className="absolute top-2 right-2">
+                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${
+                                            isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-gray-200'
+                                        }`}>
+                                            {isSelected && <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                        </div>
+                                    </div>
+                                    <h3 className={`font-bold text-sm mb-3 ${isSelected ? 'text-emerald-900' : 'text-gray-700'}`}>{table.name}</h3>
+                                    <div className={`p-2 bg-white rounded-lg border-2 border-dashed ${isSelected ? 'border-emerald-100' : 'border-gray-50'}`}>
+                                        <QRCodeSVG 
+                                            value={`${window.location.origin}/menu?tableId=${table.id}`} 
+                                            size={64}
+                                            level="L"
+                                        />
+                                    </div>
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-3 max-w-[150px] truncate" title={`${window.location.origin}/menu?tableId=${table.id}`}>
-                                    Sức chứa: {table.capacity} khách
-                                </p>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
                 
                 <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-white rounded-b-2xl">
                     <button onClick={onClose}
-                        className="px-5 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
-                        Đóng
+                        className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
+                        ĐÓNG
                     </button>
                     <button onClick={handlePrint}
-                        className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition flex items-center gap-2">
-                        <Printer size={16} /> Xác nhận in
+                        disabled={selectedIds.length === 0}
+                        className={`px-8 py-2.5 rounded-xl text-sm font-black transition flex items-center gap-2 shadow-lg ${
+                            selectedIds.length > 0
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                        }`}>
+                        <Printer size={18} /> IN NGAY ({selectedIds.length})
                     </button>
                 </div>
             </div>
 
-            {/* Vùng chỉ hiển thị khi in (ẩn ở màn hình bình thường) */}
-            <div className="hidden print:block print:w-full print:bg-white">
-                <div className="grid grid-cols-3 gap-8 p-4">
-                    {tables.map(table => (
-                        <div key={table.id} className="flex flex-col items-center justify-center p-4 border-2 border-gray-800 rounded-2xl break-inside-avoid mb-6">
-                            <h2 className="text-2xl font-black mb-4 text-center">{table.name}</h2>
-                            <QRCodeSVG 
-                                value={`${window.location.origin}/menu?tableId=${table.id}`} 
-                                size={180}
-                                level="H"
-                            />
-                            <p className="mt-4 text-sm font-medium text-center">Quét mã để đặt món</p>
+            {/* Giao diện THỰC TẾ KHI IN (Dàn trang chuẩn A4) */}
+            <div className="hidden print:block print:w-full print:bg-white no-screen">
+                <div className="grid grid-cols-2 gap-4">
+                    {tablesToPrint.map(table => (
+                        <div key={table.id} className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-400 rounded-[30px] break-inside-avoid mb-6" style={{ minHeight: '140mm' }}>
+                            <h2 className="text-4xl font-black mb-6 text-gray-900 uppercase tracking-widest">{table.name}</h2>
+                            <div className="p-4 bg-white border-2 border-gray-100 rounded-3xl shadow-sm">
+                                <QRCodeSVG 
+                                    value={`${window.location.origin}/menu?tableId=${table.id}`} 
+                                    size={280}
+                                    level="H"
+                                />
+                            </div>
+                            <div className="mt-8 flex flex-col items-center gap-2">
+                                <p className="text-xl font-black text-gray-800 tracking-wide">QUÉT MÃ ĐỂ ĐẶT MÓN</p>
+                                <p className="text-xs text-gray-400 font-medium">RestoOrder - Hân hạnh phục vụ</p>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -400,7 +452,7 @@ export default function TableManagement() {
     const [editTable, setEditTable] = useState(null);
     const [deleteTable, setDeleteTable] = useState(null);
     const [mergeSource, setMergeSource] = useState(null);
-    const [printQRModal, setPrintQRModal] = useState(false);
+    const [printTables, setPrintTables] = useState(null); // null hoặc [table1, table2...]
     const [toast, setToast] = useState(null);
     const [menuDrawerTableId, setMenuDrawerTableId] = useState(null);
 
@@ -537,113 +589,116 @@ export default function TableManagement() {
 
     return (
         <BranchManagerLayout>
-            {/* ── Thanh tiêu đề + tìm kiếm + nút thêm ── */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Sơ đồ Bàn</h1>
-                    <p className="text-sm text-gray-400 mt-0.5">
-                        {loading ? 'Đang tải...' : `${tables.length} bàn · `}
-                        {!loading && <><span className="text-red-500">{counts.occupied} đang có khách</span> · <span className="text-emerald-600">{counts.available} trống</span></>}
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button onClick={loadTables} title="Làm mới"
-                        className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
-                        <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-                    </button>
-                    <div className="relative flex items-center">
-                        <Search size={14} className="absolute left-3 text-gray-400 pointer-events-none" />
-                        <input
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder="Tìm kiếm bàn..."
-                            className="pl-8 pr-4 py-2 text-sm text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48 bg-white"
-                        />
+            <div className="print:hidden">
+                {/* ── Thanh tiêu đề + tìm kiếm + nút thêm ── */}
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Sơ đồ Bàn</h1>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                            {loading ? 'Đang tải...' : `${tables.length} bàn · `}
+                            {!loading && <><span className="text-red-500">{counts.occupied} đang có khách</span> · <span className="text-emerald-600">{counts.available} trống</span></>}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button onClick={loadTables} title="Làm mới"
+                            className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                        <div className="relative flex items-center">
+                            <Search size={14} className="absolute left-3 text-gray-400 pointer-events-none" />
+                            <input
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Tìm kiếm bàn..."
+                                className="pl-8 pr-4 py-2 text-sm text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48 bg-white"
+                            />
+                        </div>
                     </div>
                 </div>
+    
+                {/* ── Loading ── */}
+                {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : (
+                    <>
+                        {/* ── Hàng filter + action ── */}
+                        <div className="flex items-center justify-between mb-5">
+                            {/* Filter pills */}
+                            <div className="flex items-center gap-2">
+                                {[
+                                    { key: 'all', label: `Tất cả (${counts.all})`, dot: null },
+                                    { key: 'available', label: `Trống (${counts.available})`, dot: 'bg-emerald-500' },
+                                    { key: 'occupied', label: `Đang ngồi (${counts.occupied})`, dot: 'bg-red-500' },
+                                ].map(({ key, label, dot }) => (
+                                    <button key={key} onClick={() => setFilter(key)}
+                                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${filter === key ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300'}`}>
+                                        {dot && <span className={`w-2 h-2 rounded-full ${dot}`} />}
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                            {/* Nút hành động */}
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => setPrintTables(displayed)}
+                                    disabled={displayed.length === 0}
+                                    className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-xl transition ${
+                                        displayed.length > 0 
+                                        ? 'border-gray-200 hover:bg-gray-50 text-gray-600' 
+                                        : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+                                    }`} 
+                                    title="In mã QR">
+                                    <QrCode size={14} /> <span className="hidden sm:inline">In tất cả mã QR</span>
+                                </button>
+                            </div>
+                        </div>
+    
+                        {/* ── Grid bàn ── */}
+                        {displayed.length === 0 ? (
+                            <div className="text-center py-20 text-gray-400">
+                                <p className="text-sm">Không tìm thấy bàn nào</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                {displayed.map(table => (
+                                    <TableCard
+                                        key={table.id}
+                                        table={table}
+                                        allTables={tables}
+                                        occupiedTables={occupiedTables}
+                                        onMerge={() => setMergeSource(table)}
+                                        onEdit={() => setEditTable(table)}
+                                        onDelete={() => setDeleteTable(table)}
+                                        onSelect={() => handleSelect(table)}
+                                        onCheckout={() => handleCheckout(table)}
+                                        onOpenMenuDrawer={(id) => setMenuDrawerTableId(id)}
+                                        onPrintQR={() => setPrintTables([table])}
+                                    />
+                                ))}
+                                {/* Card thêm nhanh */}
+                                {filter === 'all' && !search && (
+                                    <button onClick={() => setAddModal(true)}
+                                        className="bg-white rounded-2xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all flex flex-col items-center justify-center gap-2 py-8 text-gray-400 hover:text-emerald-600 min-h-[160px]">
+                                        <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center hover:bg-emerald-100 transition">
+                                            <Plus size={18} />
+                                        </div>
+                                        <span className="text-xs font-medium">Thêm bàn mới</span>
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
-
-            {/* ── Loading ── */}
-            {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-            ) : (
-                <>
-                    {/* ── Hàng filter + action ── */}
-                    <div className="flex items-center justify-between mb-5">
-                        {/* Filter pills */}
-                        <div className="flex items-center gap-2">
-                            {[
-                                { key: 'all', label: `Tất cả (${counts.all})`, dot: null },
-                                { key: 'available', label: `Trống (${counts.available})`, dot: 'bg-emerald-500' },
-                                { key: 'occupied', label: `Đang ngồi (${counts.occupied})`, dot: 'bg-red-500' },
-                            ].map(({ key, label, dot }) => (
-                                <button key={key} onClick={() => setFilter(key)}
-                                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${filter === key ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300'}`}>
-                                    {dot && <span className={`w-2 h-2 rounded-full ${dot}`} />}
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                        {/* Nút hành động */}
-                        <div className="flex items-center gap-2">
-                            <button 
-                                onClick={() => setPrintQRModal(true)}
-                                disabled={displayed.length === 0}
-                                className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-xl transition ${
-                                    displayed.length > 0 
-                                    ? 'border-gray-200 hover:bg-gray-50 text-gray-600' 
-                                    : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
-                                }`} 
-                                title="In mã QR">
-                                <QrCode size={14} /> <span className="hidden sm:inline">In mã QR</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* ── Grid bàn ── */}
-                    {displayed.length === 0 ? (
-                        <div className="text-center py-20 text-gray-400">
-                            <p className="text-sm">Không tìm thấy bàn nào</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                            {displayed.map(table => (
-                                <TableCard
-                                    key={table.id}
-                                    table={table}
-                                    allTables={tables}
-                                    occupiedTables={occupiedTables}
-                                    onMerge={() => setMergeSource(table)}
-                                    onEdit={() => setEditTable(table)}
-                                    onDelete={() => setDeleteTable(table)}
-                                    onSelect={() => handleSelect(table)}
-                                    onCheckout={() => handleCheckout(table)}
-                                    onOpenMenuDrawer={(id) => setMenuDrawerTableId(id)}
-                                />
-                            ))}
-                            {/* Card thêm nhanh */}
-                            {filter === 'all' && !search && (
-                                <button onClick={() => setAddModal(true)}
-                                    className="bg-white rounded-2xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all flex flex-col items-center justify-center gap-2 py-8 text-gray-400 hover:text-emerald-600 min-h-[160px]">
-                                    <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center hover:bg-emerald-100 transition">
-                                        <Plus size={18} />
-                                    </div>
-                                    <span className="text-xs font-medium">Thêm bàn mới</span>
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </>
-            )}
 
             {/* ── Modals ── */}
             {addModal && <TableFormModal table={null} onClose={() => setAddModal(false)} onSave={handleAdd} />}
             {editTable && <TableFormModal table={editTable} onClose={() => setEditTable(null)} onSave={handleEdit} />}
             {deleteTable && <DeleteModal table={deleteTable} onClose={() => setDeleteTable(null)} onConfirm={handleDelete} />}
             {mergeSource && <MergeBillModal sourceTable={mergeSource} occupiedTables={occupiedTables} onClose={() => setMergeSource(null)} onConfirm={handleMerge} />}
-            {printQRModal && <PrintQRModal tables={displayed} onClose={() => setPrintQRModal(false)} />}
+            {printTables && <PrintQRModal tables={printTables} onClose={() => setPrintTables(null)} />}
             {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
             {/* Menu Drawer */}
