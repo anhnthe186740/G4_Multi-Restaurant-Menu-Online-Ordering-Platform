@@ -1,9 +1,10 @@
 import Header from "./Header";
 import Footer from "./Footer";
+import RegistrationStatusButton from "../RegistrationStatusButton";
 
 export default function MainLayout({ children }) {
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark">
+    <div className="min-h-screen bg-[#02140c] text-white">
 
       {/* Header – full width */}
       <Header />
@@ -15,6 +16,9 @@ export default function MainLayout({ children }) {
 
       {/* Footer – full width */}
       <Footer />
+
+      {/* Floating registration status button */}
+      <RegistrationStatusButton />
     </div>
   );
 }

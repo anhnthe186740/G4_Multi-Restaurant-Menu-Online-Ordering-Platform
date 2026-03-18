@@ -1,20 +1,32 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
-import { getOwnerBranches, toggleOwnerBranch } from '../api/ownerApi';
+import { getOwnerBranches, toggleOwnerBranch, deleteOwnerBranch } from '../api/ownerApi';
 import {
     GitBranch, MapPin, Phone, Mail, Table2,
-    Settings, Power, CheckCircle2, XCircle,
-    ShoppingBag, Plus, RefreshCw
+    Settings, CheckCircle2, XCircle,
+    ShoppingBag, RefreshCw, Search, Plus, Trash2, AlertTriangle
 } from 'lucide-react';
 
 export default function OwnerBranches() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const newBranchId = location.state?.newBranchId ?? null;
     const [loading, setLoading] = useState(true);
     const [restaurantName, setRestaurantName] = useState('');
     const [branches, setBranches] = useState([]);
     const [togglingId, setTogglingId] = useState(null);
     const [toast, setToast] = useState(null);
+    const [search, setSearch] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'inactive'
+
+    // Pagination
+    const PAGE_SIZE = 5;
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Delete confirm state
+    const [deleteTarget, setDeleteTarget] = useState(null); // branch object to delete
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => { loadBranches(); }, []);
 
@@ -23,7 +35,11 @@ export default function OwnerBranches() {
         try {
             const res = await getOwnerBranches();
             setRestaurantName(res.data.restaurantName || '');
-            setBranches(res.data.branches || []);
+            const list = res.data.branches || [];
+            if (newBranchId) {
+                list.sort((a, b) => (b.branchID === newBranchId ? 1 : 0) - (a.branchID === newBranchId ? 1 : 0));
+            }
+            setBranches(list);
         } catch (e) {
             showToast('Không thể tải danh sách chi nhánh', 'error');
         } finally {
@@ -54,7 +70,44 @@ export default function OwnerBranches() {
         }
     };
 
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            await deleteOwnerBranch(deleteTarget.branchID);
+            setBranches(prev => prev.filter(b => b.branchID !== deleteTarget.branchID));
+            showToast(`Đã xóa chi nhánh "${deleteTarget.name}"`, 'success');
+            setDeleteTarget(null);
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Không thể xóa chi nhánh', 'error');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     const activeBranches = branches.filter(b => b.isActive).length;
+
+    // Client-side search + filter
+    const filteredBranches = useMemo(() => {
+        return branches.filter(b => {
+            const matchName = b.name.toLowerCase().includes(search.toLowerCase());
+            const matchStatus =
+                filterStatus === 'all' ? true :
+                    filterStatus === 'active' ? b.isActive :
+                        !b.isActive;
+            return matchName && matchStatus;
+        });
+    }, [branches, search, filterStatus]);
+
+    // Reset page when filter/search changes
+    useEffect(() => { setCurrentPage(1); }, [search, filterStatus]);
+
+    // Pagination derived values
+    const totalPages = Math.max(1, Math.ceil(filteredBranches.length / PAGE_SIZE));
+    const pagedBranches = useMemo(() => {
+        const start = (currentPage - 1) * PAGE_SIZE;
+        return filteredBranches.slice(start, start + PAGE_SIZE);
+    }, [filteredBranches, currentPage]);
 
     return (
         <RestaurantOwnerLayout>
@@ -66,6 +119,48 @@ export default function OwnerBranches() {
                         ? <CheckCircle2 size={16} />
                         : <XCircle size={16} />}
                     {toast.msg}
+                </div>
+            )}
+
+            {/* ===== DELETE CONFIRM MODAL ===== */}
+            {deleteTarget && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={20} className="text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Xác nhận xóa chi nhánh</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">Hành động này không thể hoàn tác.</p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-5">
+                            Bạn có chắc muốn xóa chi nhánh{' '}
+                            <strong className="text-gray-900">"{deleteTarget.name}"</strong>?
+                            Toàn bộ dữ liệu liên quan (bàn, đơn hàng...) sẽ bị xóa vĩnh viễn.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setDeleteTarget(null)}
+                                disabled={deleting}
+                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={handleDeleteConfirm}
+                                disabled={deleting}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                            >
+                                {deleting ? (
+                                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xóa...</>
+                                ) : (
+                                    <><Trash2 size={15} /> Xóa chi nhánh</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -82,16 +177,65 @@ export default function OwnerBranches() {
                         {branches.length} chi nhánh · <span className="text-emerald-600 font-medium">{activeBranches} đang hoạt động</span>
                     </p>
                 </div>
-                <button
-                    onClick={loadBranches}
-                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 border border-gray-200 hover:border-blue-300 px-3.5 py-2 rounded-lg transition-colors"
-                >
-                    <RefreshCw size={14} />
-                    Làm mới
-                </button>
+                <div className="flex items-center gap-2.5">
+                    <button
+                        onClick={loadBranches}
+                        className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 border border-gray-200 hover:border-blue-300 px-3.5 py-2 rounded-lg transition-colors"
+                    >
+                        <RefreshCw size={14} />
+                        Làm mới
+                    </button>
+                    <button
+                        onClick={() => navigate('/owner/branches/new')}
+                        className="flex items-center gap-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors shadow-sm shadow-blue-200"
+                    >
+                        <Plus size={15} />
+                        Thêm chi nhánh
+                    </button>
+                </div>
             </div>
 
-            {/* ===== LOADING ===== */}
+            {/* ===== SEARCH & FILTER BAR ===== */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                {/* Search input */}
+                <div className="relative flex-1">
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm theo tên chi nhánh..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white"
+                    />
+                </div>
+
+                {/* Filter buttons */}
+                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl shrink-0">
+                    {[
+                        { key: 'all', label: 'Tất cả', count: branches.length },
+                        { key: 'active', label: 'Hoạt động', count: branches.filter(b => b.isActive).length },
+                        { key: 'inactive', label: 'Tạm dừng', count: branches.filter(b => !b.isActive).length },
+                    ].map(({ key, label, count }) => (
+                        <button
+                            key={key}
+                            onClick={() => setFilterStatus(key)}
+                            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all
+                                ${filterStatus === key
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            {label}
+                            <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full
+                                ${filterStatus === key ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                                {count}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* ===== LOADING / CONTENT ===== */}
             {loading ? (
                 <div className="min-h-[50vh] flex items-center justify-center">
                     <div className="text-center">
@@ -100,7 +244,7 @@ export default function OwnerBranches() {
                     </div>
                 </div>
             ) : branches.length === 0 ? (
-                /* ===== EMPTY STATE ===== */
+                /* ===== EMPTY STATE (no branches at all) ===== */
                 <div className="min-h-[50vh] flex flex-col items-center justify-center gap-4">
                     <div className="w-20 h-20 rounded-2xl bg-blue-50 flex items-center justify-center">
                         <GitBranch size={36} className="text-blue-400" />
@@ -110,18 +254,90 @@ export default function OwnerBranches() {
                         <p className="text-gray-400 text-sm mt-1">Nhà hàng của bạn chưa có chi nhánh nào được tạo.</p>
                     </div>
                 </div>
+            ) : filteredBranches.length === 0 ? (
+                /* ===== EMPTY STATE (no search/filter results) ===== */
+                <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                        <Search size={28} className="text-gray-400" />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-gray-700 font-semibold">Không tìm thấy chi nhánh</p>
+                        <p className="text-gray-400 text-sm mt-1">Thử thay đổi từ khóa hoặc bộ lọc.</p>
+                    </div>
+                    <button
+                        onClick={() => { setSearch(''); setFilterStatus('all'); }}
+                        className="text-sm text-blue-600 hover:underline"
+                    >
+                        Xóa bộ lọc
+                    </button>
+                </div>
             ) : (
                 /* ===== BRANCH GRID ===== */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {branches.map((branch) => (
-                        <BranchCard
-                            key={branch.branchID}
-                            branch={branch}
-                            toggling={togglingId === branch.branchID}
-                            onToggle={() => handleToggle(branch)}
-                            onSettings={() => navigate(`/owner/branches/${branch.branchID}`)}
-                        />
-                    ))}
+                <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                        {pagedBranches.map((branch) => (
+                            <BranchCard
+                                key={branch.branchID}
+                                branch={branch}
+                                toggling={togglingId === branch.branchID}
+                                onToggle={() => handleToggle(branch)}
+                                onSettings={() => navigate(`/owner/branches/${branch.branchID}`)}
+                                onDelete={() => setDeleteTarget(branch)}
+                            />
+                        ))}
+                    </div>
+
+                    {/* ===== PAGINATION BAR ===== */}
+                    {filteredBranches.length > 0 && (
+                        <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
+                            {/* Info */}
+                            <p className="text-sm text-gray-500">
+                                Hiển thị{' '}
+                                <span className="font-semibold text-gray-700">
+                                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredBranches.length)}
+                                </span>
+                                {' '}trong{' '}
+                                <span className="font-semibold text-gray-700">{filteredBranches.length}</span>
+                                {' '}chi nhánh
+                            </p>
+
+                            {/* Page buttons */}
+                            <div className="flex items-center gap-1">
+                                {/* Prev */}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    ‹ Trước
+                                </button>
+
+                                {/* Page numbers */}
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors
+                                            ${currentPage === page
+                                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                                                : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+
+                                {/* Next */}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Sau ›
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </RestaurantOwnerLayout>
@@ -131,7 +347,7 @@ export default function OwnerBranches() {
 /* ============================================================
    BRANCH CARD COMPONENT
    ============================================================ */
-function BranchCard({ branch, toggling, onToggle, onSettings }) {
+function BranchCard({ branch, toggling, onToggle, onSettings, onDelete }) {
     return (
         <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden
             ${branch.isActive ? 'border-gray-100' : 'border-gray-200 opacity-80'}`}>
@@ -211,14 +427,23 @@ function BranchCard({ branch, toggling, onToggle, onSettings }) {
                     </div>
                 </div>
 
-                {/* Action Button */}
-                <button
-                    onClick={onSettings}
-                    className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
-                >
-                    <Settings size={15} />
-                    Cài đặt chi nhánh
-                </button>
+                {/* Action Buttons — split 50/50: Settings | Delete */}
+                <div className="flex gap-2">
+                    <button
+                        onClick={onSettings}
+                        className="flex-1 flex items-center justify-center gap-2 bg-gray-900 hover:bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                    >
+                        <Settings size={15} />
+                        Cài đặt
+                    </button>
+                    <button
+                        onClick={onDelete}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 hover:text-red-600 transition-colors text-sm font-semibold"
+                    >
+                        <Trash2 size={15} />
+                        Xóa
+                    </button>
+                </div>
             </div>
         </div>
     );

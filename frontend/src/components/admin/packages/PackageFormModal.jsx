@@ -11,10 +11,10 @@ export default function PackageFormModal({ isOpen, onClose, onSubmit, initialDat
     useEffect(() => {
         if (initialData) {
             setFormData({
-                PackageName: initialData.PackageName,
-                Duration: initialData.Duration,
-                Price: initialData.Price,
-                Description: initialData.Description || ''
+                PackageName: initialData.packageName || initialData.PackageName || '',
+                Duration: initialData.duration ?? initialData.Duration ?? 1,
+                Price: initialData.price ?? initialData.Price ?? 0,
+                Description: initialData.featuresDescription || initialData.Description || ''
             });
         } else {
             setFormData({
@@ -25,6 +25,29 @@ export default function PackageFormModal({ isOpen, onClose, onSubmit, initialDat
             });
         }
     }, [initialData]);
+
+    const formatDisplayPrice = (value) => {
+        if (value === 0) return '0';
+        return new Intl.NumberFormat('vi-VN').format(value);
+    };
+
+    const handlePriceChange = (e) => {
+        const rawValue = e.target.value.replace(/\./g, '');
+        const numericValue = parseFloat(rawValue) || 0;
+        setFormData({ ...formData, Price: numericValue });
+    };
+
+    const handlePriceFocus = (e) => {
+        if (formData.Price === 0) {
+            setFormData({ ...formData, Price: '' });
+        }
+    };
+
+    const handlePriceBlur = (e) => {
+        if (formData.Price === '' || isNaN(formData.Price)) {
+            setFormData({ ...formData, Price: 0 });
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -78,13 +101,13 @@ export default function PackageFormModal({ isOpen, onClose, onSubmit, initialDat
                         <div className="group">
                             <label className="block text-gray-400 text-sm font-medium mb-2 group-focus-within:text-[#00ff88] transition">Giá tiền (VND)</label>
                             <input
-                                type="number"
-                                min="0"
-                                step="1000"
+                                type="text"
                                 required
                                 className="w-full bg-[#1a2b22]/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-[#00ff88] focus:ring-1 focus:ring-[#00ff88] focus:outline-none transition font-mono"
-                                value={formData.Price}
-                                onChange={(e) => setFormData({ ...formData, Price: parseFloat(e.target.value) || 0 })}
+                                value={formatDisplayPrice(formData.Price)}
+                                onChange={handlePriceChange}
+                                onFocus={handlePriceFocus}
+                                onBlur={handlePriceBlur}
                             />
                         </div>
                     </div>

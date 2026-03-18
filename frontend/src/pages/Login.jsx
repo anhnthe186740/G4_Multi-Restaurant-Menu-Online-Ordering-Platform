@@ -1,12 +1,60 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { loginApi } from "../api/authApi";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { loginApi, loginWithGoogleApi } from "../api/authApi";
+import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const redirectPath = searchParams.get("redirect");
     const [form, setForm] = useState({ email: "", password: "" });
     const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [lockedInfo, setLockedInfo] = useState(null);
+
+    const loginGoogle = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setLoading(true);
+            setError(null);
+            setLockedInfo(null);
+            try {
+                const response = await loginWithGoogleApi(tokenResponse.access_token);
+                if (response?.data?.token) {
+                    localStorage.setItem("token", response.data.token);
+                    localStorage.setItem("user", JSON.stringify(response.data.user));
+
+                    const role = response.data.user?.role;
+                    if (redirectPath) {
+                        navigate(redirectPath);
+                    } else if (role === "Admin") {
+                        navigate("/admin/dashboard");
+                    } else if (role === "RestaurantOwner") {
+                        navigate("/owner/dashboard");
+                    } else if (role === "BranchManager") {
+                        navigate("/manager/dashboard");
+                    } else {
+                        navigate("/");
+                    }
+                } else {
+                    setError("Không nhận được token từ server");
+                }
+            } catch (err) {
+                const data = err.response?.data;
+                if (data?.locked) {
+                    setLockedInfo({ lockReason: data.lockReason });
+                } else {
+                    setError(data?.message || "Lỗi đăng nhập Google");
+                }
+            } finally {
+                setLoading(false);
+            }
+        },
+        onError: () => {
+            setError("Đăng nhập Google thất bại");
+        }
+    });
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -15,6 +63,8 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
+        setLockedInfo(null);
         try {
             const response = await loginApi(form);
             if (response?.data?.token) {
@@ -22,20 +72,29 @@ export default function Login() {
                 localStorage.setItem("user", JSON.stringify(response.data.user));
                 if (remember) localStorage.setItem("rememberEmail", form.email);
 
-                // Redirect theo role
+                // Redirect sau khi login
                 const role = response.data.user?.role;
-                if (role === "Admin") {
+                if (redirectPath) {
+                    navigate(redirectPath);
+                } else if (role === "Admin") {
                     navigate("/admin/dashboard");
                 } else if (role === "RestaurantOwner") {
                     navigate("/owner/dashboard");
+                } else if (role === "BranchManager") {
+                    navigate("/manager/dashboard");
                 } else {
                     navigate("/");
                 }
             } else {
-                alert("Không nhận được token từ server");
+                setError("Không nhận được token từ server");
             }
         } catch (err) {
-            alert("❌ " + (err.response?.data?.message || "Lỗi đăng nhập"));
+            const data = err.response?.data;
+            if (data?.locked) {
+                setLockedInfo({ lockReason: data.lockReason });
+            } else {
+                setError(data?.message || "Email hoặc mật khẩu không đúng");
+            }
         } finally {
             setLoading(false);
         }
@@ -106,6 +165,33 @@ export default function Login() {
                                 Đăng nhập để quản lý hệ thống nhà hàng
                             </p>
                         </div>
+
+                        {/* === THÔNG BÁO KHOÁ TÀI KHOẢN === */}
+                        {lockedInfo && (
+                            <div className="mb-6 rounded-xl border border-red-500/40 bg-red-900/30 p-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="mt-0.5 shrink-0">
+                                        <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-red-300 text-sm">Tài khoản của bạn đã bị khoá</p>
+                                        <p className="mt-1 text-red-400/80 text-xs leading-relaxed">
+                                            <span className="font-semibold">Lý do:</span> {lockedInfo.lockReason}
+                                        </p>
+                                        <p className="mt-2 text-red-400/60 text-xs">Vui lòng liên hệ quản trị viên để được hỗ trợ.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* === LỖI THÔNG THƯỜNG === */}
+                        {error && (
+                            <div className="mb-6 rounded-xl border border-red-500/30 bg-red-900/20 px-4 py-3">
+                                <p className="text-red-400 text-sm text-center">{error}</p>
+                            </div>
+                        )}
 
                         {/* Form */}
                         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -189,13 +275,15 @@ export default function Login() {
                         <div className="flex justify-center">
                             <button
                                 type="button"
+                                onClick={() => loginGoogle()}
+                                disabled={loading}
                                 className="flex items-center justify-center gap-3
                                 h-12 w-full rounded-xl
                                 border border-[#133827]
                                 bg-[#031a11] text-gray-300
                                 text-sm font-semibold
                                 hover:bg-[#0a2e22] hover:border-[#2d4b3b] hover:text-white
-                                transition-all"
+                                transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <svg className="w-5 h-5" viewBox="0 0 48 48">
                                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.02 1.54 7.4 2.82l5.47-5.47C33.58 3.7 29.18 1.5 24 1.5 14.98 1.5 7.44 7.98 4.69 16.55l6.98 5.42C13.1 15.3 18.13 9.5 24 9.5z" />

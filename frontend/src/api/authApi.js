@@ -10,3 +10,7 @@ export const registerApi = (data) => {
 export const loginApi = (data) => {
   return axios.post(`${API_URL}/login`, data);
 }
+
+export const loginWithGoogleApi = (token) => {
+  return axios.post(`${API_URL}/google`, { token });
+}

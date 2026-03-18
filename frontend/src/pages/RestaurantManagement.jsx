@@ -15,7 +15,7 @@ import {
     Ban,
     UserPlus
 } from 'lucide-react';
-import { getAllRestaurants, deactivateRestaurant, reactivateRestaurant, forceDeleteRestaurant } from '../api/restaurantApi';
+import { getAllRestaurants, deactivateRestaurant, reactivateRestaurant, forceDeleteRestaurant, getServicePackages } from '../api/restaurantApi';
 import RestaurantDetailsModal from '../components/RestaurantDetailsModal';
 
 const RestaurantManagement = () => {
@@ -25,9 +25,11 @@ const RestaurantManagement = () => {
     const [filters, setFilters] = useState({
         status: '',
         search: '',
+        package: '',
         page: 1,
         limit: 10
     });
+    const [packages, setPackages] = useState([]);
     const [pagination, setPagination] = useState({
         total: 0,
         page: 1,
@@ -82,6 +84,13 @@ const RestaurantManagement = () => {
         fetchRestaurants();
         fetchStats();
     }, [filters]);
+
+    useEffect(() => {
+        getServicePackages()
+            .then(res => setPackages(Array.isArray(res) ? res : []))
+            .catch(() => { });
+    }, []);
+
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -189,12 +198,15 @@ const RestaurantManagement = () => {
                 <div className="flex gap-3">
                     <select
                         className="bg-[#0f172a] border border-slate-700 text-slate-300 py-3 px-4 rounded-lg outline-none focus:border-emerald-500 cursor-pointer"
-                        onChange={() => { }} // Placeholder for now
+                        value={filters.package}
+                        onChange={(e) => handleFilterChange('package', e.target.value)}
                     >
-                        <option>Gói dịch vụ (Tất cả)</option>
-                        <option>Basic</option>
-                        <option>Pro</option>
-                        <option>Enterprise</option>
+                        <option value="">Gói dịch vụ (Tất cả)</option>
+                        {packages.map(pkg => (
+                            <option key={pkg.packageID} value={pkg.packageName}>
+                                {pkg.packageName}
+                            </option>
+                        ))}
                     </select>
 
                     <select
@@ -206,11 +218,6 @@ const RestaurantManagement = () => {
                         <option value="Active">Hoạt động</option>
                         <option value="Inactive">Bị khóa</option>
                     </select>
-
-                    <button className="bg-[#0f172a] border border-slate-700 text-slate-300 py-3 px-4 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2">
-                        <Filter size={18} />
-                        Bộ lọc khác
-                    </button>
                 </div>
             </div>
 
@@ -364,8 +371,8 @@ const RestaurantManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Footer (Mockup style) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Stats Footer */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-[#1e293b] rounded-xl p-5 border border-slate-700/50 shadow-lg flex items-center gap-4 relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/10 transition-colors"></div>
                     <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0 border border-emerald-500/20">
@@ -374,17 +381,6 @@ const RestaurantManagement = () => {
                     <div>
                         <div className="text-slate-400 text-sm font-medium mb-1">Tỷ lệ hoạt động</div>
                         <div className="text-2xl font-bold text-white">{activeRate}%</div>
-                    </div>
-                </div>
-
-                <div className="bg-[#1e293b] rounded-xl p-5 border border-yellow-700/30 shadow-lg flex items-center gap-4 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-yellow-500/10 transition-colors"></div>
-                    <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 shrink-0 border border-yellow-500/20">
-                        <AlertTriangle size={24} />
-                    </div>
-                    <div>
-                        <div className="text-slate-400 text-sm font-medium mb-1">Tài khoản bị report (24h)</div>
-                        <div className="text-2xl font-bold text-white">0 nhà hàng</div>
                     </div>
                 </div>
 

@@ -31,12 +31,6 @@ export const getRestaurantStats = async (id) => {
     return response.data;
 };
 
-// Update restaurant info
-export const updateRestaurantInfo = async (id, data) => {
-    const response = await restaurantAxios.patch(`/${id}`, data);
-    return response.data;
-};
-
 // Soft delete (deactivate)
 export const deactivateRestaurant = async (id, reason) => {
     const response = await restaurantAxios.post(`/${id}/deactivate`, { reason });
@@ -52,5 +46,11 @@ export const reactivateRestaurant = async (id) => {
 // Force delete (permanent)
 export const forceDeleteRestaurant = async (id) => {
     const response = await restaurantAxios.delete(`/${id}`);
+    return response.data;
+};
+
+// Get all service packages (for filter dropdown) — dùng public route, không cần auth
+export const getServicePackages = async () => {
+    const response = await axios.get('http://localhost:5000/api/admin/service-packages/public');
     return response.data;
 };

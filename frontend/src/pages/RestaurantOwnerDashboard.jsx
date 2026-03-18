@@ -16,6 +16,25 @@ import { TrendingUp, TrendingDown, ShoppingBag, Store, Star, Download, Filter } 
 
 const PIE_COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe'];
 
+// Custom tick xuống dòng cho tên chi nhánh dài
+const BranchTick = ({ x, y, payload }) => {
+    const parts = payload.value.split(' - ');
+    const line1 = parts[0] ?? '';
+    const line2 = parts[1] ?? '';
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={0} y={0} dy={8} textAnchor="middle" fill="#9ca3af" fontSize={10} fontWeight={500}>
+                {line1}
+            </text>
+            {line2 && (
+                <text x={0} y={0} dy={22} textAnchor="middle" fill="#6b7280" fontSize={10}>
+                    {line2}
+                </text>
+            )}
+        </g>
+    );
+};
+
 // Formatter tiền VND
 const fmtVND = (v) => {
     if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}T`;
@@ -131,13 +150,15 @@ export default function RestaurantOwnerDashboard() {
                 {/* Card 4 — Chi nhánh xuất sắc (highlight màu blue) */}
                 <div className="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500">
                     <p className="text-gray-400 text-xs font-medium mb-2">Chi nhánh xuất sắc</p>
-                    <p className="text-2xl font-bold text-gray-900 mb-1 truncate">
+                    <p className="text-base font-bold text-gray-900 mb-1 leading-snug line-clamp-2">
                         {stats?.topBranch?.name ?? '—'}
                     </p>
                     {stats?.topBranch && (
                         <span className="flex items-center gap-1 text-xs font-semibold text-blue-600">
                             <Star size={12} className="fill-blue-500 text-blue-500" />
-                            Tăng trưởng {stats.topBranch.growth}%
+                            {stats.topBranch.growth !== null
+                                ? `Tăng trưởng ${stats.topBranch.growth}%`
+                                : 'Chi nhánh doanh thu cao nhất'}
                         </span>
                     )}
                 </div>
@@ -152,10 +173,17 @@ export default function RestaurantOwnerDashboard() {
                         <button className="text-gray-400 hover:text-gray-600">⋯</button>
                     </div>
                     {branchRevenue.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={240}>
-                            <BarChart data={branchRevenue} barSize={36}>
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={branchRevenue} barSize={36} margin={{ top: 5, right: 10, left: 0, bottom: 10 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    tick={<BranchTick />}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    interval={0}
+                                    height={50}
+                                />
                                 <YAxis tickFormatter={fmtVND} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                 <Tooltip
                                     formatter={(v) => [`${v.toLocaleString('vi-VN')} đ`, 'Doanh thu']}

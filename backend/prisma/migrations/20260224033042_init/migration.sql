@@ -33,6 +33,8 @@ CREATE TABLE `Restaurants` (
     `OwnerUserID` INTEGER NULL,
     `Name` VARCHAR(255) NOT NULL,
     `Logo` VARCHAR(255) NULL,
+    `CoverImage` VARCHAR(255) NULL,
+    `BusinessLicense` VARCHAR(255) NULL,
     `Description` TEXT NULL,
     `TaxCode` VARCHAR(50) NULL,
     `Website` VARCHAR(255) NULL,

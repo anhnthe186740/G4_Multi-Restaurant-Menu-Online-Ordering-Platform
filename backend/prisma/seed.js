@@ -525,90 +525,114 @@ async function main() {
   console.log("✅ Tạo 4 Support Tickets");
 
   // =============================================
-  // 10. ORDERS (dữ liệu mẫu cho Owner Dashboard)
+  // 10. ORDERS — 90 ngày dữ liệu thực tế
   // =============================================
   const products = await prisma.product.findMany({
     where: { category: { restaurantID: rest1.restaurantID } },
     select: { productID: true, price: true },
   });
 
-  const mkDate = (daysAgo, hour) => {
+  // Tạo date dựa vào số ngày trước + giờ + phút
+  const mkDate = (daysAgo, hour, minute = 0) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
-    d.setHours(hour, 30, 0, 0);
+    d.setHours(hour, minute, 0, 0);
     return d;
   };
 
-  const orderSamples = [
-    { branchID: branch1.branchID, daysAgo: 0, hour: 7, items: [[0, 2], [4, 2]] },
-    { branchID: branch1.branchID, daysAgo: 0, hour: 11, items: [[2, 3], [7, 3]] },
-    { branchID: branch1.branchID, daysAgo: 0, hour: 12, items: [[3, 2], [5, 1]] },
-    { branchID: branch1.branchID, daysAgo: 0, hour: 19, items: [[1, 4], [6, 2]] },
-    { branchID: branch1.branchID, daysAgo: 1, hour: 8, items: [[0, 3], [8, 2]] },
-    { branchID: branch1.branchID, daysAgo: 1, hour: 11, items: [[2, 2], [4, 3]] },
-    { branchID: branch1.branchID, daysAgo: 1, hour: 13, items: [[3, 1], [9, 2]] },
-    { branchID: branch1.branchID, daysAgo: 1, hour: 20, items: [[1, 2], [5, 3]] },
-    { branchID: branch1.branchID, daysAgo: 2, hour: 7, items: [[0, 5]] },
-    { branchID: branch1.branchID, daysAgo: 2, hour: 12, items: [[3, 3], [6, 2]] },
-    { branchID: branch1.branchID, daysAgo: 2, hour: 18, items: [[1, 3], [7, 1]] },
-    { branchID: branch1.branchID, daysAgo: 3, hour: 11, items: [[2, 4], [4, 4]] },
-    { branchID: branch1.branchID, daysAgo: 4, hour: 19, items: [[0, 2], [8, 3]] },
-    { branchID: branch1.branchID, daysAgo: 5, hour: 12, items: [[3, 2], [5, 2]] },
-    { branchID: branch1.branchID, daysAgo: 7, hour: 7, items: [[0, 4], [4, 2]] },
-    { branchID: branch1.branchID, daysAgo: 10, hour: 11, items: [[1, 3], [9, 1]] },
-    { branchID: branch1.branchID, daysAgo: 14, hour: 19, items: [[2, 2], [6, 3]] },
-    { branchID: branch2.branchID, daysAgo: 0, hour: 12, items: [[0, 2], [4, 1]] },
-    { branchID: branch2.branchID, daysAgo: 0, hour: 19, items: [[1, 3]] },
-    { branchID: branch2.branchID, daysAgo: 1, hour: 11, items: [[2, 2], [6, 2]] },
-    { branchID: branch2.branchID, daysAgo: 3, hour: 7, items: [[3, 1], [5, 1]] },
-    { branchID: branch2.branchID, daysAgo: 5, hour: 20, items: [[0, 4]] },
-    { branchID: branch2.branchID, daysAgo: 7, hour: 12, items: [[1, 2], [8, 2]] },
-    { branchID: branch2.branchID, daysAgo: 10, hour: 18, items: [[2, 3], [7, 1]] },
-  ];
+  // Map sản phẩm theo chỉ số để dễ dùng
+  const p = products; // alias ngắn gọn
+
+  // Helper: tạo order mẫu
+  const mkOrder = (branchID, daysAgo, hour, items) => ({
+    branchID, daysAgo, hour, items,
+  });
+
+  // Tạo mảng orderSamples trải rộng 90 ngày
+  // Branch 1 (Hoàn Kiếm) — chi nhánh chính, doanh thu cao nhất
+  // Branch 2 (Đống Đa) — trung bình
+  // Branch 4 (Cầu Giấy) — thấp hơn
+  const orderSamples = [];
+
+  // Hàm sinh orders ngẫu nhiên theo ngày
+  const addOrdersForDay = (branchID, daysAgo, count, baseItems) => {
+    const peakHours = [7, 8, 11, 12, 13, 18, 19, 20];
+    for (let i = 0; i < count; i++) {
+      const hour = peakHours[i % peakHours.length];
+      const itemCount = 1 + (i % 3);
+      const items = baseItems.slice(0, itemCount).map((idx, j) => [idx, 1 + (j + i) % 3]);
+      orderSamples.push(mkOrder(branchID, daysAgo, hour, items));
+    }
+  };
+
+  // Branch 1 (Hoàn Kiếm) — 2-5 orders/ngày trong 90 ngày
+  for (let day = 0; day <= 89; day++) {
+    const ordersPerDay = day < 7 ? 5 : day < 30 ? 4 : 3; // gần = nhiều hơn
+    addOrdersForDay(branch1.branchID, day, ordersPerDay, [0, 1, 2, 3, 4, 7]);
+  }
+
+  // Branch 2 (Đống Đa) — 2-3 orders/ngày trong 90 ngày
+  for (let day = 0; day <= 89; day++) {
+    const ordersPerDay = day < 7 ? 3 : day < 30 ? 2 : 2;
+    addOrdersForDay(branch2.branchID, day, ordersPerDay, [0, 2, 3, 5, 6, 8]);
+  }
+
+  // Branch 4 (Cầu Giấy) — 1-2 orders/ngày trong 60 ngày
+  for (let day = 0; day <= 59; day++) {
+    const ordersPerDay = day < 7 ? 2 : 1;
+    addOrdersForDay(branch4.branchID, day, ordersPerDay, [1, 3, 4, 9]);
+  }
+
+  // Tạo orders trong DB
+  let createdOrderCount = 0;
+  const allCreatedOrders = [];
 
   for (const o of orderSamples) {
     let total = 0;
     const details = o.items
-      .filter(([idx]) => idx < products.length)
+      .filter(([idx]) => idx < p.length)
       .map(([idx, qty]) => {
-        const p = products[idx];
-        total += parseFloat(p.price) * qty;
-        return { productID: p.productID, quantity: qty, unitPrice: p.price };
+        const prod = p[idx];
+        const linePrice = parseFloat(prod.price) * qty;
+        total += linePrice;
+        return { productID: prod.productID, quantity: qty, unitPrice: prod.price };
       });
     if (details.length === 0) continue;
-    await prisma.order.create({
+
+    const orderTime = mkDate(o.daysAgo, o.hour, Math.floor(Math.random() * 50));
+    const statuses = ['Completed', 'Completed', 'Completed', 'Completed', 'Cancelled'];
+    const orderStatusVal = statuses[createdOrderCount % statuses.length];
+
+    const order = await prisma.order.create({
       data: {
         branchID: o.branchID,
-        orderTime: mkDate(o.daysAgo, o.hour),
+        orderTime,
         totalAmount: total,
-        paymentStatus: "Paid",
+        paymentStatus: orderStatusVal === 'Cancelled' ? 'Unpaid' : 'Paid',
+        orderStatus: orderStatusVal,
         orderDetails: { create: details },
       },
     });
+    allCreatedOrders.push({ orderID: order.orderID, totalAmount: total, orderTime, status: orderStatusVal });
+    createdOrderCount++;
   }
-  console.log(`✅ Tạo ${orderSamples.length} Orders mẫu cho Owner Dashboard`);
+  console.log(`✅ Tạo ${createdOrderCount} Orders mẫu (90 ngày, 3 chi nhánh)`);
 
   // =============================================
-  // 11. INVOICES + TRANSACTIONS (cho lịch sử thanh toán)
+  // 11. INVOICES + TRANSACTIONS
   // =============================================
-  const allOrders = await prisma.order.findMany({
-    where: { branchID: { in: [branch1.branchID, branch2.branchID, branch4.branchID, branch5.branchID] } },
-    select: { orderID: true, totalAmount: true, orderTime: true },
-    orderBy: { orderID: 'asc' },
-  });
-
+  const paidOrders = allCreatedOrders.filter(o => o.status !== 'Cancelled');
   const paymentMethods = ['Cash', 'BankTransfer', 'E_Wallet'];
-  const transactionStatuses = ['Success', 'Success', 'Success', 'Success', 'Failed'];
+  const txStatuses = ['Success', 'Success', 'Success', 'Success', 'Failed'];
 
   let invoiceCount = 0;
   let txCount = 0;
 
-  for (let i = 0; i < allOrders.length; i++) {
-    const order = allOrders[i];
+  for (let i = 0; i < paidOrders.length; i++) {
+    const order = paidOrders[i];
     const method = paymentMethods[i % paymentMethods.length];
-    const status = transactionStatuses[i % transactionStatuses.length];
+    const txStatus = txStatuses[i % txStatuses.length];
 
-    // Tạo Invoice
     const invoice = await prisma.invoice.create({
       data: {
         orderID: order.orderID,
@@ -621,22 +645,21 @@ async function main() {
     });
     invoiceCount++;
 
-    // Tạo Transaction chính
     await prisma.transaction.create({
       data: {
         invoiceID: invoice.invoiceID,
         amount: order.totalAmount,
         paymentMethod: method,
-        status: status,
+        status: txStatus,
         transactionTime: order.orderTime,
       },
     });
     txCount++;
 
-    // Thêm 1 transaction Failed trước đó (retry scenario)
-    if (i % 7 === 0 && status === 'Success') {
+    // Retry transaction (failed before success)
+    if (i % 9 === 0 && txStatus === 'Success') {
       const retryTime = new Date(order.orderTime);
-      retryTime.setMinutes(retryTime.getMinutes() - 5);
+      retryTime.setMinutes(retryTime.getMinutes() - 3);
       await prisma.transaction.create({
         data: {
           invoiceID: invoice.invoiceID,
@@ -651,15 +674,15 @@ async function main() {
   }
   console.log(`✅ Tạo ${invoiceCount} Invoices + ${txCount} Transactions`);
 
-  console.log("\n🎉 Seed hoàn tất!\n");
+  console.log('\n🎉 Seed hoàn tất!\n');
+  console.log('📋 Tài khoản đăng nhập:');
+  console.log('   Admin:   admin@rms.vn        / Admin@123');
+  console.log('   Owner 1: owner1@phogamenu.vn  / Owner@123');
+  console.log('   Owner 2: owner2@banhmi.vn     / Owner@123');
+  console.log('   Owner 3: owner3@bbqhouse.vn   / Owner@123');
+  console.log('   Manager: manager1@rms.vn      / Manager@123');
+  console.log('   Staff:   staff1@rms.vn        / Staff@123');
 
-  console.log("📋 Tài khoản đăng nhập:");
-  console.log("   Admin:   admin@rms.vn        / Admin@123");
-  console.log("   Owner 1: owner1@phogamenu.vn  / Owner@123");
-  console.log("   Owner 2: owner2@banhmi.vn     / Owner@123");
-  console.log("   Owner 3: owner3@bbqhouse.vn   / Owner@123");
-  console.log("   Manager: manager1@rms.vn      / Manager@123");
-  console.log("   Staff:   staff1@rms.vn        / Staff@123");
 
 }
 
@@ -671,3 +694,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

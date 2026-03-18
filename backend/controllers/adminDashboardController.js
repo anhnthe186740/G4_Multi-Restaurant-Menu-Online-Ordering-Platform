@@ -222,19 +222,26 @@ export const getExpiringSubscriptions = async (req, res) => {
 /* ================= GET PAYMENT HISTORY ================= */
 export const getPaymentHistory = async (req, res) => {
   try {
-    const payments = await prisma.subscription.findMany({
-      orderBy: { startDate: "desc" },
-      take: 10,
-      include: {
-        restaurant: {
-          select: {
-            name: true,
-            owner: { select: { fullName: true } },
+    const { page = 1, limit = 5 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [totalRecords, payments] = await Promise.all([
+      prisma.subscription.count(),
+      prisma.subscription.findMany({
+        orderBy: { startDate: "desc" },
+        skip,
+        take: parseInt(limit),
+        include: {
+          restaurant: {
+            select: {
+              name: true,
+              owner: { select: { fullName: true } },
+            },
           },
+          package: { select: { packageName: true, price: true } },
         },
-        package: { select: { packageName: true, price: true } },
-      },
-    });
+      }),
+    ]);
 
     const result = payments.map((s) => ({
       SubscriptionID: s.subscriptionID,
@@ -247,7 +254,15 @@ export const getPaymentHistory = async (req, res) => {
       EndDate: s.endDate,
     }));
 
-    res.json(result);
+    res.json({
+      payments: result,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalRecords / parseInt(limit)),
+        totalRecords,
+        limit: parseInt(limit),
+      },
+    });
   } catch (error) {
     console.error("getPaymentHistory error:", error);
     res.status(500).json({ message: error.message || "Server error" });

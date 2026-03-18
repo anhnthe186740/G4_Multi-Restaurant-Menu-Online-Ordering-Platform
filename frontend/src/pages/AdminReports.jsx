@@ -372,14 +372,36 @@ export default function AdminReports() {
                                 </select>
                             </div>
                         </div>
-                        {selectedReport.Resolution && (
-                            <div>
-                                <label className="text-gray-400 text-sm">Phản hồi Admin</label>
-                                <div className="bg-[#0f1612] rounded-lg p-4 mt-2">
-                                    <pre className="text-white text-sm whitespace-pre-wrap font-sans">{selectedReport.Resolution}</pre>
+                        {selectedReport.Resolution && (() => {
+                            const messages = selectedReport.Resolution.split('\n')
+                                .filter(Boolean)
+                                .map(line => { try { return JSON.parse(line); } catch { return null; } })
+                                .filter(Boolean);
+                            return messages.length > 0 ? (
+                                <div>
+                                    <label className="text-gray-400 text-sm block mb-2">Lịch sử trao đổi</label>
+                                    <div className="bg-[#0f1612] rounded-xl p-4 space-y-3 max-h-64 overflow-y-auto">
+                                        {messages.map((msg, i) => {
+                                            const isAdmin = msg.role === 'admin';
+                                            return (
+                                                <div key={i} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`max-w-[85%] flex flex-col gap-1 ${isAdmin ? 'items-end' : 'items-start'}`}>
+                                                        <div className={`px-3 py-2 rounded-xl text-sm leading-relaxed ${isAdmin
+                                                            ? 'bg-[#00ff88]/15 text-[#00ff88] border border-[#00ff88]/20'
+                                                            : 'bg-slate-700/60 text-slate-200'}`}>
+                                                            {msg.text}
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-600 px-1">
+                                                            {isAdmin ? '🛡️ Admin' : '🏪 Chủ nhà hàng'} · {new Date(msg.time).toLocaleString('vi-VN')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            ) : null;
+                        })()}
                     </div>
                 </Modal>
             )}

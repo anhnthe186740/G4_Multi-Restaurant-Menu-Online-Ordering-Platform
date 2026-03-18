@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
-import { getOwnerBranchById, updateOwnerBranch, toggleOwnerBranch } from '../api/ownerApi';
+import { getOwnerBranchById, updateOwnerBranch, toggleOwnerBranch, deleteOwnerBranch } from '../api/ownerApi';
 import {
     Info, Clock, MapPin, CheckCircle2, XCircle,
-    ArrowLeft, Power, AlertTriangle, Plus, Save
+    ArrowLeft, Power, AlertTriangle, Plus, Save, Trash2, CalendarDays
 } from 'lucide-react';
 
 const DEFAULT_HOURS = { mon_fri: '08:00-22:00', sat: '08:00-23:30', sun: '09:00-23:30' };
@@ -16,7 +16,10 @@ export default function OwnerBranchSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null);
-    const [showDangerConfirm, setShowDangerConfirm] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [showSpecialForm, setShowSpecialForm] = useState(false);
+    const [newSpecial, setNewSpecial] = useState({ date: '', label: '', open: '08:00', close: '22:00', isClosed: false });
 
     // form state
     const [branch, setBranch] = useState(null);
@@ -26,6 +29,7 @@ export default function OwnerBranchSettings() {
         hours: { ...DEFAULT_HOURS },
     });
     const [dirty, setDirty] = useState(false);
+    const [errors, setErrors] = useState({});
 
     useEffect(() => { loadBranch(); }, [id]);
 
@@ -45,6 +49,7 @@ export default function OwnerBranchSettings() {
                     mon_fri: b.openingHours?.mon_fri || DEFAULT_HOURS.mon_fri,
                     sat: b.openingHours?.sat || DEFAULT_HOURS.sat,
                     sun: b.openingHours?.sun || DEFAULT_HOURS.sun,
+                    special: b.openingHours?.special || [],
                 },
             });
             setDirty(false);
@@ -63,10 +68,44 @@ export default function OwnerBranchSettings() {
     const handleField = (key, val) => {
         setForm(f => ({ ...f, [key]: val }));
         setDirty(true);
+        if (errors[key]) setErrors(e => ({ ...e, [key]: undefined }));
+    };
+
+    const validate = () => {
+        const errs = {};
+        if (!form.name.trim())
+            errs.name = 'Tên chi nhánh không được để trống';
+        if (form.phone && !/^(\+84|0)[2-9]\d{8}$/.test(form.phone.replace(/\s/g, '')))
+            errs.phone = 'Số điện thoại không hợp lệ (VD: 0912345678 hoặc 0241111111)';
+        if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+            errs.email = 'Email không đúng định dạng';
+        if (form.address && form.address.trim().length < 10)
+            errs.address = 'Địa chỉ quá ngắn, vui lòng nhập đầy đủ';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
     };
 
     const handleHours = (day, rawVal) => {
         setForm(f => ({ ...f, hours: { ...f.hours, [day]: rawVal } }));
+        setDirty(true);
+    };
+
+    const addSpecial = () => {
+        if (!newSpecial.date) return;
+        const entry = {
+            date: newSpecial.date,
+            label: newSpecial.label || newSpecial.date,
+            hours: newSpecial.isClosed ? null : `${newSpecial.open}-${newSpecial.close}`,
+            isClosed: newSpecial.isClosed,
+        };
+        setForm(f => ({ ...f, hours: { ...f.hours, special: [...(f.hours.special || []), entry] } }));
+        setNewSpecial({ date: '', label: '', open: '08:00', close: '22:00', isClosed: false });
+        setShowSpecialForm(false);
+        setDirty(true);
+    };
+
+    const removeSpecial = (idx) => {
+        setForm(f => ({ ...f, hours: { ...f.hours, special: f.hours.special.filter((_, i) => i !== idx) } }));
         setDirty(true);
     };
 
@@ -89,6 +128,10 @@ export default function OwnerBranchSettings() {
     };
 
     const handleSave = async () => {
+        if (!validate()) {
+            showToast('Vui lòng kiểm tra lại thông tin', 'error');
+            return;
+        }
         setSaving(true);
         try {
             await updateOwnerBranch(id, {
@@ -101,6 +144,7 @@ export default function OwnerBranchSettings() {
             setBranch(b => ({ ...b, name: form.name, phone: form.phone, email: form.email, address: form.address, isActive: form.isActive, openingHours: form.hours }));
             setDirty(false);
             showToast('Lưu thay đổi thành công!');
+            setTimeout(() => navigate('/owner/branches'), 1000);
         } catch {
             showToast('Không thể lưu thay đổi', 'error');
         } finally {
@@ -108,20 +152,18 @@ export default function OwnerBranchSettings() {
         }
     };
 
-    const handleToggleStatus = async () => {
+    const handleDelete = async () => {
+        setDeleting(true);
         try {
-            const res = await toggleOwnerBranch(id);
-            setForm(f => ({ ...f, isActive: res.data.isActive }));
-            setBranch(b => ({ ...b, isActive: res.data.isActive }));
-            showToast(res.data.message);
-        } catch {
-            showToast('Không thể thay đổi trạng thái', 'error');
+            await deleteOwnerBranch(id);
+            showToast('Đã xóa chi nhánh thành công!');
+            setTimeout(() => navigate('/owner/branches'), 1000);
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Không thể xóa chi nhánh', 'error');
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(false);
         }
-    };
-
-    const handleDangerToggle = async () => {
-        setShowDangerConfirm(false);
-        await handleToggleStatus();
     };
 
     /* ─── Render helpers ─── */
@@ -152,8 +194,8 @@ export default function OwnerBranchSettings() {
                 </div>
             )}
 
-            {/* Danger confirm modal */}
-            {showDangerConfirm && (
+            {/* Delete confirm modal */}
+            {showDeleteConfirm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
                         <div className="flex items-center gap-3 mb-4">
@@ -161,21 +203,24 @@ export default function OwnerBranchSettings() {
                                 <AlertTriangle size={20} className="text-red-600" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900">Xác nhận tạm dừng chi nhánh</h3>
-                                <p className="text-sm text-gray-500 mt-0.5">Hành động này sẽ ảnh hưởng đến dữ liệu vận hành.</p>
+                                <h3 className="font-bold text-gray-900">Xác nhận xóa chi nhánh</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">Hành động này không thể hoàn tác.</p>
                             </div>
                         </div>
                         <p className="text-sm text-gray-600 mb-5">
-                            Việc tạm dừng chi nhánh <strong>{branch?.name}</strong> sẽ ngắt khả năng đặt hàng online và ẩn chi nhánh khỏi ứng dụng khách hàng.
+                            Bạn có chắc muốn xóa chi nhánh <strong>{branch?.name}</strong>?
+                            Toàn bộ dữ liệu liên quan (bàn, đơn hàng...) sẽ bị xóa vĩnh viễn.
                         </p>
                         <div className="flex gap-3">
-                            <button onClick={() => setShowDangerConfirm(false)}
-                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                            <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
+                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">
                                 Hủy bỏ
                             </button>
-                            <button onClick={handleDangerToggle}
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
-                                Xác nhận tạm dừng
+                            <button onClick={handleDelete} disabled={deleting}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                                {deleting
+                                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xóa...</>
+                                    : <><Trash2 size={15} /> Xóa chi nhánh</>}
                             </button>
                         </div>
                     </div>
@@ -233,7 +278,16 @@ export default function OwnerBranchSettings() {
                                 <p className="text-gray-400 text-xs mt-0.5">Điều chỉnh trạng thái đóng/mở cửa ngay lập tức trên ứng dụng</p>
                             </div>
                             <button
-                                onClick={handleToggleStatus}
+                                onClick={async () => {
+                                    try {
+                                        const res = await toggleOwnerBranch(id);
+                                        setForm(f => ({ ...f, isActive: res.data.isActive }));
+                                        setBranch(b => ({ ...b, isActive: res.data.isActive }));
+                                        showToast(res.data.message);
+                                    } catch {
+                                        showToast('Không thể thay đổi trạng thái', 'error');
+                                    }
+                                }}
                                 className={`relative w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none
                                     ${isActive ? 'bg-blue-500' : 'bg-gray-300'}`}
                             >
@@ -253,58 +307,60 @@ export default function OwnerBranchSettings() {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Tên chi nhánh</label>
+                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Tên chi nhánh <span className="text-red-400">*</span></label>
                                 <input
                                     value={form.name}
                                     onChange={e => handleField('name', e.target.value)}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                        ${errors.name ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                     placeholder="Tên chi nhánh"
                                 />
+                                {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Số điện thoại</label>
+                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Số điện thoại <span className="text-red-400">*</span></label>
                                     <input
                                         value={form.phone}
                                         onChange={e => handleField('phone', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
-                                        placeholder="028 1234 5678"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                            ${errors.phone ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
+                                        placeholder="0912 345 678"
                                     />
+                                    {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Email liên hệ</label>
+                                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Email liên hệ <span className="text-red-400">*</span></label>
                                     <input
                                         value={form.email}
                                         onChange={e => handleField('email', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all
+                                            ${errors.email ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                         placeholder="chinhanh@email.vn"
                                     />
+                                    {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Địa chỉ chi tiết</label>
+                                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Địa chỉ chi tiết <span className="text-red-400">*</span></label>
                                 <textarea
                                     value={form.address}
                                     onChange={e => handleField('address', e.target.value)}
                                     rows={3}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all resize-none"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-gray-800 text-sm focus:outline-none focus:ring-2 transition-all resize-none
+                                        ${errors.address ? 'border-red-400 focus:ring-red-100 bg-red-50' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-50'}`}
                                     placeholder="Số nhà, Đường, Phường/Xã, Quận/Huyện, Tỉnh/TP"
                                 />
+                                {errors.address && <p className="mt-1.5 text-xs text-red-500">{errors.address}</p>}
                             </div>
                         </div>
                     </div>
 
                     {/* ── Vị trí trên bản đồ ── */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <MapPin size={16} className="text-blue-500" />
-                                <h2 className="font-bold text-gray-900 text-base">Vị trí trên bản đồ</h2>
-                            </div>
-                            <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors">
-                                <MapPin size={12} />
-                                Cập nhật vị trí
-                            </button>
+                        <div className="flex items-center gap-2 mb-4">
+                            <MapPin size={16} className="text-blue-500" />
+                            <h2 className="font-bold text-gray-900 text-base">Vị trí trên bản đồ</h2>
                         </div>
                         {/* Map iframe dựa trên địa chỉ */}
                         <div className="relative rounded-xl overflow-hidden border border-gray-100" style={{ height: 220 }}>
@@ -367,10 +423,94 @@ export default function OwnerBranchSettings() {
                                 );
                             })}
                         </div>
-                        <button className="mt-4 w-full flex items-center justify-center gap-2 border border-dashed border-blue-300 text-blue-500 hover:bg-blue-50 rounded-xl py-2.5 text-xs font-semibold transition-colors">
-                            <Plus size={14} />
-                            Thêm giờ đặc biệt / Ngày lễ
-                        </button>
+
+                        {/* Danh sách giờ đặc biệt đã thêm */}
+                        {(form.hours.special || []).length > 0 && (
+                            <div className="mt-4 space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 mb-1">Giờ đặc biệt đã thêm:</p>
+                                {form.hours.special.map((s, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2">
+                                        <CalendarDays size={13} className="text-orange-400 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold text-gray-700 truncate">{s.label}</p>
+                                            <p className="text-[11px] text-gray-500">
+                                                {new Date(s.date + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                {' · '}
+                                                {s.isClosed ? <span className="text-red-500 font-semibold">Đóng cửa</span> : <span className="text-green-600">{s.hours}</span>}
+                                            </p>
+                                        </div>
+                                        <button onClick={() => removeSpecial(idx)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Form thêm giờ đặc biệt */}
+                        {showSpecialForm ? (
+                            <div className="mt-4 border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-3">
+                                <p className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
+                                    <CalendarDays size={13} /> Thêm giờ đặc biệt / Ngày lễ
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Ngày <span className="text-red-400">*</span></label>
+                                        <input type="date"
+                                            value={newSpecial.date}
+                                            onChange={e => setNewSpecial(s => ({ ...s, date: e.target.value }))}
+                                            className="w-full px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Nhãn (tên ngày lễ)</label>
+                                        <input type="text"
+                                            value={newSpecial.label}
+                                            onChange={e => setNewSpecial(s => ({ ...s, label: e.target.value }))}
+                                            placeholder="VD: Tết Nguyên Đán"
+                                            className="w-full px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                                        />
+                                    </div>
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox"
+                                        checked={newSpecial.isClosed}
+                                        onChange={e => setNewSpecial(s => ({ ...s, isClosed: e.target.checked }))}
+                                        className="w-4 h-4 rounded border-gray-300 accent-blue-500"
+                                    />
+                                    <span className="text-xs font-semibold text-gray-700">Đóng cửa cả ngày</span>
+                                </label>
+                                {!newSpecial.isClosed && (
+                                    <div className="flex items-center gap-2">
+                                        <input type="time" value={newSpecial.open}
+                                            onChange={e => setNewSpecial(s => ({ ...s, open: e.target.value }))}
+                                            className="flex-1 px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400"
+                                        />
+                                        <span className="text-gray-400 text-xs">—</span>
+                                        <input type="time" value={newSpecial.close}
+                                            onChange={e => setNewSpecial(s => ({ ...s, close: e.target.value }))}
+                                            className="flex-1 px-2.5 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs focus:outline-none focus:border-blue-400"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex gap-2 pt-1">
+                                    <button onClick={() => setShowSpecialForm(false)}
+                                        className="flex-1 text-xs font-semibold text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg py-2 transition-colors">
+                                        Hủy
+                                    </button>
+                                    <button onClick={addSpecial} disabled={!newSpecial.date}
+                                        className="flex-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 rounded-lg py-2 transition-colors">
+                                        Thêm
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button onClick={() => setShowSpecialForm(true)}
+                                className="mt-4 w-full flex items-center justify-center gap-2 border border-dashed border-blue-300 text-blue-500 hover:bg-blue-50 rounded-xl py-2.5 text-xs font-semibold transition-colors">
+                                <Plus size={14} />
+                                Thêm giờ đặc biệt / Ngày lễ
+                            </button>
+                        )}
                     </div>
 
                     {/* ── Tóm tắt vận hành ── */}
@@ -382,27 +522,14 @@ export default function OwnerBranchSettings() {
                                 value={isActive ? 'Sẵn sàng phục vụ' : 'Tạm dừng'}
                                 ok={isActive}
                             />
-                            <SummaryRow label="Đơn hàng online" value="Đang bật" ok={true} />
                             <SummaryRow label="Thời gian chuẩn bị TB" value="15 phút" ok={true} />
                         </div>
                     </div>
 
-                    {/* ── Vùng nguy hiểm ── */}
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-                        <h2 className="font-bold text-red-600 text-base mb-1.5">Vùng nguy hiểm</h2>
-                        <p className="text-xs text-red-400 mb-4">
-                            Việc xóa hoặc tạm dừng vĩnh viễn chi nhánh sẽ ảnh hưởng đến dữ liệu báo cáo lịch sử.
-                        </p>
-                        <button
-                            onClick={() => setShowDangerConfirm(true)}
-                            className="w-full flex items-center justify-center gap-2 border border-red-400 text-red-600 hover:bg-red-100 rounded-xl py-2.5 text-sm font-semibold transition-colors">
-                            <Power size={15} />
-                            {isActive ? 'Tạm dừng vĩnh viễn chi nhánh' : 'Kích hoạt lại chi nhánh'}
-                        </button>
-                    </div>
 
                 </div>
             </div>
+
         </RestaurantOwnerLayout>
     );
 }
