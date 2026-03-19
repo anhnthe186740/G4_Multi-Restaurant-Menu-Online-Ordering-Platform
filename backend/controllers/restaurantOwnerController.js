@@ -1911,6 +1911,60 @@ export const updateItemStatus = async (req, res) => {
   }
 };
 
+// 3. Cập nhật trạng thái nhiều món cùng lúc (Bếp dùng "Gom món" hoặc "Hoàn tất nhanh")
+export const updateMultipleItemStatus = async (req, res) => {
+  try {
+    const { orderDetailIDs, status } = req.body;
+    console.log("BACKEND LOG: orderDetailIDs=", orderDetailIDs, "status=", status);
+    console.log("Backend: updateMultipleItemStatus called with:", { orderDetailIDs, status });
+
+    const validStatuses = ["Pending", "Cooking", "Ready", "Served", "Cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    }
+
+    if (!Array.isArray(orderDetailIDs) || orderDetailIDs.length === 0) {
+      return res.status(400).json({ message: "Danh sách món không hợp lệ" });
+    }
+
+    const ids = orderDetailIDs.map(id => parseInt(id));
+
+    await prisma.orderDetail.updateMany({
+      where: { orderDetailID: { in: ids } },
+      data: { itemStatus: status }
+    });
+
+    if (status === "Served") {
+      const affectedDetails = await prisma.orderDetail.findMany({
+        where: { orderDetailID: { in: ids } },
+        select: { orderID: true }
+      });
+      const orderIDs = [...new Set(affectedDetails.map(d => d.orderID))];
+
+      for (const orderID of orderIDs) {
+        const remaining = await prisma.orderDetail.count({
+          where: {
+            orderID,
+            itemStatus: { notIn: ["Served", "Cancelled"] }
+          }
+        });
+
+        if (remaining === 0) {
+          await prisma.order.update({
+            where: { orderID },
+            data: { orderStatus: "Completed", paymentStatus: "Paid" }
+          });
+        }
+      }
+    }
+
+    res.json({ message: "Cập nhật trạng thái hàng loạt thành công" });
+  } catch (error) {
+    console.error("updateMultipleItemStatus error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 /* =================== CREATE OWNER MANAGER =================== */
 /**
  * POST /owner/managers

@@ -19,10 +19,8 @@ import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerCreateBranch from "./pages/OwnerCreateBranch";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
-<<<<<<< HEAD
 import OwnerKitchenTracking from "./pages/OwnerKitchenTracking";
 import KitchenDisplaySystem from "./pages/KitchenDisplaySystem";
-=======
 import OwnerReports from "./pages/OwnerReports";
 import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
@@ -33,7 +31,6 @@ import ResetPassword from "./pages/ResetPassword";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
 import TableManagement from "./pages/TableManagement";
 import CustomerMenu from "./pages/CustomerMenu";
->>>>>>> 57de24ba0c4f5f54eda132a094c4a7479e7c30d9
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -192,23 +189,24 @@ export default function App() {
         />
 
         <Route
-<<<<<<< HEAD
           path="/owner/kitchen-tracking"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerKitchenTracking />
-=======
-          path="/owner/reports"
-          element={
-            <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerReports />
->>>>>>> 57de24ba0c4f5f54eda132a094c4a7479e7c30d9
             </ProtectedRoute>
           }
         />
 
         <Route
-<<<<<<< HEAD
+          path="/owner/reports"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerReports />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/owner/kds/:branchID"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
@@ -216,7 +214,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-=======
+
+        <Route
           path="/owner/menu"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
@@ -269,9 +268,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
-
->>>>>>> 57de24ba0c4f5f54eda132a094c4a7479e7c30d9
       </Routes>
     </BrowserRouter>
   );

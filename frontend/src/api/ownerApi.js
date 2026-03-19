@@ -39,6 +39,8 @@ export const getOwnerKitchenOrders = (branchID, categoryID) =>
   });
 export const updateOwnerItemStatus = (orderDetailID, status) =>
   ownerAxios.patch("/owner/kitchen-orders/update-status", { orderDetailID, status });
+export const updateOwnerMultipleItemStatus = (orderDetailIDs, status) =>
+  ownerAxios.patch("/owner/kitchen-orders/update-multiple-status", { orderDetailIDs, status });
 // Reports
 export const getOwnerRevenueTrend = (params) =>
   ownerAxios.get("/owner/reports/revenue-trend", { params });

@@ -16,6 +16,7 @@ import {
   getPaymentHistory,
   getKitchenOrders,
   updateItemStatus,
+  updateMultipleItemStatus,
   getRevenueByPeriod,
   getBranchSummaryReport,
   getProductRevenueStats,
@@ -74,6 +75,7 @@ router.get("/payment-history", getPaymentHistory);
 // Kitchen Display System (KDS)
 router.get("/branches/:branchID/kitchen-orders", getKitchenOrders);
 router.patch("/kitchen-orders/update-status", updateItemStatus);
+router.patch("/kitchen-orders/update-multiple-status", updateMultipleItemStatus);
 
 // Reports
 router.get("/reports/revenue-trend", getRevenueByPeriod);
