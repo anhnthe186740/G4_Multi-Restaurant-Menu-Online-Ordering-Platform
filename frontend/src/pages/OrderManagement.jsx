@@ -67,13 +67,11 @@ const timeAgo = (isoStr) => {
 
 const nextStatus = (cur) => {
   if (cur === "Open") return "Serving";
-  if (cur === "Serving") return "Completed";
   return null;
 };
 
 const nextStatusLabel = (cur) => {
   if (cur === "Open") return "▶ Bắt đầu phục vụ";
-  if (cur === "Serving") return "✓ Hoàn thành đơn";
   return null;
 };
 
