@@ -12,6 +12,8 @@ import {
   deleteTable,
   mergeTables,
   confirmManagerOrder,
+  getServiceRequests,
+  updateServiceRequestStatus,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -35,6 +37,10 @@ router.put("/tables/:id",          updateTable);
 router.patch("/tables/:id/status", updateTableStatus);
 router.delete("/tables/:id",       deleteTable);
 router.post("/confirm-order",      confirmManagerOrder);
+
+// Service Requests
+router.get("/service-requests",       getServiceRequests);
+router.patch("/service-requests/:id", updateServiceRequestStatus);
 
 export default router;
 

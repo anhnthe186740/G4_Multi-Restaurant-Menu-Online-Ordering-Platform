@@ -26,5 +26,8 @@ export const updateManagerTableStatus  = (id, status) => managerAxios.patch(`man
 export const deleteManagerTable        = (id)       => managerAxios.delete(`manager/tables/${id}`);
 export const confirmManagerOrder       = (data)     => managerAxios.post("manager/confirm-order", data);
 
-export default managerAxios;
+// Service Requests
+export const getManagerServiceRequests         = (params)     => managerAxios.get("manager/service-requests", { params });
+export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });
 
+export default managerAxios;

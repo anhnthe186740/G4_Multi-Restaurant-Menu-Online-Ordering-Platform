@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getMenuByTable } from '../api/publicApi';
-import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle, CheckCircle } from 'lucide-react';
+import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle, CheckCircle, Bell, CreditCard, Loader2 } from 'lucide-react';
 import { confirmManagerOrder } from '../api/managerApi';
+import axios from 'axios';
+
+const PUBLIC_API = 'http://localhost:5000/api/public/';
 
 export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const [searchParams] = useSearchParams();
@@ -15,6 +18,10 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const [cart, setCart] = useState([]);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // srState per type: null | 'sending' | 'pending'
+    const [srState, setSrState] = useState({ GoiMon: null, ThanhToan: null });
+    const srTimers = useRef({});
 
     // Cart Logic
     const addToCart = (product) => {
@@ -75,6 +82,34 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
 
         fetchMenu();
     }, [tableId]);
+
+    // Gọi API tạo / cập nhật yêu cầu phục vụ
+    const sendServiceRequest = async (requestType) => {
+        if (srState[requestType] === 'sending' || srState[requestType] === 'pending') return;
+        setSrState(s => ({ ...s, [requestType]: 'sending' }));
+        clearTimeout(srTimers.current[requestType]);
+        try {
+            const res = await axios.post(`${PUBLIC_API}service-request`, { tableId, requestType });
+            const isPending = res.data.action !== 'done'; // created or updated → still pending
+            setSrState(s => ({ ...s, [requestType]: isPending ? 'pending' : null }));
+        } catch (err) {
+            console.error('sendServiceRequest error', err);
+            setSrState(s => ({ ...s, [requestType]: null }));
+        }
+    };
+
+    // Khi manager xử lý xong, state sẽ reset khi trang reload
+    // Nhưng để UX mượt hơn: sau 3 phút tự reset state UI (không ảnh hưởng DB)
+    useEffect(() => {
+        Object.keys(srState).forEach(type => {
+            if (srState[type] === 'pending') {
+                clearTimeout(srTimers.current[type]);
+                srTimers.current[type] = setTimeout(() => {
+                    setSrState(s => ({ ...s, [type]: null }));
+                }, 3 * 60 * 1000); // 3 phút
+            }
+        });
+    }, [srState]);
 
     if (loading) {
         return (
@@ -138,8 +173,9 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                 </div>
             </div>
 
-            {/* Thông tin Bàn */}
-            <div className="px-4 -mt-4 relative z-10">
+            {/* Thông tin Bàn + Nút yêu cầu */}
+            <div className="px-4 -mt-4 relative z-10 space-y-3">
+                {/* Bàn & liên hệ */}
                 <div className="bg-white rounded-2xl shadow-md p-4 flex justify-between items-center border border-gray-100">
                     <div>
                         <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Vị trí của bạn</p>
@@ -150,6 +186,67 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                             <Phone size={14} /> Liên hệ
                         </a>
                     )}
+                </div>
+
+                {/* Nút yêu cầu phục vụ */}
+                <div className="grid grid-cols-2 gap-3">
+                    {/* Gọi món */}
+                    {(() => {
+                        const st = srState.GoiMon;
+                        const isPending = st === 'pending';
+                        const isSending = st === 'sending';
+                        return (
+                            <button
+                                onClick={() => sendServiceRequest('GoiMon')}
+                                disabled={isPending || isSending}
+                                className={`flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm shadow-sm transition-all ${
+                                    isPending
+                                        ? 'bg-orange-50 text-orange-500 border-2 border-orange-200 cursor-not-allowed'
+                                        : isSending
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-red-50 text-red-600 border-2 border-red-100 hover:bg-red-100 active:scale-95'
+                                }`}
+                            >
+                                {isSending ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : isPending ? (
+                                    <CheckCircle size={16} />
+                                ) : (
+                                    <Bell size={16} />
+                                )}
+                                {isPending ? 'Đang xử lý...' : 'Gọi món'}
+                            </button>
+                        );
+                    })()}
+
+                    {/* Thanh toán */}
+                    {(() => {
+                        const st = srState.ThanhToan;
+                        const isPending = st === 'pending';
+                        const isSending = st === 'sending';
+                        return (
+                            <button
+                                onClick={() => sendServiceRequest('ThanhToan')}
+                                disabled={isPending || isSending}
+                                className={`flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm shadow-sm transition-all ${
+                                    isPending
+                                        ? 'bg-orange-50 text-orange-500 border-2 border-orange-200 cursor-not-allowed'
+                                        : isSending
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-emerald-50 text-emerald-700 border-2 border-emerald-100 hover:bg-emerald-100 active:scale-95'
+                                }`}
+                            >
+                                {isSending ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : isPending ? (
+                                    <CheckCircle size={16} />
+                                ) : (
+                                    <CreditCard size={16} />
+                                )}
+                                {isPending ? 'Đang xử lý...' : 'Thanh toán'}
+                            </button>
+                        );
+                    })()}
                 </div>
             </div>
 

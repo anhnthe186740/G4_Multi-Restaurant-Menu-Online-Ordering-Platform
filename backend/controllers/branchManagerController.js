@@ -691,3 +691,113 @@ export const confirmManagerOrder = async (req, res) => {
 };
 
 
+/* ===============================================================
+   SERVICE REQUESTS
+=============================================================== */
+
+/* ── GET /api/manager/service-requests ──
+   Query: type (optional), page (default 1), limit (default 10)
+──────────────────────────────────────────────────────────────── */
+export const getServiceRequests = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { type, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Map frontend tab label -> Prisma enum KEY (not @map value)
+    const typeMap = {
+      "Gọi món":    "GoiMon",
+      "Thanh toán": "ThanhToan",
+    };
+    const dbType = type ? (typeMap[type] ?? type) : undefined;
+
+    const where = {
+      branchID,
+      ...(dbType ? { requestType: dbType } : {}),
+    };
+
+    // Today range for stats
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const todayEnd   = new Date(); todayEnd.setHours(23, 59, 59, 999);
+
+    const [requests, total, pendingCount, totalToday] = await Promise.all([
+      prisma.serviceRequest.findMany({
+        where,
+        orderBy: { createdTime: "desc" },
+        skip,
+        take: parseInt(limit),
+        include: { table: { select: { tableName: true } } },
+      }),
+      prisma.serviceRequest.count({ where }),
+      // Đếm các yêu cầu đang xử lý (chưa xong)
+      prisma.serviceRequest.count({
+        where: { branchID, status: "Đang xử lý" },
+      }),
+      prisma.serviceRequest.count({
+        where: { branchID, createdTime: { gte: todayStart, lte: todayEnd } },
+      }),
+    ]);
+
+    // Map Prisma enum KEY -> display label + icon
+    const displayTypeMap = {
+      GoiMon:    { label: "Gọi món",    icon: "bell" },
+      ThanhToan: { label: "Thanh toán", icon: "credit-card" },
+    };
+
+    const data = requests.map((r) => ({
+      requestID:   r.requestID,
+      tableID:     r.tableID,
+      tableName:   r.table?.tableName ?? `Bàn ${r.tableID}`,
+      requestType: r.requestType,
+      displayType: displayTypeMap[r.requestType] ?? { label: r.requestType, icon: "more" },
+      status:      r.status,
+      createdTime: r.createdTime,
+    }));
+
+    res.json({
+      data,
+      total,
+      page:       parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      stats: { pending: pendingCount, totalToday },
+    });
+  } catch (err) {
+    console.error("getServiceRequests error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ── PATCH /api/manager/service-requests/:id ──
+   Body: { status: "Đã xử lý" | "Đang chờ" | ... }
+──────────────────────────────────────────────────────────────── */
+export const updateServiceRequestStatus = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const requestID = parseInt(req.params.id);
+    const { status } = req.body;
+    if (!status)
+      return res.status(400).json({ message: "Thiếu trạng thái cần cập nhật." });
+
+    const existing = await prisma.serviceRequest.findFirst({
+      where: { requestID, branchID },
+    });
+    if (!existing)
+      return res.status(404).json({ message: "Không tìm thấy yêu cầu phục vụ." });
+
+    const updated = await prisma.serviceRequest.update({
+      where: { requestID },
+      data:  { status },
+    });
+
+    res.json({ requestID: updated.requestID, status: updated.status });
+  } catch (err) {
+    console.error("updateServiceRequestStatus error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
