@@ -801,3 +801,89 @@ export const updateServiceRequestStatus = async (req, res) => {
     res.status(500).json({ message: err.message || "Server error" });
   }
 };
+
+/* ===============================================================
+   7. BRANCH INFO 
+   GET /api/manager/branch-info
+=============================================================== */
+export const getBranchInfo = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const branch = await prisma.branch.findUnique({
+      where: { branchID },
+      include: {
+        restaurant: {
+          select: {
+            name: true,
+            description: true,
+            logo: true,
+            coverImage: true,
+            taxCode: true,
+          }
+        }
+      }
+    });
+
+    if (!branch) {
+      return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+    }
+
+    // Map logo and coverImage to logoURL and coverImageURL for frontend compatibility
+    const responseData = {
+      ...branch,
+      restaurant: {
+        ...branch.restaurant,
+        logoURL: branch.restaurant.logo,
+        coverImageURL: branch.restaurant.coverImage
+      }
+    };
+
+    res.json(responseData);
+  } catch (err) {
+    console.error("getBranchInfo error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ===============================================================
+   8. UPLOAD COVER IMAGE FOR BRANCH (RESTAURANT)
+   PATCH /api/manager/branch-info/cover
+=============================================================== */
+export const uploadBranchCoverImage = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) {
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Vui lòng chọn ảnh bìa." });
+    }
+
+    // Get branch to find restaurant ID
+    const branch = await prisma.branch.findUnique({
+      where: { branchID },
+      select: { restaurantID: true },
+    });
+
+    if (!branch) {
+      return res.status(404).json({ message: "Chi nhánh không tồn tại." });
+    }
+
+    const coverImageURL = `/uploads/${req.file.filename}`;
+
+    // Update restaurant's cover image
+    await prisma.restaurant.update({
+      where: { restaurantID: branch.restaurantID },
+      data: { coverImage: coverImageURL },
+    });
+
+    res.json({ message: "Đã cập nhật ảnh bìa thành công", coverImageURL });
+  } catch (err) {
+    console.error("uploadBranchCoverImage error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
