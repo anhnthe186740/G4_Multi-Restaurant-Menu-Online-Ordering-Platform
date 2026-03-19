@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import os from "os";
 
 const prisma = new PrismaClient();
 
@@ -64,6 +65,23 @@ export const getMenuByTable = async (req, res) => {
         });
     } catch (error) {
         console.error("Error fetching menu by table:", error);
-        res.status(500).json({ message: "Error fetching menu data", error: error.message });
+        res.status(500).json({ message: error.message });
     }
+};
+
+export const getServerIP = (req, res) => {
+  const interfaces = os.networkInterfaces();
+  let ip = "localhost";
+  
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        ip = iface.address;
+        break;
+      }
+    }
+    if (ip !== "localhost") break;
+  }
+  
+  res.json({ ip });
 };

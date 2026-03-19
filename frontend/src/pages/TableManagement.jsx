@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { io } from "socket.io-client";
+import { getServerIP } from '../api/publicApi';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
@@ -305,6 +307,13 @@ function DeleteModal({ table, onClose, onConfirm }) {
 /* ─── Modal In Mã QR – Hỗ trợ chọn bàn ────────────────────────────────────── */
 function PrintQRModal({ tables, onClose }) {
     const [selectedIds, setSelectedIds] = useState(tables.map(t => t.id));
+    const [serverIP, setServerIP] = useState(window.location.hostname);
+
+    useEffect(() => {
+        getServerIP()
+            .then(res => setServerIP(res.data.ip))
+            .catch(err => console.error("Không lấy được IP server:", err));
+    }, []);
 
     const toggleTable = (id) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -409,7 +418,7 @@ function PrintQRModal({ tables, onClose }) {
                             <h2 className="text-4xl font-black mb-6 text-gray-900 uppercase tracking-widest">{table.name}</h2>
                             <div className="p-4 bg-white border-2 border-gray-100 rounded-3xl shadow-sm">
                                 <QRCodeSVG 
-                                    value={`${window.location.origin}/menu?tableId=${table.id}`} 
+                                    value={`http://${serverIP}:5173/menu?tableId=${table.id}`} 
                                     size={280}
                                     level="H"
                                 />
@@ -481,6 +490,24 @@ export default function TableManagement() {
     }, []);
 
     useEffect(() => { loadTables(); }, [loadTables]);
+
+    // Socket.io for Real-time
+    useEffect(() => {
+        const socket = io(`http://${window.location.hostname}:5000`);
+        
+        socket.on("connect", () => {
+            console.log("🟢 Connected to Real-time Server");
+        });
+
+        socket.on("tableUpdate", (data) => {
+            console.log("🔄 Real-time Update Received:", data);
+            loadTables(); // Refresh the list
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [loadTables]);
 
     const occupiedTables = tables.filter(t => t.status === 'Đang ngồi');
 

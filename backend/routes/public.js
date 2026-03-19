@@ -1,9 +1,9 @@
-import express from 'express';
-import { getMenuByTable } from '../controllers/publicController.js';
+import express from "express";
+import { getMenuByTable, getServerIP } from "../controllers/publicController.js";
 
 const router = express.Router();
 
-// Lấy thông tin menu bằng Table ID
-router.get('/menu/:tableId', getMenuByTable);
+router.get("/menu/:tableId", getMenuByTable);
+router.get("/server-ip", getServerIP);
 
 export default router;

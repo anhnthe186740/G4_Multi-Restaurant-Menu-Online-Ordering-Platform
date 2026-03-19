@@ -15,10 +15,30 @@ import branchManagerRoutes from "./routes/branchManager.js";
 import uploadRoutes from "./routes/upload.js";
 import publicRoutes from "./routes/public.js";
 
+import { createServer } from "http";
+import { Server } from "socket.io";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // Trong thực tế nên giới hạn origin
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"]
+  }
+});
+
+// Gắn io vào app để dùng trong controllers
+app.set("io", io);
+
+io.on("connection", (socket) => {
+  console.log(`📡 New client connected: ${socket.id}`);
+  socket.on("disconnect", () => {
+    console.log(`🔌 Client disconnected: ${socket.id}`);
+  });
+});
 
 // CORS Configuration — explicitly allow Authorization header
 const corsOptions = {
@@ -40,7 +60,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Test route
 app.get("/", (req, res) => {
-  res.json({ message: "Backend is running!" });
+  res.json({ message: "Backend is running with Socket.io!" });
 });
 
 // ✅ Public route — không cần auth, cho homepage
@@ -69,7 +89,8 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`✅ Backend running at http://localhost:${PORT}`);
+  console.log(`✅ Socket.io initialized`);
   console.log(`✅ CORS enabled for all origins`);
 });

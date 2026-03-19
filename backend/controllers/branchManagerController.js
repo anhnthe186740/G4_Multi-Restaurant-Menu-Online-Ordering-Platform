@@ -52,6 +52,15 @@ const calcGrowth = (curr, prev) => {
   return Math.round(((curr - prev) / prev) * 100 * 10) / 10;
 };
 
+/* ─── helper: phát tín hiệu realtime qua socket ─── */
+const emitTableUpdate = (req) => {
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("tableUpdate", { timestamp: Date.now() });
+    console.log("📢 Emitted tableUpdate via Socket.io");
+  }
+};
+
 /* ===============================================================
    1. DASHBOARD STATS  (có filter theo period)
    GET /api/manager/dashboard/stats?period=today|7days|month
@@ -352,6 +361,8 @@ export const createTable = async (req, res) => {
       status:   "Trống",
       qrCode:   null,
     });
+
+    emitTableUpdate(req);
   } catch (err) {
     console.error("createTable error:", err);
     res.status(500).json({ message: err.message });
@@ -385,6 +396,8 @@ export const updateTable = async (req, res) => {
       status:   mapStatus(updated.status),
       qrCode:   updated.qrCode,
     });
+
+    emitTableUpdate(req);
   } catch (err) {
     console.error("updateTable error:", err);
     res.status(500).json({ message: err.message });
@@ -420,6 +433,8 @@ export const updateTableStatus = async (req, res) => {
     });
 
     res.json({ id: updated.tableID, status: mapStatus(updated.status), mergedGroupId: updated.mergedGroupId ?? null });
+
+    emitTableUpdate(req);
   } catch (err) {
     console.error("updateTableStatus error:", err);
     res.status(500).json({ message: err.message });
@@ -438,6 +453,8 @@ export const deleteTable = async (req, res) => {
 
     await prisma.table.delete({ where: { tableID } });
     res.json({ message: "Đã xoá bàn thành công." });
+
+    emitTableUpdate(req);
   } catch (err) {
     console.error("deleteTable error:", err);
     res.status(500).json({ message: err.message });
@@ -588,6 +605,8 @@ export const mergeTables = async (req, res) => {
       sourceTable: { id: srcId, name: srcTable.tableName },
       targetTable: { id: tgtId, name: tgtTable.tableName },
     });
+
+    emitTableUpdate(req);
   } catch (err) {
     console.error("mergeTables error:", err);
     res.status(500).json({ message: err.message });
@@ -640,7 +659,7 @@ export const confirmManagerOrder = async (req, res) => {
             branchID,
             createdBy: req.user.userId,
             totalAmount: totalAmountToAdd,
-            orderStatus: "Serving",
+            orderStatus: "Open",
             paymentStatus: "Unpaid",
           }
         });
@@ -658,7 +677,7 @@ export const confirmManagerOrder = async (req, res) => {
           productID: item.productID,
           quantity: item.quantity,
           unitPrice: parseFloat(item.price),
-          itemStatus: "Served" // Vì quản lý gọi nên coi như đã phục vụ
+          itemStatus: "Pending" // Khách mới gọi món thì vào trạng thái Chờ xử lý
         }))
       });
 
@@ -684,10 +703,271 @@ export const confirmManagerOrder = async (req, res) => {
       ...result
     });
 
+    emitTableUpdate(req);
   } catch (err) {
     console.error("confirmManagerOrder error:", err);
     res.status(500).json({ message: err.message || "Lỗi xác nhận order" });
   }
 };
 
+/* ===============================================================
+   NEW: CHECKOUT & BILL RETRIEVAL
+=============================================================== */
 
+/* ── GET /api/manager/tables/:id/bill ── */
+export const getBillByTable = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    const tableID = parseInt(req.params.id);
+
+    // Tìm order đang active của bàn đó
+    const orderTable = await prisma.orderTable.findFirst({
+      where: {
+        tableID,
+        order: { orderStatus: { in: ["Open", "Serving"] }, branchID }
+      },
+      include: {
+        order: {
+          include: {
+            orderDetails: { include: { product: true } },
+            orderTables: { include: { table: true } }
+          }
+        }
+      }
+    });
+
+    if (!orderTable) {
+      return res.status(404).json({ message: "Bàn này hiện không có hóa đơn chưa thanh toán." });
+    }
+
+    const order = orderTable.order;
+    const tables = order.orderTables.map(ot => ({ id: ot.table.tableID, name: ot.table.tableName }));
+    
+    // Group items by productID to sum quantities if they were ordered multiple times
+    const itemsMap = {};
+    order.orderDetails.forEach(det => {
+      const pID = det.productID;
+      if (itemsMap[pID]) {
+        itemsMap[pID].quantity += det.quantity;
+      } else {
+        itemsMap[pID] = {
+          productID: pID,
+          name: det.product?.name || "Món đã xóa",
+          imageURL: det.product?.imageURL,
+          price: parseFloat(det.unitPrice),
+          quantity: det.quantity
+        };
+      }
+    });
+
+    res.json({
+      orderID: order.orderID,
+      tables,
+      items: Object.values(itemsMap),
+      totalAmount: parseFloat(order.totalAmount),
+      orderTime: order.orderTime
+    });
+  } catch (err) {
+    console.error("getBillByTable error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ── POST /api/manager/tables/:id/checkout ── */
+export const processManagerCheckout = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    const tableID = parseInt(req.params.id);
+    const { paymentMethod = "Cash" } = req.body;
+
+    // 1. Tìm Order đang active
+    const orderTable = await prisma.orderTable.findFirst({
+      where: {
+        tableID,
+        order: { orderStatus: { in: ["Open", "Serving"] }, branchID }
+      },
+      include: {
+        order: { include: { orderDetails: true, orderTables: true } }
+      }
+    });
+
+    if (!orderTable) {
+      return res.status(404).json({ message: "Không tìm thấy hóa đơn cần thanh toán." });
+    }
+
+    const order = orderTable.order;
+    const tableIdsInvolved = order.orderTables.map(ot => ot.tableID);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 2. Tạo Invoice
+      const invoice = await tx.invoice.create({
+        data: {
+          orderID: order.orderID,
+          subTotal: order.totalAmount,
+          totalAmount: order.totalAmount,
+          status: "Issued",
+          issuedDate: new Date()
+        }
+      });
+
+      // 3. Tạo InvoiceDetails
+      await tx.invoiceDetail.createMany({
+        data: order.orderDetails.map(det => ({
+          invoiceID: invoice.invoiceID,
+          orderDetailID: det.orderDetailID,
+          productID: det.productID,
+          quantity: det.quantity,
+          unitPrice: det.unitPrice,
+          totalPrice: parseFloat(det.unitPrice) * det.quantity,
+          status: "Finalized"
+        }))
+      });
+
+      // 4. Tạo Transaction
+      await tx.transaction.create({
+        data: {
+          invoiceID: invoice.invoiceID,
+          amount: order.totalAmount,
+          paymentMethod: paymentMethod, // Cash, BankTransfer
+          status: "Success"
+        }
+      });
+
+      // 5. Cập nhật Order -> Completed/Paid
+      await tx.order.update({
+        where: { orderID: order.orderID },
+        data: { orderStatus: "Completed", paymentStatus: "Paid" }
+      });
+
+      // 6. Giải phóng bàn (Available & xóa mergedGroupId)
+      await tx.table.updateMany({
+        where: { tableID: { in: tableIdsInvolved } },
+        data: { status: "Available", mergedGroupId: null }
+      });
+
+      return invoice;
+    });
+
+    res.json({ message: "Thanh toán thành công!", invoiceID: result.invoiceID });
+
+    emitTableUpdate(req);
+  } catch (err) {
+    console.error("processManagerCheckout error:", err);
+    res.status(500).json({ message: err.message || "Lỗi xử lý thanh toán" });
+  }
+};
+
+
+/* ===============================================================
+   GET /api/manager/orders
+   Lấy danh sách tất cả Orders của chi nhánh (Open, Serving, Completed)
+   Query: ?status=Open|Serving|Completed  (tùy chọn lọc)
+=============================================================== */
+export const getOrders = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { status } = req.query; // optional filter
+
+    const where = {
+      branchID,
+      orderStatus: status
+        ? status
+        : { in: ["Open", "Serving", "Completed"] },
+    };
+
+    const orders = await prisma.order.findMany({
+      where,
+      orderBy: { orderTime: "desc" },
+      include: {
+        orderTables: {
+          include: { table: { select: { tableID: true, tableName: true } } },
+        },
+        orderDetails: {
+          include: { product: { select: { name: true, imageURL: true } } },
+        },
+      },
+    });
+
+    const result = orders.map((o) => ({
+      id:             o.orderID,
+      orderStatus:    o.orderStatus,
+      paymentStatus:  o.paymentStatus,
+      orderTime:      o.orderTime,
+      totalAmount:    parseFloat(o.totalAmount),
+      customerNote:   o.customerNote ?? "",
+      // Tên bàn (có thể gộp): "Bàn 01, Bàn 02"
+      orderTable: o.orderTables
+        .map((ot) => ot.table?.tableName ?? `Bàn ${ot.table?.tableID}`)
+        .join(", "),
+      tableIds: o.orderTables.map((ot) => ot.tableID),
+      orderDetails: o.orderDetails.map((d) => ({
+        id:          d.orderDetailID,
+        productName: d.product?.name ?? "Món đã xóa",
+        imageURL:    d.product?.imageURL ?? null,
+        quantity:    d.quantity,
+        unitPrice:   parseFloat(d.unitPrice),
+        itemStatus:  d.itemStatus,
+        note:        d.note ?? "",
+      })),
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("getOrders error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ===============================================================
+   PATCH /api/manager/orders/:id/status
+   Cập nhật trạng thái đơn hàng
+   Body: { orderStatus: "Serving" | "Completed" }
+=============================================================== */
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const orderID    = parseInt(req.params.id);
+    const { orderStatus } = req.body;
+
+    const allowed = ["Serving", "Completed"];
+    if (!allowed.includes(orderStatus))
+      return res.status(400).json({ message: "Trạng thái không hợp lệ. Chỉ chấp nhận: Serving, Completed." });
+
+    // Xác nhận order thuộc chi nhánh này
+    const existing = await prisma.order.findFirst({ where: { orderID, branchID } });
+    if (!existing)
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng." });
+
+    const updated = await prisma.order.update({
+      where: { orderID },
+      data:  { orderStatus },
+    });
+
+    // Nếu Completed → giải phóng bàn (nếu chưa thanh toán thì vẫn giải phóng vật lý)
+    if (orderStatus === "Completed") {
+      const orderTables = await prisma.orderTable.findMany({ where: { orderID } });
+      const tableIds = orderTables.map((ot) => ot.tableID);
+      if (tableIds.length) {
+        // Chỉ tự động set Available nếu paymentStatus === Paid; ngược lại giữ nguyên status bàn
+        if (updated.paymentStatus === "Paid") {
+          await prisma.table.updateMany({
+            where: { tableID: { in: tableIds } },
+            data:  { status: "Available", mergedGroupId: null },
+          });
+        }
+      }
+    }
+
+    emitTableUpdate(req);
+    res.json({ message: "Cập nhật trạng thái thành công.", orderID, orderStatus });
+  } catch (err) {
+    console.error("updateOrderStatus error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};

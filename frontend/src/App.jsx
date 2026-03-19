@@ -29,6 +29,7 @@ import ResetPassword from "./pages/ResetPassword";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
 import TableManagement from "./pages/TableManagement";
 import CustomerMenu from "./pages/CustomerMenu";
+import OrderManagement from "./pages/OrderManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -245,6 +246,14 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <TableManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/orders"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <OrderManagement />
             </ProtectedRoute>
           }
         />

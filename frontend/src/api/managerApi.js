@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/";
+const API_URL = `http://${window.location.hostname}:5000/api/`;
 
 const managerAxios = axios.create({ baseURL: API_URL });
 
@@ -25,6 +25,14 @@ export const updateManagerTable        = (id, data) => managerAxios.put(`manager
 export const updateManagerTableStatus  = (id, status) => managerAxios.patch(`manager/tables/${id}/status`, { status });
 export const deleteManagerTable        = (id)       => managerAxios.delete(`manager/tables/${id}`);
 export const confirmManagerOrder       = (data)     => managerAxios.post("manager/confirm-order", data);
+
+// Checkout & Bill
+export const getManagerBillByTable     = (id)       => managerAxios.get(`manager/tables/${id}/bill`);
+export const processManagerCheckout    = (id, data) => managerAxios.post(`manager/tables/${id}/checkout`, data);
+
+// Orders
+export const getManagerOrders          = (status)   => managerAxios.get("manager/orders", { params: status ? { status } : {} });
+export const updateManagerOrderStatus  = (id, orderStatus) => managerAxios.patch(`manager/orders/${id}/status`, { orderStatus });
 
 export default managerAxios;
 
