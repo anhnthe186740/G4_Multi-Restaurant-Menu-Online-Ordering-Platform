@@ -11,6 +11,7 @@ export default function BranchManagerSidebar() {
         { icon: LayoutDashboard, label: 'Tổng quan',         path: '/manager/dashboard' },
         { icon: LayoutGrid,      label: 'Sơ đồ bàn',        path: '/manager/tables' },
         { icon: ClipboardList,   label: 'Đơn hàng',          path: '/manager/orders' },
+        { icon: UtensilsCrossed, label: 'Theo dõi bếp',     path: '/manager/kds' },
         { icon: Bell,            label: 'Yêu cầu phục vụ',  path: '/manager/service-requests' },
         { icon: Info,            label: 'Thông tin nhà hàng',path: '/manager/info' },
     ];
