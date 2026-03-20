@@ -12,8 +12,13 @@ import {
   deleteTable,
   mergeTables,
   confirmManagerOrder,
+  getServiceRequests,
+  updateServiceRequestStatus,
+  getBranchInfo,
+  uploadBranchCoverImage,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
+import upload from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -35,6 +40,14 @@ router.put("/tables/:id",          updateTable);
 router.patch("/tables/:id/status", updateTableStatus);
 router.delete("/tables/:id",       deleteTable);
 router.post("/confirm-order",      confirmManagerOrder);
+
+// Service Requests
+router.get("/service-requests",       getServiceRequests);
+router.patch("/service-requests/:id", updateServiceRequestStatus);
+
+// Branch Info
+router.get("/branch-info",            getBranchInfo);
+router.patch("/branch-info/cover",    upload.single("cover"), uploadBranchCoverImage);
 
 export default router;
 
