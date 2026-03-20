@@ -71,17 +71,95 @@ export const getMenuByTable = async (req, res) => {
 
 export const getServerIP = (req, res) => {
   const interfaces = os.networkInterfaces();
-  let ip = "localhost";
+  let bestIp = "localhost";
   
   for (const name of Object.keys(interfaces)) {
+    // Bỏ qua các mạng ảo phổ biến như Radmin, Hamachi, VMware, VirtualBox, v.v.
+    const isVirtual = name.toLowerCase().match(/(virtual|vmware|vbox|radmin|hamachi|tailscale|zerotier|wsl)/);
+    
     for (const iface of interfaces[name]) {
       if (iface.family === "IPv4" && !iface.internal) {
-        ip = iface.address;
-        break;
+        if (!isVirtual) {
+            return res.json({ ip: iface.address });
+        }
+        bestIp = iface.address;
       }
     }
-    if (ip !== "localhost") break;
   }
   
-  res.json({ ip });
+  res.json({ ip: bestIp });
+};
+
+export const createPublicOrder = async (req, res) => {
+    try {
+        const { tableId, items } = req.body;
+        if (!tableId || !items || items.length === 0) {
+            return res.status(400).json({ message: "Dữ liệu không hợp lệ" });
+        }
+
+        const tId = parseInt(tableId);
+        const table = await prisma.table.findUnique({
+            where: { tableID: tId }
+        });
+
+        if (!table) return res.status(404).json({ message: "Không tìm thấy bàn" });
+        const branchID = table.branchID;
+
+        let totalAddition = 0;
+        const mappedItems = items.map(item => {
+            const p = parseFloat(item.price);
+            const q = parseInt(item.quantity);
+            totalAddition += p * q;
+            return {
+                productID: item.productID,
+                quantity: q,
+                unitPrice: p
+            };
+        });
+
+        const activeOrderTable = await prisma.orderTable.findFirst({
+            where: {
+                tableID: tId,
+                order: { orderStatus: { in: ["Open", "Serving"] }, branchID }
+            },
+            include: { order: true }
+        });
+
+        if (activeOrderTable) {
+            // Append
+            const orderID = activeOrderTable.orderID;
+            await prisma.orderDetail.createMany({
+                data: mappedItems.map(item => ({ ...item, orderID }))
+            });
+            await prisma.order.update({
+                where: { orderID },
+                data: { totalAmount: { increment: totalAddition } }
+            });
+        } else {
+            // Create new
+            await prisma.order.create({
+                data: {
+                    branchID,
+                    orderTime: new Date(),
+                    orderStatus: "Open",
+                    totalAmount: totalAddition,
+                    paymentStatus: "Unpaid",
+                    orderDetails: { create: mappedItems },
+                    orderTables: { create: [{ tableID: tId }] }
+                }
+            });
+            await prisma.table.update({
+                where: { tableID: tId },
+                data: { status: "Occupied" }
+            });
+        }
+
+        const io = req.app.get("io");
+        if (io) io.emit("tableUpdate", { branchID, timestamp: new Date() });
+
+        res.json({ message: "Đặt món thành công!" });
+    } catch (error) {
+        console.error("Public order error:", error);
+        res.status(500).json({ message: error.message });
+    }
 };

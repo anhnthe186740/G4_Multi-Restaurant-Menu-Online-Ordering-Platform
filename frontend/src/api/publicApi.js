@@ -14,4 +14,8 @@ export const getMenuByTable = async (tableId) => {
     return await publicApi.get(`/menu/${tableId}`);
 };
 
+export const createPublicOrder = async (data) => {
+    return await publicApi.post('/order', data);
+};
+
 export const getServerIP = () => publicApi.get('/server-ip');
