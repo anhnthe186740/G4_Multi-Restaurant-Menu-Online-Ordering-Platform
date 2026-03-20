@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import MainLayout from "./components/layout/MainLayout";
 import AuthLayout from "./components/layout/AuthLayout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -36,6 +37,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" reverseOrder={false} />
       <Routes>
         <Route
           path="/"
@@ -265,6 +267,22 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <TableManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/kds"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <KitchenDisplaySystem />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/orders"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <div className="p-8 text-white">Trang quản lý đơn hàng (đang phát triển)</div>
             </ProtectedRoute>
           }
         />

@@ -47,67 +47,67 @@ import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js
 
 const router = express.Router();
 
-// Yêu cầu đăng nhập và role RestaurantOwner
+// Yêu cầu đăng nhập
 router.use(authenticateToken);
-router.use(requireRole("RestaurantOwner"));
 
-router.get("/dashboard/stats", getDashboardStats);
-router.get("/dashboard/branch-revenue", getBranchRevenue);
-router.get("/dashboard/top-products", getTopProducts);
-router.get("/dashboard/orders-by-hour", getOrdersByHour);
-router.get("/dashboard/branch-performance", getBranchPerformance);
+// Dashboard (Owner only)
+router.get("/dashboard/stats", requireRole("RestaurantOwner"), getDashboardStats);
+router.get("/dashboard/branch-revenue", requireRole("RestaurantOwner"), getBranchRevenue);
+router.get("/dashboard/top-products", requireRole("RestaurantOwner"), getTopProducts);
+router.get("/dashboard/orders-by-hour", requireRole("RestaurantOwner"), getOrdersByHour);
+router.get("/dashboard/branch-performance", requireRole("RestaurantOwner"), getBranchPerformance);
 
-// Restaurant info
-router.get("/restaurant", getOwnerRestaurantInfo);
-router.put("/restaurant", updateOwnerRestaurantInfo);
+// Restaurant info (Owner only)
+router.get("/restaurant", requireRole("RestaurantOwner"), getOwnerRestaurantInfo);
+router.put("/restaurant", requireRole("RestaurantOwner"), updateOwnerRestaurantInfo);
 
-// Branch Management
-router.get("/branches", getOwnerBranches);
-router.post("/branches", createOwnerBranch);
-router.get("/branches/:id", getOwnerBranchById);
-router.put("/branches/:id", updateOwnerBranch);
-router.patch("/branches/:id/toggle", toggleOwnerBranch);
-router.delete("/branches/:id", deleteOwnerBranch);
+// Branch Management (Owner only)
+router.get("/branches", requireRole("RestaurantOwner"), getOwnerBranches);
+router.post("/branches", requireRole("RestaurantOwner"), createOwnerBranch);
+router.get("/branches/:id", requireRole("RestaurantOwner"), getOwnerBranchById);
+router.put("/branches/:id", requireRole("RestaurantOwner"), updateOwnerBranch);
+router.patch("/branches/:id/toggle", requireRole("RestaurantOwner"), toggleOwnerBranch);
+router.delete("/branches/:id", requireRole("RestaurantOwner"), deleteOwnerBranch);
 
-// Payment History
-router.get("/payment-history", getPaymentHistory);
+// Payment History (Owner only)
+router.get("/payment-history", requireRole("RestaurantOwner"), getPaymentHistory);
 
-// Kitchen Display System (KDS)
-router.get("/branches/:branchID/kitchen-orders", getKitchenOrders);
-router.patch("/kitchen-orders/update-status", updateItemStatus);
-router.patch("/kitchen-orders/update-multiple-status", updateMultipleItemStatus);
+// Kitchen Display System (KDS) - Shared between Owner and Manager
+router.get("/branches/:branchID/kitchen-orders", requireRole("RestaurantOwner", "BranchManager"), getKitchenOrders);
+router.patch("/kitchen-orders/update-status", requireRole("RestaurantOwner", "BranchManager"), updateItemStatus);
+router.patch("/kitchen-orders/update-multiple-status", requireRole("RestaurantOwner", "BranchManager"), updateMultipleItemStatus);
 
 // Reports
-router.get("/reports/revenue-trend", getRevenueByPeriod);
-router.get("/reports/branch-summary", getBranchSummaryReport);
-router.get("/reports/product-stats", getProductRevenueStats);
-router.get("/reports/orders-detail", getDetailedOrdersReport);
-router.get("/reports/orders-heatmap", getOrdersHeatmap_Owner);
+router.get("/reports/revenue-trend", requireRole("RestaurantOwner"), getRevenueByPeriod);
+router.get("/reports/branch-summary", requireRole("RestaurantOwner"), getBranchSummaryReport);
+router.get("/reports/product-stats", requireRole("RestaurantOwner"), getProductRevenueStats);
+router.get("/reports/orders-detail", requireRole("RestaurantOwner"), getDetailedOrdersReport);
+router.get("/reports/orders-heatmap", requireRole("RestaurantOwner"), getOrdersHeatmap_Owner);
 
 // ===== MENU MANAGEMENT =====
 // Categories
-router.get("/menu/categories", getMenuCategories);
-router.post("/menu/categories", createMenuCategory);
-router.put("/menu/categories/:id", updateMenuCategory);
-router.delete("/menu/categories/:id", deleteMenuCategory);
+router.get("/menu/categories", requireRole("RestaurantOwner"), getMenuCategories);
+router.post("/menu/categories", requireRole("RestaurantOwner"), createMenuCategory);
+router.put("/menu/categories/:id", requireRole("RestaurantOwner"), updateMenuCategory);
+router.delete("/menu/categories/:id", requireRole("RestaurantOwner"), deleteMenuCategory);
 
 // Products (menu items)
-router.get("/menu/items", getMenuItems);
-router.post("/menu/items", createMenuItem);
-router.put("/menu/items/:id", updateMenuItem);
-router.delete("/menu/items/:id", deleteMenuItem);
-router.patch("/menu/items/:id/toggle", toggleMenuItem);
+router.get("/menu/items", requireRole("RestaurantOwner"), getMenuItems);
+router.post("/menu/items", requireRole("RestaurantOwner"), createMenuItem);
+router.put("/menu/items/:id", requireRole("RestaurantOwner"), updateMenuItem);
+router.delete("/menu/items/:id", requireRole("RestaurantOwner"), deleteMenuItem);
+router.patch("/menu/items/:id/toggle", requireRole("RestaurantOwner"), toggleMenuItem);
 
 // ===== SUPPORT TICKETS (Owner ↔ Admin) =====
-router.post("/tickets", createOwnerTicket);
-router.get("/tickets", getOwnerTickets);
-router.get("/tickets/:id", getOwnerTicketById);
-router.post("/tickets/:id/reply", replyOwnerTicket);
+router.post("/tickets", requireRole("RestaurantOwner"), createOwnerTicket);
+router.get("/tickets", requireRole("RestaurantOwner"), getOwnerTickets);
+router.get("/tickets/:id", requireRole("RestaurantOwner"), getOwnerTicketById);
+router.post("/tickets/:id/reply", requireRole("RestaurantOwner"), replyOwnerTicket);
 
 // ===== MANAGER / STAFF MANAGEMENT =====
-router.get("/managers", getOwnerManagers);
-router.post("/managers", createOwnerManager);
-router.patch("/managers/:id/toggle", toggleOwnerManager);
-router.delete("/managers/:id", deleteOwnerManager);
+router.get("/managers", requireRole("RestaurantOwner"), getOwnerManagers);
+router.post("/managers", requireRole("RestaurantOwner"), createOwnerManager);
+router.patch("/managers/:id/toggle", requireRole("RestaurantOwner"), toggleOwnerManager);
+router.delete("/managers/:id", requireRole("RestaurantOwner"), deleteOwnerManager);
 
 export default router;

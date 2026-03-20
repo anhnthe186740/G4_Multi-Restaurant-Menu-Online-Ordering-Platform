@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { getOwnerKitchenOrders, updateOwnerItemStatus, updateOwnerMultipleItemStatus } from '../api/ownerApi';
 import {
     Clock,
@@ -18,10 +19,18 @@ import {
 import dayjs from 'dayjs';
 
 export default function KitchenDisplaySystem() {
-    const { branchID } = useParams();
+    const { branchID: paramBranchID } = useParams();
     const [searchParams] = useSearchParams();
     const categoryID = searchParams.get('categoryID');
     const navigate = useNavigate();
+
+    const userData = useMemo(() => {
+        try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+        catch { return {}; }
+    }, []);
+
+    const branchID = userData.role === 'BranchManager' ? userData.branchID : paramBranchID;
+    const isReadOnly = userData.role === 'RestaurantOwner';
 
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -45,6 +54,16 @@ export default function KitchenDisplaySystem() {
             // Phát âm thanh nếu có đơn mới
             if (newOrders.length > lastOrderCount.current) {
                 audioRef.current.play().catch(e => console.log("Audio play failed:", e));
+                toast("🔔 Có đơn hàng mới!", {
+                    icon: '🔥',
+                    style: {
+                        borderRadius: '12px',
+                        background: '#1e293b',
+                        color: '#fff',
+                        border: '1px solid #3b82f6',
+                    },
+                    duration: 4000
+                });
             }
             lastOrderCount.current = newOrders.length;
             
@@ -62,31 +81,35 @@ export default function KitchenDisplaySystem() {
         return () => clearInterval(pollTimer);
     }, [fetchOrders]);
 
-    const handleStatusUpdate = async (orderDetailID, nextStatus) => {
+    const handleStatusUpdate = async (orderDetailID, status) => {
+        const toastId = toast.loading("Đang cập nhật trạng thái...");
         try {
-            await updateOwnerItemStatus(orderDetailID, nextStatus);
+            await updateOwnerItemStatus(orderDetailID, status);
+            toast.success("Đã cập nhật!", { id: toastId });
             fetchOrders();
         } catch (error) {
+            const errorMsg = error.response?.data?.message || error.message;
+            toast.error("Lỗi: " + errorMsg, { id: toastId });
             console.error("Error updating status:", error);
         }
     };
 
     const handleBatchStatusUpdate = async (itemIDs, status) => {
+        if (!itemIDs || itemIDs.length === 0) {
+            toast.error("Danh sách món trống!");
+            return;
+        }
+
+        const toastId = toast.loading(`Đang cập nhật ${itemIDs.length} món...`);
         try {
             console.log("KDS: Batch updating status:", { itemIDs, status });
-            if (!itemIDs || itemIDs.length === 0) {
-                alert("KDS: Danh sách món trống!");
-                return;
-            }
-            alert(`KDS: Đang gửi yêu cầu cập nhật ${itemIDs.length} món sang [${status}]`);
-            const res = await updateOwnerMultipleItemStatus(itemIDs, status);
-            console.log("KDS: Batch update res:", res.data);
-            alert("KDS: Cập nhật thành công!");
+            await updateOwnerMultipleItemStatus(itemIDs, status);
+            toast.success("Cập nhật thành công!", { id: toastId });
             fetchOrders();
         } catch (error) {
             console.error("KDS: Error batch updating status:", error);
             const errorMsg = error.response?.data?.message || error.message;
-            alert("Lỗi KDS: " + errorMsg);
+            toast.error("Lỗi KDS: " + errorMsg, { id: toastId });
         }
     };
 
@@ -163,7 +186,10 @@ export default function KitchenDisplaySystem() {
             {/* Header */}
             <header className="h-16 bg-[#161e2e] border-b border-slate-700/50 flex items-center justify-between px-6 shrink-0">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/owner/kitchen-tracking')} className="text-slate-400 hover:text-white transition-colors">
+                    <button 
+                        onClick={() => navigate(userData.role === 'RestaurantOwner' ? '/owner/kitchen-tracking' : '/manager/dashboard')} 
+                        className="text-slate-400 hover:text-white transition-colors"
+                    >
                         <ChevronLeft size={24} />
                     </button>
                     <div>
@@ -231,7 +257,7 @@ export default function KitchenDisplaySystem() {
                             count={getLaneOrders('Pending').length}
                             dotColor="bg-blue-500"
                             orders={getLaneOrders('Pending')}
-                            renderActions={(item) => (
+                            renderActions={(item) => !isReadOnly && (
                                 <button
                                     onClick={() => handleStatusUpdate(item.orderDetailID, 'Cooking')}
                                     className="w-full mt-2 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-[10px] font-black transition-all border border-blue-500/20 flex items-center justify-center gap-1.5 uppercase tracking-tighter"
@@ -240,7 +266,7 @@ export default function KitchenDisplaySystem() {
                                 </button>
                             )}
                             batchLabel="Làm tất cả"
-                            onBatchAction={(order) => handleBatchStatusUpdate(order.items.map(i => i.orderDetailID), 'Cooking')}
+                            onBatchAction={!isReadOnly ? (order) => handleBatchStatusUpdate(order.items.map(i => i.orderDetailID), 'Cooking') : null}
                         />
 
                         {/* Lane: Đang chế biến */}
@@ -249,7 +275,7 @@ export default function KitchenDisplaySystem() {
                             count={getLaneOrders('Cooking').length}
                             dotColor="bg-yellow-500"
                             orders={getLaneOrders('Cooking')}
-                            renderActions={(item) => (
+                            renderActions={(item) => !isReadOnly && (
                                 <button
                                     onClick={() => handleStatusUpdate(item.orderDetailID, 'Ready')}
                                     className="w-full mt-2 py-1.5 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-400 rounded-lg text-[10px] font-black transition-all border border-yellow-500/20 flex items-center justify-center gap-1.5 uppercase tracking-tighter"
@@ -258,7 +284,7 @@ export default function KitchenDisplaySystem() {
                                 </button>
                             )}
                             batchLabel="Xong tất cả"
-                            onBatchAction={(order) => handleBatchStatusUpdate(order.items.map(i => i.orderDetailID), 'Ready')}
+                            onBatchAction={!isReadOnly ? (order) => handleBatchStatusUpdate(order.items.map(i => i.orderDetailID), 'Ready') : null}
                         />
 
                         {/* Lane: Sẵn sàng */}
@@ -267,7 +293,7 @@ export default function KitchenDisplaySystem() {
                             count={getLaneOrders('Ready').length}
                             dotColor="bg-emerald-500"
                             orders={getLaneOrders('Ready')}
-                            renderActions={(item) => (
+                            renderActions={(item) => !isReadOnly && (
                                 <button
                                     onClick={() => handleStatusUpdate(item.orderDetailID, 'Served')}
                                     className="w-full mt-2 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 rounded-lg text-[10px] font-black transition-all border border-emerald-500/20 flex items-center justify-center gap-1.5 uppercase tracking-tighter"
@@ -318,12 +344,14 @@ export default function KitchenDisplaySystem() {
                                                         <p className="text-[10px] font-bold text-blue-400 uppercase">Chờ làm</p>
                                                         <p className="text-lg font-black text-blue-500">{item.pending}</p>
                                                     </div>
-                                                    <button 
-                                                        onClick={() => handleBatchStatusUpdate(item.ids, 'Cooking')}
-                                                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
-                                                    >
-                                                        Làm tất cả
-                                                    </button>
+                                                    {!isReadOnly && (
+                                                        <button 
+                                                            onClick={() => handleBatchStatusUpdate(item.ids, 'Cooking')}
+                                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
+                                                        >
+                                                            Làm tất cả
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                             {item.cooking > 0 && (
@@ -332,12 +360,14 @@ export default function KitchenDisplaySystem() {
                                                         <p className="text-[10px] font-bold text-yellow-400 uppercase">Đang nấu</p>
                                                         <p className="text-lg font-black text-yellow-500">{item.cooking}</p>
                                                     </div>
-                                                    <button 
-                                                        onClick={() => handleBatchStatusUpdate(item.cookingIds, 'Ready')}
-                                                        className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
-                                                    >
-                                                        Xong tất cả
-                                                    </button>
+                                                    {!isReadOnly && (
+                                                        <button 
+                                                            onClick={() => handleBatchStatusUpdate(item.cookingIds, 'Ready')}
+                                                            className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
+                                                        >
+                                                            Xong tất cả
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
