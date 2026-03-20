@@ -67,3 +67,80 @@ export const getMenuByTable = async (req, res) => {
         res.status(500).json({ message: "Error fetching menu data", error: error.message });
     }
 };
+
+/* ─────────────────────────────────────────────────────────────
+   POST /api/public/service-request
+   Body: { tableId, requestType: "GoiMon" | "ThanhToan" }
+
+   Logic UPSERT:
+   - Nếu bàn đã có yêu cầu cùng loại CHƯA được xử lý ("Đang xử lý")
+     → CHỈ cập nhật createdTime (đẩy lên đầu danh sách manager)
+   - Nếu chưa có hoặc cái cũ đã "Đã xử lý"
+     → Tạo mới với status = "Đang xử lý"
+───────────────────────────────────────────────────────────── */
+export const createServiceRequest = async (req, res) => {
+    try {
+        const { tableId, requestType } = req.body;
+
+        if (!tableId || !requestType) {
+            return res.status(400).json({ message: "Thiếu tableId hoặc requestType." });
+        }
+
+        const tId = parseInt(tableId);
+        const allowedTypes = ["GoiMon", "ThanhToan"];
+        if (!allowedTypes.includes(requestType)) {
+            return res.status(400).json({ message: "Loại yêu cầu không hợp lệ." });
+        }
+
+        // Tìm bàn để lấy branchID
+        const table = await prisma.table.findUnique({
+            where: { tableID: tId },
+            select: { tableID: true, branchID: true },
+        });
+        if (!table) {
+            return res.status(404).json({ message: "Không tìm thấy bàn." });
+        }
+
+        // Tìm yêu cầu đang chờ xử lý cùng loại của bàn này
+        const existing = await prisma.serviceRequest.findFirst({
+            where: {
+                tableID:     tId,
+                requestType: requestType,
+                status:      "Đang xử lý",
+            },
+        });
+
+        if (existing) {
+            // Đã có yêu cầu pending → chỉ cập nhật thời gian (đẩy lên đầu)
+            await prisma.serviceRequest.update({
+                where: { requestID: existing.requestID },
+                data:  { createdTime: new Date() },
+            });
+            return res.json({
+                action:    "updated",
+                requestID: existing.requestID,
+                message:   "Yêu cầu đã được ghi nhận, nhân viên đang xử lý.",
+            });
+        }
+
+        // Chưa có → tạo mới
+        const created = await prisma.serviceRequest.create({
+            data: {
+                branchID:    table.branchID,
+                tableID:     tId,
+                requestType: requestType,
+                status:      "Đang xử lý",
+                createdTime: new Date(),
+            },
+        });
+
+        res.status(201).json({
+            action:    "created",
+            requestID: created.requestID,
+            message:   "Yêu cầu đã được gửi đến nhân viên.",
+        });
+    } catch (error) {
+        console.error("createServiceRequest error:", error);
+        res.status(500).json({ message: "Lỗi tạo yêu cầu.", error: error.message });
+    }
+};

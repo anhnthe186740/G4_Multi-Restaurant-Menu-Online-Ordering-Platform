@@ -149,7 +149,8 @@ model ServicePackage {
   isActive            Boolean @default(true) @map("IsActive")
 
   // Relations
-  subscriptions Subscription[]
+  subscriptions  Subscription[]
+  paymentOrders  PaymentOrder[]
 
   @@map("ServicePackages")
 }
@@ -173,6 +174,7 @@ model Restaurant {
   categories           Category[]
   discounts            Discount[]
   registrationRequests RegistrationRequest[]
+  paymentOrders        PaymentOrder[]
 
   @@map("Restaurants")
 }
@@ -460,4 +462,23 @@ model PasswordResetToken {
   user User @relation(fields: [userID], references: [userID], onDelete: Cascade)
 
   @@map("PasswordResetTokens")
+}
+
+// 20. PaymentOrders
+model PaymentOrder {
+  orderID            Int      @id @default(autoincrement()) @map("OrderID")
+  orderCode          BigInt   @unique @map("OrderCode")
+  restaurantID       Int      @map("RestaurantID")
+  packageID          Int      @map("PackageID")
+  amount             Int      @map("Amount")
+  status             String   @default("PENDING") @map("Status") @db.VarChar(50) // PENDING, PAID, CANCELLED, EXPIRED
+  payOSPaymentLinkId String?  @map("PayOSPaymentLinkId") @db.VarChar(255)
+  createdAt          DateTime @default(now()) @map("CreatedAt")
+  paidAt             DateTime? @map("PaidAt")
+
+  // Relations
+  restaurant Restaurant     @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
+  package    ServicePackage @relation(fields: [packageID], references: [packageID], onDelete: Cascade)
+
+  @@map("PaymentOrders")
 }

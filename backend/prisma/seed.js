@@ -308,7 +308,7 @@ async function main() {
       { branchID: branch1.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
       { branchID: branch1.branchID, tableName: "Bàn 03", capacity: 4, status: "Occupied" },
       { branchID: branch1.branchID, tableName: "Bàn 04", capacity: 6, status: "Available" },
-      { branchID: branch1.branchID, tableName: "Bàn VIP 01", capacity: 8, status: "Reserved" },
+      { branchID: branch1.branchID, tableName: "Bàn 05", capacity: 8, status: "Available" },
       // branch2 – Đống Đa (4 bàn)
       { branchID: branch2.branchID, tableName: "Bàn 01", capacity: 4, status: "Available" },
       { branchID: branch2.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },

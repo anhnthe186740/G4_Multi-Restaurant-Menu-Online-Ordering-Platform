@@ -27,10 +27,13 @@ import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
 import OwnerStaff from "./pages/OwnerStaff";
 import OwnerCreateManager from "./pages/OwnerCreateManager";
+import RestaurantServicePackage from "./pages/RestaurantServicePackage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
 import TableManagement from "./pages/TableManagement";
+import ManagerServiceRequests from "./pages/ManagerServiceRequests";
+import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -141,6 +144,15 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <RestaurantOwnerDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/service-packages"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <RestaurantServicePackage />
             </ProtectedRoute>
           }
         />
@@ -277,12 +289,29 @@ export default function App() {
               <KitchenDisplaySystem />
             </ProtectedRoute>
           }
+          />
+
+          <Route
+          path="/manager/service-requests"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerServiceRequests />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/manager/orders"
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <div className="p-8 text-white">Trang quản lý đơn hàng (đang phát triển)</div>
+            </ProtectedRoute>
+          }
+        />
+          <Route
+          path="/manager/info"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerBranchInfo />
             </ProtectedRoute>
           }
         />

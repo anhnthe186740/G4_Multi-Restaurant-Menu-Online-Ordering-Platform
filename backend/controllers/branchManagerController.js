@@ -594,4 +594,296 @@ export const mergeTables = async (req, res) => {
   }
 };
 
+/* ── POST /api/manager/confirm-order ──────────────────────────────────────
+   Body: { tableId, items: [{productID, quantity, price}] }
+   Logic: 
+    1. Tạo/Tìm Order hiện tại của bàn
+    2. Thêm OrderDetails
+    3. Cập nhật trạng thái Bàn -> Occupied
+──────────────────────────────────────────────────────────────────────────── */
+export const confirmManagerOrder = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
+    const { tableId, items } = req.body;
+    if (!tableId || !items || !items.length) {
+      return res.status(400).json({ message: "Thiếu thông tin bàn hoặc món ăn." });
+    }
+
+    const tId = parseInt(tableId);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Tìm xem bàn có Order nào đang mở (Open/Serving) không
+      const activeOrderTable = await tx.orderTable.findFirst({
+        where: {
+          tableID: tId,
+          order: { orderStatus: { in: ["Open", "Serving"] } }
+        },
+        include: { order: true }
+      });
+
+      let orderID;
+      const totalAmountToAdd = items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.price)), 0);
+
+      if (activeOrderTable) {
+        // Gộp vào order cũ
+        orderID = activeOrderTable.orderID;
+        await tx.order.update({
+          where: { orderID },
+          data: { totalAmount: { increment: totalAmountToAdd } }
+        });
+      } else {
+        // Tạo order mới
+        const newOrder = await tx.order.create({
+          data: {
+            branchID,
+            createdBy: req.user.userId,
+            totalAmount: totalAmountToAdd,
+            orderStatus: "Serving",
+            paymentStatus: "Unpaid",
+          }
+        });
+        orderID = newOrder.orderID;
+        
+        await tx.orderTable.create({
+          data: { orderID, tableID: tId }
+        });
+      }
+
+      // 2. Tạo OrderDetails cho các món mới
+      await tx.orderDetail.createMany({
+        data: items.map(item => ({
+          orderID,
+          productID: item.productID,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.price),
+          itemStatus: "Served" // Vì quản lý gọi nên coi như đã phục vụ
+        }))
+      });
+
+      // 3. Cập nhật trạng thái Bàn -> Occupied
+      const table = await tx.table.findUnique({ where: { tableID: tId } });
+      if (table.mergedGroupId) {
+        await tx.table.updateMany({
+          where: { mergedGroupId: table.mergedGroupId, branchID },
+          data: { status: "Occupied" }
+        });
+      } else {
+        await tx.table.update({
+          where: { tableID: tId },
+          data: { status: "Occupied" }
+        });
+      }
+
+      return { orderID };
+    });
+
+    res.json({
+      message: "Xác nhận order thành công (v3)!",
+      ...result
+    });
+
+  } catch (err) {
+    console.error("confirmManagerOrder error:", err);
+    res.status(500).json({ message: err.message || "Lỗi xác nhận order" });
+  }
+};
+
+
+/* ===============================================================
+   SERVICE REQUESTS
+=============================================================== */
+
+/* ── GET /api/manager/service-requests ──
+   Query: type (optional), page (default 1), limit (default 10)
+──────────────────────────────────────────────────────────────── */
+export const getServiceRequests = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { type, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Map frontend tab label -> Prisma enum KEY (not @map value)
+    const typeMap = {
+      "Gọi món":    "GoiMon",
+      "Thanh toán": "ThanhToan",
+    };
+    const dbType = type ? (typeMap[type] ?? type) : undefined;
+
+    const where = {
+      branchID,
+      ...(dbType ? { requestType: dbType } : {}),
+    };
+
+    // Today range for stats
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const todayEnd   = new Date(); todayEnd.setHours(23, 59, 59, 999);
+
+    const [requests, total, pendingCount, totalToday] = await Promise.all([
+      prisma.serviceRequest.findMany({
+        where,
+        orderBy: { createdTime: "desc" },
+        skip,
+        take: parseInt(limit),
+        include: { table: { select: { tableName: true } } },
+      }),
+      prisma.serviceRequest.count({ where }),
+      // Đếm các yêu cầu đang xử lý (chưa xong)
+      prisma.serviceRequest.count({
+        where: { branchID, status: "Đang xử lý" },
+      }),
+      prisma.serviceRequest.count({
+        where: { branchID, createdTime: { gte: todayStart, lte: todayEnd } },
+      }),
+    ]);
+
+    // Map Prisma enum KEY -> display label + icon
+    const displayTypeMap = {
+      GoiMon:    { label: "Gọi món",    icon: "bell" },
+      ThanhToan: { label: "Thanh toán", icon: "credit-card" },
+    };
+
+    const data = requests.map((r) => ({
+      requestID:   r.requestID,
+      tableID:     r.tableID,
+      tableName:   r.table?.tableName ?? `Bàn ${r.tableID}`,
+      requestType: r.requestType,
+      displayType: displayTypeMap[r.requestType] ?? { label: r.requestType, icon: "more" },
+      status:      r.status,
+      createdTime: r.createdTime,
+    }));
+
+    res.json({
+      data,
+      total,
+      page:       parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      stats: { pending: pendingCount, totalToday },
+    });
+  } catch (err) {
+    console.error("getServiceRequests error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ── PATCH /api/manager/service-requests/:id ──
+   Body: { status: "Đã xử lý" | "Đang chờ" | ... }
+──────────────────────────────────────────────────────────────── */
+export const updateServiceRequestStatus = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const requestID = parseInt(req.params.id);
+    const { status } = req.body;
+    if (!status)
+      return res.status(400).json({ message: "Thiếu trạng thái cần cập nhật." });
+
+    const existing = await prisma.serviceRequest.findFirst({
+      where: { requestID, branchID },
+    });
+    if (!existing)
+      return res.status(404).json({ message: "Không tìm thấy yêu cầu phục vụ." });
+
+    const updated = await prisma.serviceRequest.update({
+      where: { requestID },
+      data:  { status },
+    });
+
+    res.json({ requestID: updated.requestID, status: updated.status });
+  } catch (err) {
+    console.error("updateServiceRequestStatus error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ===============================================================
+   7. BRANCH INFO 
+   GET /api/manager/branch-info
+=============================================================== */
+export const getBranchInfo = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const branch = await prisma.branch.findUnique({
+      where: { branchID },
+      include: {
+        restaurant: {
+          select: {
+            name: true,
+            description: true,
+            logo: true,
+            coverImage: true,
+            taxCode: true,
+          }
+        }
+      }
+    });
+
+    if (!branch) {
+      return res.status(404).json({ message: "Chi nhánh không tồn tại" });
+    }
+
+    // Map logo and coverImage to logoURL and coverImageURL for frontend compatibility
+    const responseData = {
+      ...branch,
+      restaurant: {
+        ...branch.restaurant,
+        logoURL: branch.restaurant.logo,
+        coverImageURL: branch.restaurant.coverImage
+      }
+    };
+
+    res.json(responseData);
+  } catch (err) {
+    console.error("getBranchInfo error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ===============================================================
+   8. UPLOAD COVER IMAGE FOR BRANCH (RESTAURANT)
+   PATCH /api/manager/branch-info/cover
+=============================================================== */
+export const uploadBranchCoverImage = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) {
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Vui lòng chọn ảnh bìa." });
+    }
+
+    // Get branch to find restaurant ID
+    const branch = await prisma.branch.findUnique({
+      where: { branchID },
+      select: { restaurantID: true },
+    });
+
+    if (!branch) {
+      return res.status(404).json({ message: "Chi nhánh không tồn tại." });
+    }
+
+    const coverImageURL = `/uploads/${req.file.filename}`;
+
+    // Update restaurant's cover image
+    await prisma.restaurant.update({
+      where: { restaurantID: branch.restaurantID },
+      data: { coverImage: coverImageURL },
+    });
+
+    res.json({ message: "Đã cập nhật ảnh bìa thành công", coverImageURL });
+  } catch (err) {
+    console.error("uploadBranchCoverImage error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
