@@ -14,6 +14,8 @@ import restaurantOwnerRoutes from "./routes/restaurantOwner.js";
 import branchManagerRoutes from "./routes/branchManager.js";
 import uploadRoutes from "./routes/upload.js";
 import publicRoutes from "./routes/public.js";
+import restaurantSubscriptionRoutes from "./routes/restaurantSubscription.js";
+
 
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -74,6 +76,7 @@ app.use("/api/admin/service-packages", adminServicePackageRoutes);
 
 app.use("/api/admin/registration-requests", registrationRequestRoutes);
 app.use("/api/owner", restaurantOwnerRoutes);
+app.use("/api/restaurant/subscription", restaurantSubscriptionRoutes);
 app.use("/api/manager", branchManagerRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/public", publicRoutes);

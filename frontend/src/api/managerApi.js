@@ -35,4 +35,14 @@ export const getManagerOrders          = (status)   => managerAxios.get("manager
 export const updateManagerOrderStatus  = (id, orderStatus) => managerAxios.patch(`manager/orders/${id}/status`, { orderStatus });
 
 export default managerAxios;
+// Branch Info
+export const getManagerBranchInfo = () => managerAxios.get("manager/branch-info");
+export const updateManagerBranchCover = (formData) => managerAxios.patch("manager/branch-info/cover", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+});
 
+// Service Requests
+export const getManagerServiceRequests         = (params)     => managerAxios.get("manager/service-requests", { params });
+export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });
+
+export default managerAxios;

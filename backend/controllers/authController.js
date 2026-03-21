@@ -98,6 +98,9 @@ export const login = async (req, res) => {
         role: true,
         status: true,
         lockReason: true,
+        managedBranches: {
+          select: { branchID: true }
+        }
       },
     });
 
@@ -173,7 +176,10 @@ export const refreshToken = async (req, res) => {
         userID: true,
         fullName: true,
         email: true,
-        role: true
+        role: true,
+        managedBranches: {
+          select: { branchID: true }
+        }
       },
     });
 
@@ -241,6 +247,9 @@ export const googleLogin = async (req, res) => {
         role: true,
         status: true,
         lockReason: true,
+        managedBranches: {
+          select: { branchID: true }
+        }
       },
     });
 

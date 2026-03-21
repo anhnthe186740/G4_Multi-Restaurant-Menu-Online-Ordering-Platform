@@ -16,8 +16,13 @@ import {
   processManagerCheckout,
   getOrders,
   updateOrderStatus,
+  getServiceRequests,
+  updateServiceRequestStatus,
+  getBranchInfo,
+  uploadBranchCoverImage,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
+import upload from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -46,6 +51,13 @@ router.post("/tables/:id/checkout", processManagerCheckout);
 // Orders
 router.get("/orders",              getOrders);
 router.patch("/orders/:id/status", updateOrderStatus);
+// Service Requests
+router.get("/service-requests",       getServiceRequests);
+router.patch("/service-requests/:id", updateServiceRequestStatus);
+
+// Branch Info
+router.get("/branch-info",            getBranchInfo);
+router.patch("/branch-info/cover",    upload.single("cover"), uploadBranchCoverImage);
 
 export default router;
 

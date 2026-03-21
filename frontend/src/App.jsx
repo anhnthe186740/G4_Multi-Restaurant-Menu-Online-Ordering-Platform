@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import MainLayout from "./components/layout/MainLayout";
 import AuthLayout from "./components/layout/AuthLayout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -19,15 +20,20 @@ import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerCreateBranch from "./pages/OwnerCreateBranch";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
+import OwnerKitchenTracking from "./pages/OwnerKitchenTracking";
+import KitchenDisplaySystem from "./pages/KitchenDisplaySystem";
 import OwnerReports from "./pages/OwnerReports";
 import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
 import OwnerStaff from "./pages/OwnerStaff";
 import OwnerCreateManager from "./pages/OwnerCreateManager";
+import RestaurantServicePackage from "./pages/RestaurantServicePackage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import BranchManagerDashboard from "./pages/BranchManagerDashboard";
 import TableManagement from "./pages/TableManagement";
+import ManagerServiceRequests from "./pages/ManagerServiceRequests";
+import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
 import OrderManagement from "./pages/OrderManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -36,6 +42,7 @@ import SelfOrderingMenu from "./pages/SelfOrderingMenu";
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" reverseOrder={false} />
       <Routes>
         <Route
           path="/"
@@ -145,6 +152,15 @@ export default function App() {
         />
 
         <Route
+          path="/owner/service-packages"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <RestaurantServicePackage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/owner/settings"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
@@ -190,10 +206,28 @@ export default function App() {
         />
 
         <Route
+          path="/owner/kitchen-tracking"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <OwnerKitchenTracking />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/owner/reports"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
               <OwnerReports />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/kds/:branchID"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <KitchenDisplaySystem />
             </ProtectedRoute>
           }
         />
@@ -259,8 +293,39 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+         <Route
+          path="/manager/kds"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <KitchenDisplaySystem />
+            </ProtectedRoute>
+          }
+          />
 
-
+          <Route
+          path="/manager/service-requests"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerServiceRequests />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/orders"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <div className="p-8 text-white">Trang quản lý đơn hàng (đang phát triển)</div>
+            </ProtectedRoute>
+          }
+        />
+          <Route
+          path="/manager/info"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerBranchInfo />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
