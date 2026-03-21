@@ -12,6 +12,10 @@ import {
   deleteTable,
   mergeTables,
   confirmManagerOrder,
+  getBillByTable,
+  processManagerCheckout,
+  getOrders,
+  updateOrderStatus,
   getServiceRequests,
   updateServiceRequestStatus,
   getBranchInfo,
@@ -41,6 +45,12 @@ router.patch("/tables/:id/status", updateTableStatus);
 router.delete("/tables/:id",       deleteTable);
 router.post("/confirm-order",      confirmManagerOrder);
 
+router.get("/tables/:id/bill",     getBillByTable);
+router.post("/tables/:id/checkout", processManagerCheckout);
+
+// Orders
+router.get("/orders",              getOrders);
+router.patch("/orders/:id/status", updateOrderStatus);
 // Service Requests
 router.get("/service-requests",       getServiceRequests);
 router.patch("/service-requests/:id", updateServiceRequestStatus);

@@ -17,9 +17,9 @@ export default function BranchManagerLayout({ children }) {
     return (
         <div className="min-h-screen bg-[#f0f4f8]">
             <BranchManagerSidebar />
-            <main className="ml-60 min-h-screen">
+            <main className="ml-60 min-h-screen print:ml-0 print:bg-white">
                 {/* Top bar */}
-                <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-30">
+                <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-30 print:hidden">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-gray-400">Quản lý chi nhánh</span>
                         <span className="text-gray-300">/</span>
@@ -27,7 +27,7 @@ export default function BranchManagerLayout({ children }) {
                     </div>
                 </div>
                 {/* Page Content */}
-                <div className="p-8">
+                <div className="p-8 print:p-0">
                     {children}
                 </div>
             </main>

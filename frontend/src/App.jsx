@@ -35,7 +35,9 @@ import TableManagement from "./pages/TableManagement";
 import ManagerServiceRequests from "./pages/ManagerServiceRequests";
 import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
+import OrderManagement from "./pages/OrderManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SelfOrderingMenu from "./pages/SelfOrderingMenu";
 
 export default function App() {
   return (
@@ -90,6 +92,7 @@ export default function App() {
         <Route path="/register-restaurant" element={<RegisterRestaurant />} />
         <Route path="/pending-status" element={<PendingStatus />} />
         <Route path="/menu" element={<CustomerMenu />} />
+        <Route path="/self-order" element={<SelfOrderingMenu />} />
 
         <Route
           path="/admin/dashboard"
@@ -283,6 +286,14 @@ export default function App() {
           }
         />
         <Route
+          path="/manager/orders"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <OrderManagement />
+            </ProtectedRoute>
+          }
+        />
+         <Route
           path="/manager/kds"
           element={
             <ProtectedRoute requiredRole="BranchManager">

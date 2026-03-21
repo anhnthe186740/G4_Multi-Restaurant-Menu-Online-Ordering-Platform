@@ -1,10 +1,14 @@
-import express from 'express';
-import { getMenuByTable, createServiceRequest } from '../controllers/publicController.js';
+
+import express from "express";
+import { getMenuByTable, getServerIP, createPublicOrder } from "../controllers/publicController.js";
+import { createServiceRequest } from '../controllers/publicController.js';
+
 
 const router = express.Router();
 
-// Lấy thông tin menu bằng Table ID
-router.get('/menu/:tableId', getMenuByTable);
+router.get("/menu/:tableId", getMenuByTable);
+router.post("/order", createPublicOrder);
+router.get("/server-ip", getServerIP);
 
 // Tạo yêu cầu phục vụ từ khách hàng (upsert logic)
 router.post('/service-request', createServiceRequest);

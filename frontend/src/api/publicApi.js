@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an API instance with the base URL for public endpoints
 const publicApi = axios.create({
-    baseURL: 'http://localhost:5000/api/public',
+    baseURL: `http://${window.location.hostname}:5000/api/public`,
 });
 
 /**
@@ -13,3 +13,9 @@ const publicApi = axios.create({
 export const getMenuByTable = async (tableId) => {
     return await publicApi.get(`/menu/${tableId}`);
 };
+
+export const createPublicOrder = async (data) => {
+    return await publicApi.post('/order', data);
+};
+
+export const getServerIP = () => publicApi.get('/server-ip');

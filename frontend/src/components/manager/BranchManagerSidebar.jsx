@@ -30,7 +30,7 @@ export default function BranchManagerSidebar() {
     })();
 
     return (
-        <aside className="fixed left-0 top-0 h-screen w-60 bg-[#0f1623] border-r border-slate-700/40 flex flex-col z-50">
+        <aside className="fixed left-0 top-0 h-screen w-60 bg-[#0f1623] border-r border-slate-700/40 flex flex-col z-50 print:hidden">
             {/* Logo */}
             <div className="p-5 border-b border-slate-700/40">
                 <div className="flex items-center gap-3">
