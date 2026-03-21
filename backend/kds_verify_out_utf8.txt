@@ -1,0 +1,28 @@
+﻿--- KDS Authorization Logic Verification ---
+Testing Manager ID: 76 for Branch ID: 73
+Γ£à SUCCESS: Manager correctly authorized for their own branch.
+prisma:error 
+Invalid `prisma.user.findFirst()` invocation:
+
+{
+  where: {
+    role: "RestaurantOwner"
+  },
+  include: {
+    restaurants: {
+    ~~~~~~~~~~~
+      include: {
+        branches: true
+      }
+    },
+?   ownedRestaurants?: true,
+?   managedBranches?: true,
+?   registrationRequests?: true,
+?   approvedRequests?: true,
+?   createdOrders?: true,
+?   supportTickets?: true,
+?   resetTokens?: true
+  }
+}
+
+Unknown field `restaurants` for include statement on model `User`. Available options are marked with ?.

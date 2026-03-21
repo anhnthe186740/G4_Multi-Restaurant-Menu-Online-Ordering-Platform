@@ -6,10 +6,8 @@
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-
-  /* 🔥 QUAN TRỌNG: Ép màu nền tối ngay từ đầu */
-  background-color: #02140c;
-  color: #ffffff;
+  background-color: #f8fafc; /* Màu nền sáng mặc định */
+  color: #1e293b; /* Màu chữ tối mặc định */
 }
 
 html {
@@ -28,18 +26,18 @@ input:focus {
 }
 
 ::-webkit-scrollbar-track {
-  background: #02140c;
-  /* Màu nền tối */
+  background: #f1f5f9;
+  /* Màu nền sáng */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #00c04b;
-  /* Màu xanh Neon chủ đạo */
+  background: #cbd5e1;
+  /* Màu xám trung tính */
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00a841;
+  background: #94a3b8;
   /* Đậm hơn khi hover */
 }
 

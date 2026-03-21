@@ -140,15 +140,21 @@ export const login = async (req, res) => {
     );
 
     // Trả về token và thông tin user (không trả password)
+    const userData = {
+      id: user.userID,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+    };
+
+    if (user.role === "BranchManager" && user.managedBranches && user.managedBranches.length > 0) {
+      userData.branchID = user.managedBranches[0].branchID;
+    }
+
     return res.json({
       message: "Đăng nhập thành công",
       token,
-      user: {
-        id: user.userID,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-      },
+      user: userData,
     });
 
   } catch (error) {
@@ -196,15 +202,21 @@ export const refreshToken = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    const userData = {
+      id: user.userID,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+    };
+
+    if (user.role === "BranchManager" && user.managedBranches && user.managedBranches.length > 0) {
+      userData.branchID = user.managedBranches[0].branchID;
+    }
+
     // Trả về token mới và thông tin user cập nhật
     return res.json({
       token,
-      user: {
-        id: user.userID,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-      },
+      user: userData,
     });
 
   } catch (error) {
@@ -296,15 +308,21 @@ export const googleLogin = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    const userData = {
+      id: user.userID,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+    };
+
+    if (user.role === "BranchManager" && user.managedBranches && user.managedBranches.length > 0) {
+      userData.branchID = user.managedBranches[0].branchID;
+    }
+
     return res.json({
       message: "Đăng nhập Google thành công",
       token: jwtToken,
-      user: {
-        id: user.userID,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-      },
+      user: userData,
     });
 
   } catch (error) {
