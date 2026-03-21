@@ -34,7 +34,7 @@ export const processManagerCheckout    = (id, data) => managerAxios.post(`manage
 export const getManagerOrders          = (status)   => managerAxios.get("manager/orders", { params: status ? { status } : {} });
 export const updateManagerOrderStatus  = (id, orderStatus) => managerAxios.patch(`manager/orders/${id}/status`, { orderStatus });
 
-export default managerAxios;
+
 // Branch Info
 export const getManagerBranchInfo = () => managerAxios.get("manager/branch-info");
 export const updateManagerBranchCover = (formData) => managerAxios.patch("manager/branch-info/cover", formData, {

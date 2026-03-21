@@ -917,6 +917,10 @@ export const getOrders = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("getOrders error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 /* ===============================================================
    SERVICE REQUESTS
 
@@ -999,11 +1003,8 @@ export const getServiceRequests = async (req, res) => {
    PATCH /api/manager/orders/:id/status
    Cập nhật trạng thái đơn hàng
    Body: { orderStatus: "Serving" | "Completed" }
+=============================================================== */
 export const updateOrderStatus = async (req, res) => {
-/* ── PATCH /api/manager/service-requests/:id ──
-   Body: { status: "Đã xử lý" | "Đang chờ" | ... }
-──────────────────────────────────────────────────────────────── */
-export const updateServiceRequestStatus = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user.userId);
     if (!branchID)
@@ -1046,6 +1047,18 @@ export const updateServiceRequestStatus = async (req, res) => {
   } catch (err) {
     console.error("updateOrderStatus error:", err);
     res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ── PATCH /api/manager/service-requests/:id ──
+   Body: { status: "Đã xử lý" | "Đang chờ" | ... }
+──────────────────────────────────────────────────────────────── */
+export const updateServiceRequestStatus = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
     const requestID = parseInt(req.params.id);
     const { status } = req.body;
     if (!status)
@@ -1072,6 +1085,7 @@ export const updateServiceRequestStatus = async (req, res) => {
 /* ===============================================================
    7. BRANCH INFO 
    GET /api/manager/branch-info
+=============================================================== */
 export const getBranchInfo = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user.userId);
@@ -1117,6 +1131,7 @@ export const getBranchInfo = async (req, res) => {
 /* ===============================================================
    8. UPLOAD COVER IMAGE FOR BRANCH (RESTAURANT)
    PATCH /api/manager/branch-info/cover
+=============================================================== */
 export const uploadBranchCoverImage = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user.userId);
