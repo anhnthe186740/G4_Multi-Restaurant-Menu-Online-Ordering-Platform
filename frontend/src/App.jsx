@@ -306,14 +306,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/manager/orders"
-          element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <OrderManagement />
-            </ProtectedRoute>
-          }
-        />
          <Route
           path="/manager/kds"
           element={
@@ -328,14 +320,6 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <ManagerServiceRequests />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/manager/orders"
-          element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <div className="p-8 text-white">Trang quản lý đơn hàng (đang phát triển)</div>
             </ProtectedRoute>
           }
         />

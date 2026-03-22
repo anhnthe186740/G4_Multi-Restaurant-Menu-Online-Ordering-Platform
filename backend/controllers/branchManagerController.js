@@ -1167,3 +1167,265 @@ export const uploadBranchCoverImage = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/* ===============================================================
+   GET /api/manager/tables/:id/order-details
+   Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB
+   Dùng cho panel đơn hàng trong sơ đồ bàn
+=============================================================== */
+export const getTableOrderDetails = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const tableID = parseInt(req.params.id);
+
+    // Tìm order đang active (Open hoặc Serving) của bàn này
+    const orderTable = await prisma.orderTable.findFirst({
+      where: {
+        tableID,
+        order: { orderStatus: { in: ["Open", "Serving"] }, branchID },
+      },
+      include: {
+        order: {
+          include: {
+            orderDetails: {
+              include: { product: { select: { name: true, imageURL: true, price: true } } },
+              orderBy: { orderDetailID: "asc" },
+            },
+            orderTables: { include: { table: { select: { tableID: true, tableName: true } } } },
+          },
+        },
+      },
+    });
+
+    if (!orderTable) {
+      return res.status(404).json({ message: "Bàn này hiện không có đơn hàng đang mở." });
+    }
+
+    const order = orderTable.order;
+
+    res.json({
+      orderID: order.orderID,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      totalAmount: parseFloat(order.totalAmount),
+      orderTime: order.orderTime,
+      customerNote: order.customerNote ?? "",
+      tables: order.orderTables.map((ot) => ({
+        id: ot.table.tableID,
+        name: ot.table.tableName,
+      })),
+      // Trả về TỪNG orderDetail riêng lẻ (không group) → giữ nguyên itemStatus
+      items: order.orderDetails.map((d) => ({
+        orderDetailID: d.orderDetailID,
+        productID: d.productID,
+        productName: d.product?.name ?? "Món đã xóa",
+        imageURL: d.product?.imageURL ?? null,
+        quantity: d.quantity,
+        unitPrice: parseFloat(d.unitPrice),
+        itemStatus: d.itemStatus,   // Pending | Cooking | Ready | Served | Cancelled
+        note: d.note ?? "",
+      })),
+    });
+  } catch (err) {
+    console.error("getTableOrderDetails error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ── In-memory spam tracker: đếm lần huỷ theo tableID trong 5 phút ── */
+const CANCEL_WINDOW_MS  = 5 * 60 * 1000; // 5 phút
+const CANCEL_SPAM_LIMIT = 3;              // ≥ 3 lần → cảnh báo manager
+const cancelTracker     = new Map();      // Map<tableID, { count, windowStart }>
+
+function trackCancelSpam(tableID, io, branchID) {
+  const now  = Date.now();
+  const prev = cancelTracker.get(tableID) || { count: 0, windowStart: now };
+  // Reset window nếu đã qua 5 phút
+  if (now - prev.windowStart > CANCEL_WINDOW_MS) {
+    cancelTracker.set(tableID, { count: 1, windowStart: now });
+    return;
+  }
+  const count = prev.count + 1;
+  cancelTracker.set(tableID, { count, windowStart: prev.windowStart });
+  if (count >= CANCEL_SPAM_LIMIT) {
+    console.warn(`⚠️  Spam cancel: Bàn ${tableID} đã huỷ ${count} món trong 5 phút!`);
+    io?.emit("spamAlert", {
+      tableID, branchID, count,
+      message: `⚠️ Bàn ${tableID} đã huỷ ${count} món trong vòng 5 phút — nghi spam!`,
+      timestamp: now,
+    });
+  }
+}
+
+/* ===============================================================
+   PATCH /api/manager/order-items/:detailId/cancel
+   Huỷ từng món — ATOMIC: chỉ cho phép khi itemStatus === "Pending"
+   Dùng updateMany với điều kiện itemStatus để tránh race condition
+=============================================================== */
+export const cancelOrderItem = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const orderDetailID = parseInt(req.params.detailId);
+    if (isNaN(orderDetailID)) return res.status(400).json({ message: "ID món ăn không hợp lệ." });
+
+    const { cancelQuantity } = req.body; // Mới: Nhận số lượng muốn huỷ
+
+    // Xác nhận món tồn tại + thuộc chi nhánh
+    const detail = await prisma.orderDetail.findFirst({
+      where: { orderDetailID },
+      include: {
+        order: {
+          select: {
+            orderID: true,
+            branchID: true,
+            orderTables: { select: { tableID: true }, take: 1 },
+          },
+        },
+      },
+    });
+
+    if (!detail) return res.status(404).json({ message: "Không tìm thấy món ăn." });
+    if (detail.order.branchID !== branchID)
+      return res.status(403).json({ message: "Bạn không có quyền huỷ món này." });
+
+    if (detail.itemStatus !== "Pending") {
+      return res.status(400).json({
+        message: "Không thể huỷ — món này đã được bếp xử lý! Vui lòng liên hệ trực tiếp bộ phận bếp.",
+      });
+    }
+
+    const orderID = detail.order.orderID;
+    const tableID = detail.order.orderTables?.[0]?.tableID ?? null;
+    const currentQty = detail.quantity;
+    const requestedCancelQty = parseInt(cancelQuantity) || currentQty;
+
+    await prisma.$transaction(async (tx) => {
+      if (requestedCancelQty < currentQty && requestedCancelQty > 0) {
+        // ── Trường hợp 1: Huỷ 1 phần (Split) ──
+        // 1. Giảm số lượng của bản ghi hiện tại
+        await tx.orderDetail.update({
+          where: { orderDetailID },
+          data: { quantity: currentQty - requestedCancelQty },
+        });
+
+        // 2. Tạo bản ghi mới cho phần bị huỷ
+        await tx.orderDetail.create({
+          data: {
+            orderID,
+            productID: detail.productID,
+            quantity: requestedCancelQty,
+            unitPrice: detail.unitPrice,
+            itemStatus: "Cancelled",
+            note: detail.note ? `(Huỷ ${requestedCancelQty}) ${detail.note}` : `Huỷ ${requestedCancelQty} từ đơn gốc`,
+          },
+        });
+      } else {
+        // ── Trường hợp 2: Huỷ toàn bộ hoặc số lượng huỷ >= hiện tại ──
+        await tx.orderDetail.update({
+          where: { orderDetailID },
+          data: { itemStatus: "Cancelled" },
+        });
+      }
+
+      // 3. Tính toán lại tổng tiền đơn hàng (chỉ tính các món không phải Cancelled)
+      const remainingDetails = await tx.orderDetail.findMany({
+        where: { orderID, itemStatus: { not: "Cancelled" } },
+        select: { quantity: true, unitPrice: true },
+      });
+      const newTotal = remainingDetails.reduce(
+        (sum, d) => sum + d.quantity * parseFloat(d.unitPrice),
+        0
+      );
+
+      await tx.order.update({
+        where: { orderID },
+        data: { totalAmount: newTotal },
+      });
+    });
+
+    // Phát realtime cập nhật cho tất cả client
+    const io = req.app.get("io");
+    io?.emit("orderItemStatusChanged", {
+      orderDetailID, 
+      itemStatus: requestedCancelQty < currentQty ? detail.itemStatus : "Cancelled", 
+      tableID, 
+      orderID,
+    });
+    // Phát thêm tableUpdate để các bên load lại data chính xác nhất
+    emitTableUpdate(req);
+
+    // Kiểm tra spam
+    if (tableID) trackCancelSpam(tableID, io, branchID);
+
+    res.json({ 
+      message: requestedCancelQty < currentQty ? `Đã huỷ ${requestedCancelQty} món.` : "Đã huỷ toàn bộ món.",
+      orderDetailID, 
+      itemStatus: requestedCancelQty < currentQty ? detail.itemStatus : "Cancelled" 
+    });
+  } catch (err) {
+    console.error("cancelOrderItem error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+
+/* ===============================================================
+   POST /api/manager/service-requests
+   Tạo yêu cầu phục vụ (gọi nhân viên) từ sơ đồ bàn
+   Body: { tableId, requestType: "GoiMon" | "ThanhToan" | "GoiNuoc" | "Khac" }
+=============================================================== */
+export const createManagerServiceRequest = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { tableId, requestType = "GoiMon" } = req.body;
+    if (!tableId) return res.status(400).json({ message: "Thiếu tableId." });
+
+    const validTypes = ["GoiMon", "GoiNuoc", "ThanhToan", "Khac"];
+    if (!validTypes.includes(requestType))
+      return res.status(400).json({ message: `requestType không hợp lệ. Chỉ chấp nhận: ${validTypes.join(", ")}` });
+
+    // Xác nhận bàn thuộc chi nhánh
+    const table = await prisma.table.findFirst({
+      where: { tableID: parseInt(tableId), branchID },
+    });
+    if (!table) return res.status(404).json({ message: "Không tìm thấy bàn." });
+
+    const newRequest = await prisma.serviceRequest.create({
+      data: {
+        branchID,
+        tableID: parseInt(tableId),
+        requestType,
+        status: "Đang chờ",
+        createdTime: new Date(),
+      },
+    });
+
+    // Phát realtime cho manager
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("serviceRequestCreated", {
+        requestID: newRequest.requestID,
+        tableID: parseInt(tableId),
+        tableName: table.tableName,
+        requestType,
+        createdTime: newRequest.createdTime,
+      });
+    }
+
+    res.status(201).json({
+      message: "Đã tạo yêu cầu gọi nhân viên thành công.",
+      requestID: newRequest.requestID,
+      tableID: parseInt(tableId),
+      requestType,
+    });
+  } catch (err) {
+    console.error("createManagerServiceRequest error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};

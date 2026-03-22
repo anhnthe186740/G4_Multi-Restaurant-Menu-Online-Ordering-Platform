@@ -1931,7 +1931,7 @@ export const updateItemStatus = async (req, res) => {
     const updated = await prisma.orderDetail.update({
       where: { orderDetailID: parseInt(orderDetailID) },
       data: { itemStatus: status },
-      include: { order: true }
+      include: { order: { include: { orderTables: { select: { tableID: true }, take: 1 } } } }
     });
 
     // Nếu món được Served, kiểm tra xem toàn bộ đơn đã xong chưa
@@ -1946,10 +1946,20 @@ export const updateItemStatus = async (req, res) => {
       if (remaining === 0) {
         await prisma.order.update({
           where: { orderID: updated.orderID },
-          data: { orderStatus: "Completed", paymentStatus: "Paid" } // Cập nhật status order
+          data: { orderStatus: "Completed", paymentStatus: "Paid" }
         });
       }
     }
+
+    // Phát realtime cho trang QR của khách
+    const io = req.app.get("io");
+    const tableID = updated.order?.orderTables?.[0]?.tableID ?? null;
+    io?.emit("orderItemStatusChanged", {
+      orderDetailID: parseInt(orderDetailID),
+      itemStatus: status,
+      tableID,
+      orderID: updated.orderID,
+    });
 
     res.json({ message: "Cập nhật trạng thái món thành công", updated });
   } catch (error) {
@@ -2038,6 +2048,17 @@ export const updateMultipleItemStatus = async (req, res) => {
           });
         }
       }
+    }
+
+    // Phát realtime cho từng orderDetailID đã cập nhật
+    const io = req.app.get("io");
+    if (io) {
+      ids.forEach(id => {
+        io.emit("orderItemStatusChanged", {
+          orderDetailID: id,
+          itemStatus: status,
+        });
+      });
     }
 
     res.json({ message: "Cập nhật trạng thái hàng loạt thành công" });
