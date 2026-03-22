@@ -5,12 +5,16 @@ import nodemailer from "nodemailer";
  * If credentials are not provided in .env, it uses Ethereal Email for testing.
  */
 const getTransporter = async () => {
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_PASS;
+
+  if (user && pass) {
+    console.log(`✅ [Email Service] Using REAL Gmail Account: ${user}`);
     return nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        user: user,
+        pass: pass,
       },
     });
   } else {
@@ -145,5 +149,76 @@ export const sendOtpEmail = async (email, otp) => {
   } catch (error) {
     console.error("Error sending OTP email:", error);
     throw new Error("Failed to send OTP email");
+  }
+};
+
+/**
+ * Send an email to a newly created account with their credentials.
+ * @param {string} email - Recipient's email
+ * @param {string} fullName - Full name of the user
+ * @param {string} username - Account username
+ * @param {string} password - Clear text password (temporary)
+ * @param {string} role - User role (Staff, Kitchen, BranchManager)
+ */
+export const sendNewAccountEmail = async (email, fullName, username, password, role) => {
+  const transporter = await getTransporter();
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  
+  const roleDisplay = {
+    "Staff": "Nhân viên phục vụ",
+    "Kitchen": "Nhân viên bếp",
+    "BranchManager": "Quản lý chi nhánh"
+  }[role] || role;
+
+  const mailOptions = {
+    from: `"RMS Support" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Thông tin tài khoản truy cập hệ thống RMS",
+    html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 40px; border-radius: 24px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #059669; margin: 0; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Chào mừng đến với RMS</h1>
+          <p style="color: #64748b; font-size: 14px; margin-top: 8px;">Tài khoản của bạn đã sẵn sàng</p>
+        </div>
+        
+        <p>Chào <strong>${fullName || username}</strong>,</p>
+        <p>Bạn đã được cấp tài khoản để truy cập vào hệ thống quản lý nhà hàng với vai trò <strong>${roleDisplay}</strong>. Dưới đây là thông tin đăng nhập của bạn:</p>
+        
+        <div style="background-color: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 16px; padding: 25px; margin: 30px 0;">
+          <table style="width: 100%;">
+            <tr>
+              <td style="color: #64748b; font-size: 13px; font-weight: bold; width: 40%;">Tên đăng nhập:</td>
+              <td style="color: #1e293b; font-size: 15px; font-weight: 800;">${username}</td>
+            </tr>
+            <tr>
+              <td style="color: #64748b; font-size: 13px; font-weight: bold; padding-top: 10px;">Mật khẩu:</td>
+              <td style="color: #1e293b; font-size: 15px; font-weight: 800; padding-top: 10px;">${password}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 40px 0;">
+          <a href="${frontendUrl}/login" style="background-color: #059669; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2); text-transform: uppercase; letter-spacing: 1px;">Đăng nhập ngay</a>
+        </div>
+
+        <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 8px; margin-bottom: 30px;">
+          <p style="font-size: 12px; color: #92400e; margin: 0;"><strong>Lưu ý:</strong> Để đảm bảo an toàn, vui lòng đổi mật khẩu ngay sau lần đăng nhập đầu tiên.</p>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
+        
+        <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">Đây là email tự động từ hệ thống RMS. Vui lòng không trả lời email này.</p>
+        <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 5px;">&copy; 2026 RMS Team. All rights reserved.</p>
+      </div>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ [Email Service] New account credentials successfully sent to: ${email}`);
+    return info;
+  } catch (error) {
+    console.error("Error sending account email:", error);
+    // Silent error to prevent blocking account creation
   }
 };

@@ -1,5 +1,6 @@
 import prisma from "../config/prismaClient.js";
 import { Parser } from "json2csv";
+import { sendNewAccountEmail } from "../config/emailService.js";
 
 /*
   restaurantOwnerController.js
@@ -2097,6 +2098,11 @@ export const createOwnerManager = async (req, res) => {
         status: isActive === false ? 'Inactive' : 'Active',
       },
     });
+
+    // Gửi email nếu có
+    if (newUser.email) {
+      await sendNewAccountEmail(newUser.email, newUser.fullName, newUser.username, password, 'BranchManager');
+    }
 
     // Gán manager vào chi nhánh
     await prisma.branch.update({
