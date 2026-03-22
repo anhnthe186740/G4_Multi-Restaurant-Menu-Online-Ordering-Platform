@@ -27,7 +27,7 @@ export default function RegistrationStatusButton() {
 
         const check = async () => {
             try {
-                const res = await fetch("http://localhost:5000/api/admin/registration-requests/my-status", {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/registration-requests/my-status`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 // Token không hợp lệ → dừng, không hiện nút

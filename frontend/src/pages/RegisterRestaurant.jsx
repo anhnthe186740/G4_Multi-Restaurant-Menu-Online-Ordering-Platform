@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const PLAN_LABELS = {
     basic: { name: "Basic", color: "text-green-500", badge: "bg-green-500/10 border-green-500/30" },
@@ -138,7 +138,7 @@ export default function RegisterRestaurant() {
         const formData = new FormData();
         formData.append("file", file);
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/upload", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, {
             method: "POST",
             headers: token ? { Authorization: `Bearer ${token}` } : {},
             body: formData,

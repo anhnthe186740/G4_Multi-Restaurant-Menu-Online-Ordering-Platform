@@ -1,5 +1,6 @@
 import prisma from "../config/prismaClient.js";
 import bcrypt from "bcrypt";
+import { sendNewAccountEmail, sendApprovalEmail } from "../config/emailService.js";
 
 /* ================= CREATE REGISTRATION REQUEST (PUBLIC) ================= */
 export const createRegistrationRequest = async (req, res) => {
@@ -211,6 +212,16 @@ export const approveRequest = async (req, res) => {
                     data: { role: "RestaurantOwner" },
                 });
                 ownerUserID = request.ownerUserID;
+
+                // Gửi email thông báo cho tài khoản cũ đã được nâng cấp
+                const ownerUser = await tx.user.findUnique({ where: { userID: ownerUserID } });
+                if (ownerUser && ownerUser.email) {
+                    await sendApprovalEmail(
+                        ownerUser.email,
+                        ownerUser.fullName || ownerUser.username,
+                        request.restaurantName
+                    );
+                }
             } else {
                 // ── Trường hợp 2: Gửi form không đăng nhập → tạo tài khoản mới ──
                 const randomPw = Math.random().toString(36).slice(-8) + "A1!";
@@ -242,6 +253,17 @@ export const approveRequest = async (req, res) => {
                     },
                 });
                 ownerUserID = newUser.userID;
+
+                // Gửi email thông tin tài khoản cho chủ nhà hàng mới
+                if (safeEmail) {
+                    await sendNewAccountEmail(
+                        safeEmail,
+                        request.ownerName || "Chủ nhà hàng",
+                        newUser.username,
+                        randomPw,
+                        "RestaurantOwner"
+                    );
+                }
             }
 
             // Tạo Restaurant với đầy đủ các trường từ form data

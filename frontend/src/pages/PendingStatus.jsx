@@ -44,7 +44,7 @@ export default function PendingStatus() {
             const token = localStorage.getItem("token");
             if (!token) { setSessionExpired(true); setLoading(false); return; }
 
-            const res = await fetch("http://localhost:5000/api/admin/registration-requests/my-status", {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/registration-requests/my-status`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -78,7 +78,7 @@ export default function PendingStatus() {
     const handleGoToDashboard = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("http://localhost:5000/api/auth/refresh-token", {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/refresh-token`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
             });

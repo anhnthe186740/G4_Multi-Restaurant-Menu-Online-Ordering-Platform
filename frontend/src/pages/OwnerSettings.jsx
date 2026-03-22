@@ -94,7 +94,7 @@ export default function OwnerSettings() {
         const formData = new FormData();
         formData.append("file", file);
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/upload", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
             body: formData,
@@ -197,7 +197,7 @@ export default function OwnerSettings() {
         setPwLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await axios.post("http://localhost:5000/api/auth/send-change-password-otp", {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/send-change-password-otp`, {
                 currentPassword: pwForm.currentPassword,
             }, { headers: { Authorization: `Bearer ${token}` } });
             setPwMessage(res.data.message);
@@ -219,7 +219,7 @@ export default function OwnerSettings() {
         setPwLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await axios.post("http://localhost:5000/api/auth/change-password", {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/change-password`, {
                 currentPassword: pwForm.currentPassword,
                 newPassword: pwForm.newPassword,
                 otp: pwForm.otp,

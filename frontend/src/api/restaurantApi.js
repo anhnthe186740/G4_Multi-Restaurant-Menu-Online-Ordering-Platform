@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const restaurantAxios = axios.create({
-    baseURL: 'http://localhost:5000/api/admin/restaurants',
+    baseURL: `${import.meta.env.VITE_API_URL}/admin/restaurants`,
 });
 
 // Interceptor: luôn lấy token mới nhất từ localStorage
@@ -51,6 +51,6 @@ export const forceDeleteRestaurant = async (id) => {
 
 // Get all service packages (for filter dropdown) — dùng public route, không cần auth
 export const getServicePackages = async () => {
-    const response = await axios.get('http://localhost:5000/api/admin/service-packages/public');
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/service-packages/public`);
     return response.data;
 };

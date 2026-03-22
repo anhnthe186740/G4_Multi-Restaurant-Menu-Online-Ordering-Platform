@@ -197,7 +197,7 @@ export default function Register() {
                   />
                 </div>
 
-                {/* role removed - backend will default to 'Staff' */}
+                {/* backend will default to 'User' */}
 
                 {/* Password */}
                 <div>

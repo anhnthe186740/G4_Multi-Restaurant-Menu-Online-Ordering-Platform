@@ -136,7 +136,7 @@ export default function BranchManagerDashboard() {
         try {
             setExporting(true);
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:5000/api/manager/dashboard/export-revenue?startDate=${startDateStr}&endDate=${endDateStr}&type=${type}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/manager/dashboard/export-revenue?startDate=${startDateStr}&endDate=${endDateStr}&type=${type}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`

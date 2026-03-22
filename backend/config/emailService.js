@@ -222,3 +222,48 @@ export const sendNewAccountEmail = async (email, fullName, username, password, r
     // Silent error to prevent blocking account creation
   }
 };
+
+/**
+ * Send an approval notification to an existing user whose restaurant was approved.
+ * @param {string} email - Recipient's email
+ * @param {string} fullName - Full name of the user
+ * @param {string} restaurantName - Name of the approved restaurant
+ */
+export const sendApprovalEmail = async (email, fullName, restaurantName) => {
+  const transporter = await getTransporter();
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+  const mailOptions = {
+    from: `"RMS Support" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Chúc mừng! Nhà hàng ${restaurantName} đã được phê duyệt`,
+    html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 40px; border-radius: 24px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #059669; margin: 0; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Yêu cầu đã được phê duyệt</h1>
+        </div>
+        
+        <p>Chào <strong>${fullName}</strong>,</p>
+        <p>Chúng tôi rất vui mừng thông báo rằng yêu cầu đăng ký nhà hàng <strong>${restaurantName}</strong> của bạn đã được hệ thống phê duyệt thành công.</p>
+        <p>Tài khoản của bạn đã được nâng cấp lên vai trò <strong>Chủ nhà hàng (Restaurant Owner)</strong>. Bây giờ bạn có thể bắt đầu quản lý chi nhánh, thực đơn và nhân viên của mình.</p>
+        
+        <div style="text-align: center; margin: 40px 0;">
+          <a href="${frontendUrl}/owner/dashboard" style="background-color: #059669; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2); text-transform: uppercase; letter-spacing: 1px;">Vào trang quản trị</a>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;" />
+        
+        <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">Đây là email tự động từ hệ thống RMS. Vui lòng không trả lời email này.</p>
+        <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 5px;">&copy; 2026 RMS Team. All rights reserved.</p>
+      </div>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ [Email Service] Approval notification sent to: ${email}`);
+    return info;
+  } catch (error) {
+    console.error("Error sending approval email:", error);
+  }
+};
