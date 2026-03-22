@@ -20,9 +20,7 @@ export default function BranchManagerSidebar() {
         { icon: Bell,            label: 'Yêu cầu phục vụ',  path: '/manager/service-requests', roles: ['BranchManager', 'Staff'] },
         { icon: Users,           label: 'Quản lý nhân viên',path: '/manager/staff',    roles: ['BranchManager'] },
         { icon: Info,            label: 'Thông tin nhà hàng',path: '/manager/info',     roles: ['BranchManager'] },
-        { icon: History,         label: 'Lịch sử thanh toán',path: '/manager/payment-history' },
-     
-
+        { icon: History,         label: 'Lịch sử thanh toán',path: '/manager/payment-history', roles: ['BranchManager'] },
     ];
 
     // Lọc menu theo role
