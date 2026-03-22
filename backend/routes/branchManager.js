@@ -14,12 +14,15 @@ import {
   confirmManagerOrder,
   getBillByTable,
   processManagerCheckout,
+  createTablePaymentLink,
+  checkTablePaymentStatus,
   getOrders,
   updateOrderStatus,
   getServiceRequests,
   updateServiceRequestStatus,
   getBranchInfo,
   uploadBranchCoverImage,
+  getPaymentHistory,
   getBranchStaff,
   createBranchStaff,
   updateStaffStatus,
@@ -54,11 +57,19 @@ router.get("/tables/:id/bill",           requireRole("BranchManager", "Staff"), 
 router.post("/tables/:id/checkout",      requireRole("BranchManager", "Staff"), processManagerCheckout);
 router.get("/tables/:id/order-details",  requireRole("BranchManager", "Staff"), getTableOrderDetails);
 
+router.get("/tables/:id/bill",     getBillByTable);
+router.post("/tables/:id/checkout", processManagerCheckout);
+router.post("/tables/:id/payment-link", createTablePaymentLink);
+router.get("/tables/:id/payment-status/:orderCode", checkTablePaymentStatus);
 // Orders (Manager + Staff)
 router.get("/orders",              requireRole("BranchManager", "Staff"), getOrders);
 router.patch("/orders/:id/status", requireRole("BranchManager", "Staff"), updateOrderStatus);
 // Order items
 router.patch("/order-items/:detailId/cancel", requireRole("BranchManager", "Staff"), cancelOrderItem);
+
+// Payment History
+router.get("/payment-history", requireRole("BranchManager"), getPaymentHistory);
+// Service Requests
 
 // Service Requests (Manager + Staff)
 router.get("/service-requests",       requireRole("BranchManager", "Staff"), getServiceRequests);

@@ -1003,6 +1003,7 @@ export const getKitchenOrders = async (req, res) => {
       orderID: o.orderID,
       tableName: o.orderTables.map(ot => ot.table.tableName).join(", "),
       orderTime: o.orderTime,
+      orderStatus: o.orderStatus,
       customerNote: o.customerNote,
       items: o.orderDetails.map(d => ({
         orderDetailID: d.orderDetailID,
@@ -1010,6 +1011,7 @@ export const getKitchenOrders = async (req, res) => {
         quantity: d.quantity,
         note: d.note,
         itemStatus: d.itemStatus,
+        categoryID: d.product.categoryID,
       })),
     }));
 

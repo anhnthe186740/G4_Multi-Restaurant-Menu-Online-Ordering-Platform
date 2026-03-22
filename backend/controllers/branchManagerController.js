@@ -1,4 +1,15 @@
 import prisma from "../config/prismaClient.js";
+import { PayOS } from "@payos/node";
+
+// Initialize PayOS (reuse keys from env)
+let payos = null;
+if (process.env.PAYOS_CLIENT_ID && process.env.PAYOS_API_KEY && process.env.PAYOS_CHECKSUM_KEY) {
+  payos = new PayOS(
+    process.env.PAYOS_CLIENT_ID,
+    process.env.PAYOS_API_KEY,
+    process.env.PAYOS_CHECKSUM_KEY
+  );
+}
 import bcrypt from "bcrypt";
 import { sendNewAccountEmail } from "../config/emailService.js";
 
@@ -842,6 +853,193 @@ export const processManagerCheckout = async (req, res) => {
 };
 
 /* ===============================================================
+   PAYOS PAYMENT FOR TABLE
+   POST /api/manager/tables/:id/payment-link
+   GET  /api/manager/tables/:id/payment-status/:orderCode */
+
+/* ── POST /api/manager/tables/:id/payment-link ── */
+export const createTablePaymentLink = async (req, res) => {
+  try {
+    if (!payos) {
+      return res.status(503).json({ message: "PayOS chưa được cấu hình trên server." });
+    }
+
+    const branchID = await getManagerBranchId(req.user);
+    const tableID = parseInt(req.params.id);
+
+    // 1. Lấy bill hiện tại của bàn
+    const orderTable = await prisma.orderTable.findFirst({
+      where: {
+        tableID,
+        order: { orderStatus: { in: ["Open", "Serving"] }, branchID }
+      },
+      include: { order: true }
+    });
+
+    if (!orderTable) {
+      return res.status(404).json({ message: "Bàn này không có hóa đơn chưa thanh toán." });
+    }
+
+    const totalAmount = Math.round(parseFloat(orderTable.order.totalAmount));
+    if (totalAmount <= 0) {
+      return res.status(400).json({ message: "Tổng tiền không hợp lệ." });
+    }
+
+    // 2. Tạo orderCode unique (timestamp)
+    const orderCode = Date.now();
+
+    // 3. Gọi PayOS API để tạo payment link
+    const payosBody = {
+      orderCode,
+      amount: totalAmount,
+      description: `Ban ${tableID} - ${orderCode}`.substring(0, 25),
+      returnUrl: `http://${req.hostname}:5173/manager/tables`,
+      cancelUrl: `http://${req.hostname}:5173/manager/tables`,
+    };
+
+    const paymentLinkData = await payos.paymentRequests.create(payosBody);
+
+    // 4. Lưu session vào DB
+    await prisma.tablePaymentSession.create({
+      data: {
+        tableId: tableID,
+        orderCode: BigInt(orderCode),
+        amount: totalAmount,
+        status: "PENDING",
+        payosLinkId: paymentLinkData.paymentLinkId,
+        qrCode: paymentLinkData.qrCode,
+        checkoutUrl: paymentLinkData.checkoutUrl,
+      }
+    });
+
+    res.json({
+      orderCode,
+      amount: totalAmount,
+      qrCode: paymentLinkData.qrCode,
+      checkoutUrl: paymentLinkData.checkoutUrl,
+      paymentLinkId: paymentLinkData.paymentLinkId,
+    });
+  } catch (err) {
+    console.error("createTablePaymentLink error:", err);
+    res.status(500).json({ message: err.message || "Lỗi tạo link thanh toán" });
+  }
+};
+
+/* ── GET /api/manager/tables/:id/payment-status/:orderCode ── */
+export const checkTablePaymentStatus = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    const tableID = parseInt(req.params.id);
+    const orderCode = BigInt(req.params.orderCode);
+
+    // 1. Tìm session trong DB
+    const session = await prisma.tablePaymentSession.findUnique({
+      where: { orderCode }
+    });
+
+    if (!session) {
+      return res.status(404).json({ message: "Không tìm thấy phiên thanh toán." });
+    }
+
+    // Nếu đã xử lý, trả về ngay
+    if (session.status === "PAID") {
+      return res.json({ status: "PAID", message: "Đã thanh toán." });
+    }
+
+    // 2. Hỏi PayOS để lấy trạng thái thực tế
+    let payosStatus = session.status;
+    try {
+      if (payos) {
+        const payosResponse = await payos.paymentRequests.get(String(orderCode));
+        payosStatus = payosResponse.status; // PAID | PENDING | CANCELLED | EXPIRED
+      }
+    } catch (payosErr) {
+      console.warn("PayOS check error (non-fatal):", payosErr.message);
+    }
+
+    // 3. Nếu PAID: thực hiện checkout và cập nhật session
+    if (payosStatus === "PAID" && session.status !== "PAID") {
+      // Tìm order của bàn
+      const orderTable = await prisma.orderTable.findFirst({
+        where: {
+          tableID,
+          order: { orderStatus: { in: ["Open", "Serving"] }, branchID }
+        },
+        include: {
+          order: { include: { orderDetails: true, orderTables: true } }
+        }
+      });
+
+      if (orderTable) {
+        const order = orderTable.order;
+        const tableIdsInvolved = order.orderTables.map(ot => ot.tableID);
+
+        await prisma.$transaction(async (tx) => {
+          const invoice = await tx.invoice.create({
+            data: {
+              orderID: order.orderID,
+              subTotal: order.totalAmount,
+              totalAmount: order.totalAmount,
+              status: "Issued",
+              issuedDate: new Date()
+            }
+          });
+          await tx.invoiceDetail.createMany({
+            data: order.orderDetails.map(det => ({
+              invoiceID: invoice.invoiceID,
+              orderDetailID: det.orderDetailID,
+              productID: det.productID,
+              quantity: det.quantity,
+              unitPrice: det.unitPrice,
+              totalPrice: parseFloat(det.unitPrice) * det.quantity,
+              status: "Finalized"
+            }))
+          });
+          await tx.transaction.create({
+            data: {
+              invoiceID: invoice.invoiceID,
+              amount: order.totalAmount,
+              paymentMethod: "BankTransfer",
+              status: "Success",
+              paymentGatewayRef: String(orderCode),
+            }
+          });
+          await tx.order.update({
+            where: { orderID: order.orderID },
+            data: { orderStatus: "Completed", paymentStatus: "Paid" }
+          });
+          await tx.table.updateMany({
+            where: { tableID: { in: tableIdsInvolved } },
+            data: { status: "Available", mergedGroupId: null }
+          });
+          await tx.tablePaymentSession.update({
+            where: { orderCode },
+            data: { status: "PAID", paidAt: new Date() }
+          });
+        });
+
+        emitTableUpdate(req);
+        return res.json({ status: "PAID", message: "Thanh toán thành công! Bàn đã được giải phóng." });
+      }
+    }
+
+    // 4. Cập nhật status nếu CANCELLED/EXPIRED
+    if (["CANCELLED", "EXPIRED"].includes(payosStatus) && session.status !== payosStatus) {
+      await prisma.tablePaymentSession.update({
+        where: { orderCode },
+        data: { status: payosStatus }
+      });
+    }
+
+    res.json({ status: payosStatus });
+  } catch (err) {
+    console.error("checkTablePaymentStatus error:", err);
+    res.status(500).json({ message: err.message || "Lỗi kiểm tra trạng thái" });
+  }
+};
+
+
+/* ===============================================================
    GET /api/manager/orders
 =============================================================== */
 export const getOrders = async (req, res) => {
@@ -1132,6 +1330,87 @@ export const uploadBranchCoverImage = async (req, res) => {
 };
 
 /* ===============================================================
+   9. PAYMENT HISTORY
+   GET /api/manager/payment-history
+   Query: startDate, endDate (ISO strings)
+=============================================================== */
+export const getPaymentHistory = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { startDate, endDate } = req.query;
+
+    const where = {
+      invoice: {
+        order: {
+          branchID: branchID,
+        },
+      },
+      status: "Success",
+    };
+
+    if (startDate || endDate) {
+      where.transactionTime = {};
+      if (startDate) {
+        where.transactionTime.gte = new Date(startDate);
+      }
+      if (endDate) {
+        const dEnd = new Date(endDate);
+        dEnd.setHours(23, 59, 59, 999); // Hết ngày
+        where.transactionTime.lte = dEnd;
+      }
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      orderBy: { transactionTime: "desc" },
+      include: {
+        invoice: {
+          include: {
+            order: {
+              include: {
+                orderTables: {
+                  include: { table: { select: { tableName: true, tableID: true } } },
+                },
+                orderDetails: {
+                  include: { product: { select: { name: true, imageURL: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const result = transactions.map((t) => {
+      const order = t.invoice?.order;
+      return {
+        transactionID:   t.transactionID,
+        transactionTime: t.transactionTime,
+        amount:          parseFloat(t.amount),
+        paymentMethod:   t.paymentMethod,
+        invoiceID:       t.invoiceID,
+        orderID:         order?.orderID,
+        tableName:       order?.orderTables
+          .map((ot) => ot.table?.tableName ?? `Bàn ${ot.tableID}`)
+          .join(", "),
+        items: order?.orderDetails.map((d) => ({
+          productName: d.product?.name ?? "Món đã xóa",
+          quantity:    d.quantity,
+          unitPrice:   parseFloat(d.unitPrice),
+        })) || [],
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("getPaymentHistory error:", err);
+    res.status(500).json({ message: "Lỗi lấy lịch sử thanh toán." });
+  }
+};
+/* ===============================================================
    9. STAFF MANAGEMENT (Branch Manager)
 =============================================================== */
 
@@ -1299,8 +1578,7 @@ export const deleteBranchStaff = async (req, res) => {
 
 /* ===============================================================
    GET /api/manager/tables/:id/order-details
-   Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB
-=============================================================== */
+   Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB */
 export const getTableOrderDetails = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);
@@ -1361,8 +1639,7 @@ export const getTableOrderDetails = async (req, res) => {
 };
 
 /* ===============================================================
-   PATCH /api/manager/order-items/:detailId/cancel
-=============================================================== */
+   PATCH /api/manager/order-items/:detailId/cancel */
 export const cancelOrderItem = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);
@@ -1385,11 +1662,11 @@ export const cancelOrderItem = async (req, res) => {
     });
 
     if (!detail || !detail.order) return res.status(404).json({ message: "Không tìm thấy món ăn." });
-    
+
     // So sánh int vs int
     const orderBranchID = parseInt(detail.order.branchID);
     const userBranchID = parseInt(branchID);
-    
+
     if (orderBranchID !== userBranchID)
       return res.status(403).json({ message: "Bạn không có quyền huỷ món này." });
 
@@ -1405,7 +1682,7 @@ export const cancelOrderItem = async (req, res) => {
     const requestedCancelQty = parseInt(cancelQuantity) || currentQty;
 
     if (requestedCancelQty > currentQty || requestedCancelQty <= 0) {
-        return res.status(400).json({ message: "Số lượng huỷ không hợp lệ." });
+      return res.status(400).json({ message: "Số lượng huỷ không hợp lệ." });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -1473,8 +1750,7 @@ export const cancelOrderItem = async (req, res) => {
 };
 
 /* ===============================================================
-   POST /api/manager/service-requests
-=============================================================== */
+   POST /api/manager/service-requests */
 export const createManagerServiceRequest = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);

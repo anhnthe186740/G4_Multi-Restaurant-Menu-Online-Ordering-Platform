@@ -4,8 +4,11 @@ import { getServerIP } from '../api/publicApi';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
+
+     Clock,
     MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer,
     Bell, ChefHat, Loader2, AlertCircle, ClipboardList, UtensilsCrossed, Minus
+
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -21,6 +24,7 @@ import {
     processManagerCheckout,
 } from '../api/managerApi';
 import CustomerMenu from './CustomerMenu';
+import TablePaymentModal from '../components/manager/TablePaymentModal';
 
 /* ─── Badge trạng thái ─────────────────────────────────────────────────────── */
 function StatusBadge({ status }) {
@@ -838,8 +842,8 @@ function TableDrawerTabs({ tableId, tableName, onClose, onCheckoutSuccess, refre
                     <div className="flex-1 overflow-y-auto">
                         <CustomerMenu
                             tableIdProp={tableId}
-                            onCheckoutSuccess={(msg) => {
-                                onCheckoutSuccess && onCheckoutSuccess(msg || "Đã xác nhận order thành công!");
+                            onCheckoutSuccess={(msg, payload) => {
+                                onCheckoutSuccess && onCheckoutSuccess(msg || "Đã xác nhận order thành công!", payload);
                                 refreshTables && refreshTables();
                             }}
                         />
@@ -879,6 +883,14 @@ export default function TableManagement() {
     const [printTables, setPrintTables] = useState(null); // null hoặc [table1, table2...]
     const [toast, setToast] = useState(null);
     const [menuDrawerTableId, setMenuDrawerTableId] = useState(null);
+
+    // ==========================================
+    // PAYMENT QUEUE STATE
+    // ==========================================
+    const [paymentQueue, setPaymentQueue] = useState([]); 
+    // Mảng chứa: { tableId, tableName, paymentData, billData }
+    const [activeQueueItem, setActiveQueueItem] = useState(null); // tableId đang mở modal QR lại
+    // ==========================================
 
     const showToast = (msg) => setToast(msg);
 
@@ -1028,20 +1040,49 @@ export default function TableManagement() {
         const linkedIds = Array.isArray(table.mergedWith) ? table.mergedWith : [];
         const linkedNames = linkedIds
             .map(id => tables.find(t => t.id === id)?.name || '')
-            .filter(Boolean);
+            .filter(Boolean).join(' + ');
         try {
             // Chỉ cần gọi 1 API cho bàn chính —
             // backend sẽ tự đặt toàn bộ các bàn cùng nhóm về Available và xóa mergedGroupId
             await updateManagerTableStatus(table.id, 'Trống');
-            // Reload từ server để lấy trạng thái chính xác
-            await loadTables();
-            const msg = linkedNames.length > 0
-                ? `Thanh toán ${table.name} + ${linkedNames.join(' + ')} thành công!`
-                : `Thanh toán ${table.name} thành công!`;
-            showToast(msg);
+            setTables(prev => prev.map(t => {
+                if (t.id === table.id || linkedIds.includes(t.id)) {
+                    return { ...t, status: 'Trống', mergedWith: [], mergedGroupId: null };
+                }
+                return t;
+            }));
+            showToast(`💵 Đã thanh toán xong cho: ${table.name} ${linkedNames ? '+ ' + linkedNames : ''}`);
         } catch (err) {
             showToast('Lỗi thanh toán: ' + (err.response?.data?.message || err.message));
         }
+    };
+
+    /* ── Xử lý Checkout từ Drawer ── */
+    // Nhận object { type, paymentData, billData } từ component con, 
+    // nếu type = 'QR' thì đưa vào Queue và tắt drawer
+    const handleDrawerCheckoutSuccess = (message, payload) => {
+        setMenuDrawerTableId(null); // Đóng drawer
+        if (payload?.type === 'QR') {
+            // Thêm vào Queue
+            setPaymentQueue(prev => {
+                // tránh duplicate
+                if (prev.find(item => item.tableId === payload.tableId)) return prev;
+                return [...prev, payload];
+            });
+            setActiveQueueItem(payload.tableId); // Tự động mở QR thay vì buộc người dùng bấm
+            // Không gán toast message nếu không cần thiết
+        } else {
+            showToast(message || 'Thanh toán tiền mặt thành công!');
+            loadTables(); // Refresh nếu thanh toán tiền mặt thành công
+        }
+    };
+
+    /* ── Xử lý khi thanh toán QR thành công từ Queue ── */
+    const handleQueuePaymentSuccess = (tableId) => {
+        setActiveQueueItem(null);
+        setPaymentQueue(prev => prev.filter(item => item.tableId !== tableId));
+        showToast(`Thanh toán mã QR thành công!`);
+        loadTables(); // Reload trạng thái bàn về Trống
     };
 
     return (
@@ -1170,11 +1211,7 @@ export default function TableManagement() {
                         tableId={menuDrawerTableId}
                         tableName={tables.find(t => t.id === menuDrawerTableId)?.name ?? 'Bàn'}
                         onClose={() => setMenuDrawerTableId(null)}
-                        onCheckoutSuccess={(msg) => {
-                            showToast(msg || 'Thanh toán thành công!');
-                            setMenuDrawerTableId(null);
-                            loadTables();
-                        }}
+                        onCheckoutSuccess={handleDrawerCheckoutSuccess}
                         refreshTables={loadTables}
                     />
                 )}
@@ -1185,6 +1222,49 @@ export default function TableManagement() {
                 <div 
                     className="fixed inset-0 bg-black/30 z-[50] backdrop-blur-sm transition-opacity"
                     onClick={() => setMenuDrawerTableId(null)}
+                />
+            )}
+
+            {/* PAYMENT QUEUE BAR */}
+            {paymentQueue.length > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] py-3 px-6 pb-20 md:pb-3 overflow-x-auto hide-scrollbar">
+                    <div className="flex items-center gap-4 min-w-max md:pl-64">
+                        <div className="flex items-center gap-2 pr-4 border-r border-gray-200 font-bold text-gray-600">
+                            <Clock className="text-amber-500 animate-pulse" size={20} />
+                            <span className="text-sm">Hàng chờ QR ({paymentQueue.length})</span>
+                        </div>
+                        
+                        {paymentQueue.map((item) => (
+                            <button 
+                                key={item.tableId}
+                                onClick={() => setActiveQueueItem(item.tableId)}
+                                className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl hover:shadow-md transition group"
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-black text-xs">
+                                    🪑
+                                </div>
+                                <div className="text-left flex-1 min-w-[100px]">
+                                    <p className="text-xs font-bold text-gray-800 leading-tight">{item.tableName}</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">Đang quét...</p>
+                                </div>
+                                <div className="w-6 h-6 rounded-full bg-white border border-emerald-200 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition shrink-0">
+                                    <QrCode size={12} />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* RE-OPEN PAYMENT MODAL FROM QUEUE */}
+            {activeQueueItem && paymentQueue.find(q => q.tableId === activeQueueItem) && (
+                <TablePaymentModal
+                    isOpen={true}
+                    onClose={() => setActiveQueueItem(null)}
+                    paymentData={paymentQueue.find(q => q.tableId === activeQueueItem).paymentData}
+                    billData={paymentQueue.find(q => q.tableId === activeQueueItem).billData}
+                    tableName={paymentQueue.find(q => q.tableId === activeQueueItem).tableName}
+                    onPaymentSuccess={() => handleQueuePaymentSuccess(activeQueueItem)}
                 />
             )}
         </BranchManagerLayout>
