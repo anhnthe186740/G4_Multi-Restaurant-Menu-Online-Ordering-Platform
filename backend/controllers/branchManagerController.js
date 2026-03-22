@@ -330,7 +330,7 @@ export const getTables = async (req, res) => {
     const tables = await prisma.table.findMany({
       where: { branchID },
       orderBy: { tableID: "asc" },
-      select: { tableID: true, tableName: true, capacity: true, status: true, qrCode: true, mergedGroupId: true },
+      select: { tableID: true, tableName: true, capacity: true, status: true, qrCode: true, mergedGroupId: true, isActive: true },
     });
 
     // Build mergedWith: danh sách các tableID cùng nhóm (trừ chính nó)
@@ -349,6 +349,7 @@ export const getTables = async (req, res) => {
         qrCode: t.qrCode,
         mergedGroupId: t.mergedGroupId ?? null,
         mergedWith,               // mảng ID các bàn cùng nhóm
+        isActive: t.isActive,
       };
     });
 
@@ -399,7 +400,7 @@ export const updateTable = async (req, res) => {
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const tableID = parseInt(req.params.id);
-    const { name, capacity } = req.body;
+    const { name, capacity, isActive } = req.body;
 
     const existing = await prisma.table.findFirst({ where: { tableID, branchID } });
     if (!existing) return res.status(404).json({ message: "Không tìm thấy bàn." });
@@ -409,6 +410,7 @@ export const updateTable = async (req, res) => {
       data: {
         ...(name && { tableName: name }),
         ...(capacity && { capacity: parseInt(capacity) }),
+        ...(isActive !== undefined && { isActive }),
       },
     });
 
@@ -418,6 +420,7 @@ export const updateTable = async (req, res) => {
       capacity: updated.capacity,
       status: mapStatus(updated.status),
       qrCode: updated.qrCode,
+      isActive: updated.isActive,
     });
 
     emitTableUpdate(req);
@@ -526,21 +529,30 @@ export const mergeTables = async (req, res) => {
 
     if (srcOrder && tgtOrder) {
       await prisma.$transaction(async (tx) => {
+        // Move all items from tgtOrder to srcOrder
         await tx.orderDetail.updateMany({
           where: { orderID: tgtOrder.orderID },
           data: { orderID: srcOrder.orderID },
         });
+
+        // Ensure target table is linked to srcOrder
         await tx.orderTable.upsert({
           where: { orderID_tableID: { orderID: srcOrder.orderID, tableID: tgtId } },
           create: { orderID: srcOrder.orderID, tableID: tgtId },
           update: {},
         });
+
+        // Remove old links from tgtOrder
         await tx.orderTable.deleteMany({
-          where: { orderID: tgtOrder.orderID, tableID: tgtId },
+          where: { orderID: tgtOrder.orderID },
         });
+
+        // Delete tgtOrder
         await tx.order.delete({ where: { orderID: tgtOrder.orderID } });
+
+        // Recalculate totalAmount for srcOrder based on non-cancelled items
         const details = await tx.orderDetail.findMany({
-          where: { orderID: srcOrder.orderID },
+          where: { orderID: srcOrder.orderID, itemStatus: { not: 'Cancelled' } },
           select: { quantity: true, unitPrice: true },
         });
         const newTotal = details.reduce(
@@ -1067,7 +1079,7 @@ export const getOrders = async (req, res) => {
       customerNote: o.customerNote ?? "",
       orderTable: o.orderTables
         .map((ot) => ot.table?.tableName ?? `Bàn ${ot.table?.tableID}`)
-        .join(", "),
+        .join(" + "),
       tableIds: o.orderTables.map((ot) => ot.tableID),
       orderDetails: o.orderDetails.map((d) => ({
         id: d.orderDetailID,

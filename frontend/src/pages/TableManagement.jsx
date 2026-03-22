@@ -78,9 +78,28 @@ function ThreeDotMenu({ onMerge, onEdit, onDelete, onPrint }) {
     );
 }
 
+/* ─── Nút gạt (Switch) ──────────────────────────────────────────────────────── */
+function Switch({ checked, onChange, disabled }) {
+    return (
+        <button
+            onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
+            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${
+                checked ? 'bg-emerald-500' : 'bg-gray-200'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+            <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    checked ? 'translate-x-[22px]' : 'translate-x-1'
+                }`}
+            />
+        </button>
+    );
+}
+
 /* ─── Card bàn ────────────────────────────────────────────────────── */
-function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer, onPrintQR }) {
+function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer, onPrintQR, onToggleActive }) {
     const occupied = table.status === 'Đang ngồi';
+    const active = table.isActive !== false; // Mặc định là true
     // mergedWith giờ là mảng các ID
     const mergedIds = Array.isArray(table.mergedWith) ? table.mergedWith : [];
     const isMerged = mergedIds.length > 0;
@@ -92,6 +111,8 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
         // Tránh bị đè khi bấm vào các nút bên trong (3 chấm, thanh toán, v.v)
         if (e.target.closest('button')) return;
         
+        if (!active && !occupied) return; // Không cho chọn nếu bàn bị tắt
+
         if (occupied) {
             onOpenMenuDrawer(table.id);
         }
@@ -101,9 +122,10 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
         <div 
             onClick={handleCardClick}
             className={`relative bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${
-                occupied ? 'cursor-pointer' : ''
+                occupied || active ? 'cursor-pointer' : 'opacity-75 grayscale-[0.5]'
             } ${isMerged ? 'border-amber-300 hover:border-amber-400' :
             occupied ? 'border-red-200 hover:border-red-300' :
+                !active ? 'border-gray-200 bg-gray-50' :
                 'border-gray-100 hover:border-emerald-200'
             }`}>
             {/* Thanh màu bên trái */}
@@ -127,7 +149,12 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
                     </div>
                 </div>
 
-                <h3 className="font-bold text-gray-800 text-sm leading-tight">{table.name}</h3>
+                <div className="flex items-center justify-between">
+                    <h3 className={`font-bold text-sm leading-tight ${!active && !occupied ? 'text-gray-400' : 'text-gray-800'}`}>
+                        {table.name} {!active && !occupied && <span className="text-[10px] font-normal ml-1 text-gray-400 uppercase">(Ngừng)</span>}
+                    </h3>
+                    <Switch checked={active} onChange={() => onToggleActive(table.id, !active)} disabled={occupied} />
+                </div>
                 <div className="flex items-center gap-1 mt-1 text-gray-400 text-xs">
                     <Users size={11} />
                     <span>Sức chứa: {table.capacity} người</span>
@@ -144,10 +171,14 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
 
             {/* Nút hành động */}
             <div className="px-4 pb-4">
-                {occupied ? (
-                    <button onClick={onCheckout}
-                        className="w-full py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-red-500 to-rose-500 text-white hover:from-red-600 hover:to-rose-600 transition-all shadow-sm flex items-center justify-center gap-1.5">
-                        <CreditCard size={13} /> Thanh toán
+                {!active && !occupied ? (
+                    <div className="w-full py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-400 border border-gray-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                        <X size={13} /> Bàn đang khóa
+                    </div>
+                ) : occupied ? (
+                    <button onClick={() => onOpenMenuDrawer(table.id)}
+                        className="w-full py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-all flex items-center justify-center gap-1.5">
+                        <ClipboardList size={13} /> Xem đơn hàng
                     </button>
                 ) : (
                     <button onClick={onSelect}
@@ -586,7 +617,8 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
         setCheckingOut(true);
         try {
             await processManagerCheckout(tableId, { paymentMethod: 'Cash' });
-            onCheckoutSuccess && onCheckoutSuccess(`Thanh toán ${tableName} thành công!`);
+            const allNames = order?.tables?.map(t => t.name).join(' + ') || tableName;
+            onCheckoutSuccess && onCheckoutSuccess(`Thanh toán ${allNames} thành công!`);
             refreshTables && refreshTables();
             onClose();
         } catch (err) {
@@ -606,7 +638,11 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-emerald-700 to-emerald-600 flex-shrink-0">
                 <div>
-                    <h2 className="font-bold text-white text-lg">{tableName}</h2>
+                    <h2 className="font-bold text-white text-lg">
+                        {order?.tables && order.tables.length > 1 
+                            ? order.tables.map(t => t.name).join(' + ') 
+                            : tableName}
+                    </h2>
                     {order && (
                         <p className="text-emerald-200 text-xs mt-0.5">
                             Đơn #{order.orderID} · {order.orderStatus === 'Open' ? '🟡 Chờ xử lý' : '🟠 Đang phục vụ'}
@@ -736,18 +772,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                             Đã huỷ {cancelledItems.length} món
                         </p>
                     )}
-                    <button
-                        onClick={handleCheckout}
-                        disabled={checkingOut || activeItems.length === 0}
-                        className={`w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                            activeItems.length === 0
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-red-500 to-rose-500 text-white hover:from-red-600 hover:to-rose-600 active:scale-95 shadow-sm'
-                        }`}>
-                        {checkingOut
-                            ? <><Loader2 size={15} className="animate-spin" /> Đang xử lý...</>
-                            : <><CreditCard size={15} /> Thanh toán (Tiền mặt)</>}
-                    </button>
+
                 </div>
             )}
 
@@ -1000,6 +1025,16 @@ export default function TableManagement() {
         }
     };
 
+    const handleToggleActive = async (tableID, newActive) => {
+        try {
+            await updateManagerTable(tableID, { isActive: newActive });
+            setTables(prev => prev.map(t => t.id === tableID ? { ...t, isActive: newActive } : t));
+            showToast(`${newActive ? 'Mở' : 'Khóa'} bàn thành công!`);
+        } catch (err) {
+            showToast('Lỗi thay đổi trạng thái: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
     /* ── Thanh toán → Trống (backend tự xóa toàn bộ nhóm gộp) ── */
     const handleCheckout = async (table) => {
         const linkedIds = Array.isArray(table.mergedWith) ? table.mergedWith : [];
@@ -1138,6 +1173,7 @@ export default function TableManagement() {
                                         onCheckout={() => handleCheckout(table)}
                                         onOpenMenuDrawer={(id) => setMenuDrawerTableId(id)}
                                         onPrintQR={() => setPrintTables([table])}
+                                        onToggleActive={handleToggleActive}
                                     />
                                 ))}
                                 {/* Card thêm nhanh */}

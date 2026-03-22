@@ -18,7 +18,6 @@ export default function ManagerCreateStaff() {
 
     const [form, setForm] = useState({
         fullName: '',
-        username: '',
         email: '',
         phone: '',
         password: '',
@@ -36,10 +35,6 @@ export default function ManagerCreateStaff() {
         const errs = {};
         if (!form.fullName.trim())
             errs.fullName = 'Họ và tên không được để trống';
-        if (!form.username.trim())
-            errs.username = 'Tên đăng nhập không được để trống';
-        else if (!/^[a-zA-Z0-9_]{4,20}$/.test(form.username))
-            errs.username = 'Tên đăng nhập 4-20 ký tự, chỉ chữ cái, số và dấu _';
         if (!form.email.trim())
             errs.email = 'Email không được để trống';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
@@ -72,7 +67,7 @@ export default function ManagerCreateStaff() {
         try {
             await createBranchStaff({
                 fullName: form.fullName,
-                username: form.username,
+                username: form.email, // Sử dụng email làm tên đăng nhập
                 email: form.email,
                 phone: form.phone,
                 password: form.password,
@@ -143,23 +138,7 @@ export default function ManagerCreateStaff() {
                         {errors.fullName && <p className="text-[11px] text-red-500 font-bold">{errors.fullName}</p>}
                     </div>
 
-                    {/* Tên đăng nhập */}
-                    <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                            Tên đăng nhập <span className="text-red-400 ml-0.5">*</span>
-                        </label>
-                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm transition-all
-                            ${errors.username ? 'border-red-400 bg-red-50/50 focus-within:ring-2 focus-within:ring-red-100' : 'border-gray-100 bg-gray-50/30 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-50 focus-within:bg-white'}`}>
-                            <AtSign size={16} className="text-gray-400 shrink-0" />
-                            <input
-                                value={form.username}
-                                onChange={e => handleField('username', e.target.value)}
-                                placeholder="staff_01..."
-                                className="flex-1 bg-transparent text-gray-800 focus:outline-none placeholder:text-gray-300 font-medium"
-                            />
-                        </div>
-                        {errors.username && <p className="text-[11px] text-red-500 font-bold">{errors.username}</p>}
-                    </div>
+
 
                     {/* Email */}
                     <div className="space-y-1.5">
@@ -216,8 +195,6 @@ export default function ManagerCreateStaff() {
                             ))}
                         </div>
                     </div>
-
-                    <div className="hidden md:block" /> {/* Column gap filler */}
 
                     {/* Mật khẩu */}
                     <div className="space-y-1.5">

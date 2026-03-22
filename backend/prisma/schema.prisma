@@ -255,6 +255,7 @@ model Table {
   status        TableStatus @default(Available) @map("Status")
   qrCode        String?     @map("QRCode") @db.Text
   mergedGroupId String?     @map("MergedGroupId") @db.VarChar(50)  // NULL = không gộp; cùng giá trị = cùng nhóm gộp
+  isActive      Boolean     @default(true) @map("IsActive")
 
   // Relations
   branch          Branch           @relation(fields: [branchID], references: [branchID], onDelete: Cascade)
