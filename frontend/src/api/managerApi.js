@@ -57,6 +57,7 @@ export const updateManagerServiceRequestStatus = (id, status) => managerAxios.pa
 export const getBranchStaff = () => managerAxios.get("manager/staff");
 export const createBranchStaff = (data) => managerAxios.post("manager/staff", data);
 export const updateStaffStatus = (id, status) => managerAxios.patch(`manager/staff/${id}/status`, { status });
+export const updateBranchStaff = (id, data) => managerAxios.put(`manager/staff/${id}`, data);
 export const deleteBranchStaff = (id) => managerAxios.delete(`manager/staff/${id}`);
 
 export default managerAxios;

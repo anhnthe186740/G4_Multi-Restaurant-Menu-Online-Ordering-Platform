@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
-import { getBranchStaff, updateStaffStatus, deleteBranchStaff } from '../api/managerApi';
+import { getBranchStaff, updateStaffStatus, deleteBranchStaff, updateBranchStaff } from '../api/managerApi';
 import {
     Users, Plus, Search, MoreVertical, CheckCircle2, XCircle,
-    UserCheck, UserX, Trash2, Edit2, ChevronDown, ShieldCheck
+    UserCheck, UserX, Trash2, Edit2, ChevronDown, ShieldCheck, X
 } from 'lucide-react';
 
 export default function ManagerStaff() {
@@ -16,6 +16,8 @@ export default function ManagerStaff() {
     const [toast, setToast] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [confirmDelete, setConfirmDelete] = useState(null);
+    const [editStaff, setEditStaff] = useState(null);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -44,7 +46,7 @@ export default function ManagerStaff() {
             const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
             await updateStaffStatus(id, newStatus);
             setStaff(prev => prev.map(s =>
-                s.id === id ? { ...s, isActive: newStatus === 'Active', status: newStatus } : s
+                s.userID === id ? { ...s, isActive: newStatus === 'Active', status: newStatus } : s
             ));
             showToast('Cập nhật trạng thái thành công');
         } catch (error) {
@@ -55,12 +57,28 @@ export default function ManagerStaff() {
     const handleDelete = async (id) => {
         try {
             await deleteBranchStaff(id);
-            setStaff(prev => prev.filter(s => s.id !== id));
+            setStaff(prev => prev.filter(s => s.userID !== id));
             showToast('Đã xóa tài khoản nhân viên');
         } catch (error) {
             showToast('Không thể xóa tài khoản', 'error');
         } finally {
             setConfirmDelete(null);
+        }
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        setIsUpdating(true);
+        try {
+            const { userID, fullName, email, phone, role } = editStaff;
+            await updateBranchStaff(userID, { fullName, email, phone, role });
+            setStaff(prev => prev.map(s => s.userID === userID ? { ...s, fullName, email, phone, role } : s));
+            showToast('Cập nhật thành công');
+            setEditStaff(null);
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Không thể cập nhật', 'error');
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -104,11 +122,81 @@ export default function ManagerStaff() {
                                 className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">
                                 Hủy
                             </button>
-                            <button onClick={() => handleDelete(confirmDelete.id)}
+                            <button onClick={() => handleDelete(confirmDelete.userID)}
                                 className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors">
                                 Xóa tài khoản
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Modal */}
+            {editStaff && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 text-left">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <h3 className="font-bold text-gray-900">Chỉnh sửa nhân viên</h3>
+                            <button onClick={() => setEditStaff(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdate} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Họ và tên</label>
+                                    <input
+                                        required
+                                        value={editStaff.fullName || ''}
+                                        onChange={e => setEditStaff({ ...editStaff, fullName: e.target.value })}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Số điện thoại</label>
+                                    <input
+                                        value={editStaff.phone || ''}
+                                        onChange={e => setEditStaff({ ...editStaff, phone: e.target.value })}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Email</label>
+                                <input
+                                    required type="email"
+                                    value={editStaff.email || ''}
+                                    onChange={e => setEditStaff({ ...editStaff, email: e.target.value })}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all text-sm"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Vai trò</label>
+                                <div className="relative">
+                                    <ShieldCheck size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <select
+                                        value={editStaff.role || 'Staff'}
+                                        onChange={e => setEditStaff({ ...editStaff, role: e.target.value })}
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all text-sm appearance-none bg-white"
+                                    >
+                                        <option value="Staff">Phục vụ / Staff</option>
+                                        <option value="Kitchen">Đầu bếp / Kitchen</option>
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+                            <div className="pt-4 flex gap-3">
+                                <button type="button" onClick={() => setEditStaff(null)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                                    Hủy
+                                </button>
+                                <button type="submit" disabled={isUpdating}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2">
+                                    {isUpdating && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                    Lưu thay đổi
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
@@ -182,7 +270,7 @@ export default function ManagerStaff() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm min-h-[400px]">
                 {loading ? (
                     <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
                         <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mr-3" />
@@ -203,8 +291,7 @@ export default function ManagerStaff() {
                         </button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+                    <table className="w-full">
                             <thead>
                                 <tr className="border-b border-gray-100 bg-gray-50/50">
                                     {['Nhân viên', 'Vai trò', 'Liên hệ', 'Trạng thái', ''].map(h => (
@@ -213,8 +300,8 @@ export default function ManagerStaff() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filtered.map(s => (
-                                    <tr key={s.id} className="hover:bg-gray-50/60 transition-colors group">
+                                {filtered.map((s, index) => (
+                                    <tr key={s.userID} className="hover:bg-gray-50/60 transition-colors group">
                                         {/* Account */}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -244,7 +331,7 @@ export default function ManagerStaff() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <button
-                                                    onClick={() => handleToggle(s.id, s.isActive ? 'Active' : (s.status || 'Inactive'))}
+                                                    onClick={() => handleToggle(s.userID, s.isActive ? 'Active' : (s.status || 'Inactive'))}
                                                     className={`relative w-11 h-6 rounded-full transition-all duration-300 focus:outline-none
                                                         ${(s.isActive || s.status === 'Active') ? 'bg-emerald-500' : 'bg-gray-200'}`}
                                                 >
@@ -261,15 +348,18 @@ export default function ManagerStaff() {
                                         <td className="px-6 py-4">
                                             <div className="relative flex justify-end">
                                                 <button
-                                                    onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                                                    onClick={() => setOpenMenuId(openMenuId === s.userID ? null : s.userID)}
                                                     className="p-2 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-100 transition-all"
                                                 >
                                                     <MoreVertical size={16} />
                                                 </button>
-                                                {openMenuId === s.id && (
-                                                    <div className="absolute right-0 top-10 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1.5 w-44"
+                                                {openMenuId === s.userID && (
+                                                    <div className={`absolute right-0 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1.5 w-44 transition-all duration-200
+                                                        ${(index > 0 && index >= filtered.length - 2) ? 'bottom-full mb-1' : 'top-10'}`}
                                                         onMouseLeave={() => setOpenMenuId(null)}>
-                                                        <button className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                        <button 
+                                                            onClick={() => { setEditStaff({ ...s }); setOpenMenuId(null); }}
+                                                            className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                                             <Edit2 size={14} className="text-blue-500" />
                                                             Chỉnh sửa
                                                         </button>
@@ -287,8 +377,7 @@ export default function ManagerStaff() {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
-                    </div>
+                    </table>
                 )}
             </div>
         </BranchManagerLayout>

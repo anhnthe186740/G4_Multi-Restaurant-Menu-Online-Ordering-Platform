@@ -2245,3 +2245,63 @@ export const deleteOwnerManager = async (req, res) => {
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
+/* =================== UPDATE OWNER MANAGER =================== */
+/**
+ * PUT /owner/managers/:id
+ * Cập nhật thông tin tài khoản manager.
+ */
+export const updateOwnerManager = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const managerID = parseInt(req.params.id);
+    const { fullName, email, phone, branchId } = req.body;
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
+
+    // Kiểm tra manager thuộc nhà hàng này
+    const manager = await prisma.user.findFirst({
+      where: {
+        userID: managerID,
+        role: 'BranchManager',
+        managedBranches: { some: { restaurantID: restaurant.restaurantID } },
+      },
+    });
+    if (!manager) return res.status(404).json({ message: 'Không tìm thấy tài khoản quản lý' });
+
+    // Kiểm tra email trùng (nếu thay đổi email)
+    if (email && email.trim() !== manager.email) {
+      const existing = await prisma.user.findUnique({ where: { email: email.trim() } });
+      if (existing) return res.status(400).json({ message: 'Email đã tồn tại' });
+    }
+
+    // Cập nhật thông tin User
+    const updatedUser = await prisma.user.update({
+      where: { userID: managerID },
+      data: {
+        fullName: fullName || manager.fullName,
+        email: email ? email.trim() : manager.email,
+        phone: phone || manager.phone,
+      },
+    });
+
+    // Cập nhật chi nhánh nếu thay đổi
+    if (branchId) {
+      // Xóa gán cũ
+      await prisma.branch.updateMany({
+        where: { managerUserID: managerID, restaurantID: restaurant.restaurantID },
+        data: { managerUserID: null },
+      });
+      // Gán mới
+      await prisma.branch.update({
+        where: { branchID: parseInt(branchId), restaurantID: restaurant.restaurantID },
+        data: { managerUserID: managerID },
+      });
+    }
+
+    res.json({ message: 'Cập nhật thông tin thành công', manager: updatedUser });
+  } catch (error) {
+    console.error('updateOwnerManager error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
