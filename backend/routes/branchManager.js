@@ -67,10 +67,8 @@ router.patch("/orders/:id/status", requireRole("BranchManager", "Staff"), update
 // Order items
 router.patch("/order-items/:detailId/cancel", requireRole("BranchManager", "Staff"), cancelOrderItem);
 
-// Orders
-router.get("/orders",              getOrders);
-router.patch("/orders/:id/status", updateOrderStatus);
-router.get("/payment-history",    getPaymentHistory);
+// Payment History
+router.get("/payment-history", requireRole("BranchManager"), getPaymentHistory);
 // Service Requests
 
 // Service Requests (Manager + Staff)
