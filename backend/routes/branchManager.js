@@ -5,6 +5,7 @@ import {
   getManagerOrderStatus,
   getManagerTopProducts,
   getManagerOrdersHeatmap,
+  exportRevenueReport,
   getTables,
   createTable,
   updateTable,
@@ -40,9 +41,11 @@ router.use(authenticateToken);
 // Dashboard (Manager only)
 router.get("/dashboard/stats",          requireRole("BranchManager"), getManagerDashboardStats);
 router.get("/dashboard/revenue-trend",  requireRole("BranchManager"), getManagerRevenueTrend);
+router.get("/dashboard/export-revenue", requireRole("BranchManager"), exportRevenueReport);
 router.get("/dashboard/order-status",   requireRole("BranchManager"), getManagerOrderStatus);
 router.get("/dashboard/top-products",   requireRole("BranchManager"), getManagerTopProducts);
 router.get("/dashboard/orders-heatmap", requireRole("BranchManager"), getManagerOrdersHeatmap);
+
 
 // Tables (Manager + Staff)
 router.get("/tables",              requireRole("BranchManager", "Staff"), getTables);

@@ -95,6 +95,8 @@ export default function BranchManagerDashboard() {
     const [topProducts, setTopProducts] = useState([]);
     const [heatmap, setHeatmap]         = useState([]);
 
+    const [exporting, setExporting]     = useState(false);
+
     const loadAll = useCallback(async (p = period) => {
         setLoading(true);
         const [s, r, o, t, h] = await Promise.allSettled([
@@ -115,6 +117,54 @@ export default function BranchManagerDashboard() {
     useEffect(() => { loadAll(period); }, [period]); // eslint-disable-line
 
     const handlePeriod = (p) => { setPeriod(p); };
+
+    const handleExportRevenue = async (type = 'excel') => {
+        // Build startDate and endDate based on period
+        const end = new Date();
+        const start = new Date();
+        if (period === 'today') {
+            // giu nguyen start hien tai la today
+        } else if (period === '7days') {
+            start.setDate(start.getDate() - 6);
+        } else if (period === 'month') {
+            start.setDate(1);
+        }
+        
+        const startDateStr = start.toISOString().split('T')[0];
+        const endDateStr = end.toISOString().split('T')[0];
+
+        try {
+            setExporting(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:5000/api/manager/dashboard/export-revenue?startDate=${startDateStr}&endDate=${endDateStr}&type=${type}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.message || 'Lỗi xuất báo cáo.');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const extension = type === 'pdf' ? 'pdf' : 'xlsx';
+            link.setAttribute('download', `Doanh_Thu_${startDateStr}_${endDateStr}.${extension}`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Lỗi khi xuất:', error);
+            alert(error.message || 'Lỗi khi tải file báo cáo.');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     /* ─ Donut data ─ */
     const donutData = [
@@ -172,10 +222,24 @@ export default function BranchManagerDashboard() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-                        <Download size={15} />
-                        Xuất báo cáo
-                    </button>
+                    <div className="flex bg-white rounded-xl border border-gray-200 overflow-hidden divide-x divide-gray-200">
+                        <button 
+                            disabled={exporting}
+                            onClick={() => handleExportRevenue('excel')}
+                            className="flex items-center gap-2 text-emerald-600 hover:bg-emerald-50 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                            {exporting ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
+                            Excel
+                        </button>
+                        <button 
+                            disabled={exporting}
+                            onClick={() => handleExportRevenue('pdf')}
+                            className="flex items-center gap-2 text-red-600 hover:bg-red-50 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                            {exporting ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
+                            PDF
+                        </button>
+                    </div>
                     <button
                         onClick={() => loadAll(period)}
                         className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"

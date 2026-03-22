@@ -11,6 +11,7 @@ if (process.env.PAYOS_CLIENT_ID && process.env.PAYOS_API_KEY && process.env.PAYO
   );
 }
 import bcrypt from "bcrypt";
+import { ExcelExportStrategy, PdfExportStrategy } from "../config/ExportStrategy.js";
 import { sendNewAccountEmail } from "../config/emailService.js";
 
 /* ─── helper: lấy branchID mà user này quản lý ─── */
@@ -155,6 +156,84 @@ export const getManagerDashboardStats = async (req, res) => {
   } catch (err) {
     console.error("getManagerDashboardStats error:", err);
     res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ===============================================================
+   1.1 EXPORT REVENUE REPORT
+   GET /api/manager/dashboard/export-revenue?startDate=...&endDate=...
+=============================================================== */
+export const exportRevenueReport = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { startDate, endDate, type = "excel" } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Vui lòng truyền startDate và endDate." });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const [branch, orders] = await Promise.all([
+      prisma.branch.findUnique({
+        where: { branchID },
+        select: { name: true, address: true }
+      }),
+      prisma.order.findMany({
+        where: {
+          branchID: branchID,
+          orderStatus: "Completed",
+          orderTime: {
+            gte: start,
+            lte: end,
+          },
+        },
+        select: {
+          orderID: true,
+          orderTime: true,
+          totalAmount: true,
+          paymentStatus: true,
+          creator: {
+            select: { fullName: true, username: true }
+          },
+          orderTables: {
+            select: {
+              table: { select: { tableName: true } }
+            }
+          }
+        },
+        orderBy: { orderTime: "asc" }
+      })
+    ]);
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "Không có dữ liệu trong thời gian này." });
+    }
+
+    const reportData = {
+      branch,
+      orders,
+      startDate: start,
+      endDate: end
+    };
+
+    let exportStrategy;
+    if (type === "pdf") {
+      exportStrategy = new PdfExportStrategy();
+    } else {
+      exportStrategy = new ExcelExportStrategy();
+    }
+    
+    await exportStrategy.exportData(reportData, res);
+
+  } catch (err) {
+    console.error("exportRevenueReport error:", err);
+    res.status(500).json({ message: "Lỗi máy chủ khi xuất báo cáo." });
   }
 };
 
