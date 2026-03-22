@@ -4,7 +4,11 @@ import { getServerIP } from '../api/publicApi';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
-    MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer, Clock
+
+     Clock,
+    MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer,
+    Bell, ChefHat, Loader2, AlertCircle, ClipboardList, UtensilsCrossed, Minus
+
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -14,6 +18,10 @@ import {
     updateManagerTable,
     updateManagerTableStatus,
     deleteManagerTable,
+    getManagerTableOrderDetails,
+    cancelManagerOrderItem,
+    createManagerServiceRequest,
+    processManagerCheckout,
 } from '../api/managerApi';
 import CustomerMenu from './CustomerMenu';
 import TablePaymentModal from '../components/manager/TablePaymentModal';
@@ -436,6 +444,391 @@ function PrintQRModal({ tables, onClose }) {
     );
 }
 
+/* ─── Badge trạng thái món ─────────────────────────────────────────────────── */
+const ITEM_STATUS_CONFIG = {
+    Pending:   { label: 'Đơn mới',     bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300', dot: 'bg-yellow-400' },
+    Cooking:   { label: 'Đang nấu',   bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', dot: 'bg-orange-400' },
+    Ready:     { label: 'Sẵn sàng',   bg: 'bg-green-100',  text: 'text-green-700',  border: 'border-green-300',  dot: 'bg-green-400'  },
+    Served:    { label: 'Đã phục vụ', bg: 'bg-gray-100',   text: 'text-gray-500',   border: 'border-gray-200',   dot: 'bg-gray-400'   },
+    Cancelled: { label: 'Đã huỷ',     bg: 'bg-red-50',     text: 'text-red-400',    border: 'border-red-200',    dot: 'bg-red-300'    },
+};
+
+function ItemStatusBadge({ status }) {
+    const cfg = ITEM_STATUS_CONFIG[status] || ITEM_STATUS_CONFIG.Pending;
+    return (
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+            {cfg.label}
+        </span>
+    );
+}
+
+/* ────────────────────────────────────────────────────────────
+   Modal chọn số lượng huỷ (Manager side)
+──────────────────────────────────────────────────────────── */
+function CancelQuantityModal({ item, onClose, onConfirm, isCancelling }) {
+    const [qty, setQty] = useState(1);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-scale-in">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto border border-red-200">
+                    <X size={24} className="text-red-600" />
+                </div>
+                <h2 className="text-lg font-black text-center text-gray-900 mb-1">Huỷ món/số lượng?</h2>
+                <p className="text-sm text-center text-gray-500 mb-5">
+                    Bạn muốn huỷ bao nhiêu <strong className="text-gray-800">{item.productName}</strong>? (Tối đa {item.quantity})
+                </p>
+
+                <div className="flex items-center justify-center gap-6 mb-8">
+                    <button
+                        onClick={() => setQty(Math.max(1, qty - 1))}
+                        className="w-12 h-12 rounded-full border-2 border-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-90 transition-all"
+                    >
+                        <Minus size={20} strokeWidth={3} />
+                    </button>
+                    <span className="text-3xl font-black text-gray-800 min-w-[40px] text-center">
+                        {qty}
+                    </span>
+                    <button
+                        onClick={() => setQty(Math.min(item.quantity, qty + 1))}
+                        className="w-12 h-12 rounded-full border-2 border-emerald-100 bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 active:scale-90 transition-all"
+                    >
+                        <Plus size={20} strokeWidth={3} />
+                    </button>
+                </div>
+
+                <div className="flex gap-3">
+                    <button disabled={isCancelling} onClick={onClose}
+                        className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 transition disabled:opacity-50">
+                        Đóng
+                    </button>
+                    <button
+                        disabled={isCancelling}
+                        onClick={() => onConfirm(qty)}
+                        className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition shadow-lg shadow-red-500/30 disabled:opacity-50 flex justify-center items-center gap-2"
+                    >
+                        {isCancelling ? <Loader2 size={18} className="animate-spin" /> : "Xác nhận huỷ"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Panel Order của bàn ──────────────────────────────────────────────────── */
+function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refreshTables }) {
+    const [order, setOrder]           = useState(null);
+    const [loading, setLoading]       = useState(true);
+    const [error, setError]           = useState(null);
+    const [callingStaff, setCallingStaff] = useState(false);
+    const [staffCalled, setStaffCalled]   = useState(false);
+    const [cancellingId, setCancellingId] = useState(null);
+    const [checkingOut, setCheckingOut]   = useState(false);
+    const [cancelModalItem, setCancelModalItem] = useState(null);
+
+    const loadOrder = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await getManagerTableOrderDetails(tableId);
+            setOrder(res.data);
+        } catch (err) {
+            if (err.response?.status === 404) {
+                setError('Bàn này chưa có đơn hàng nào đang mở.');
+            } else {
+                setError(err.response?.data?.message || 'Lỗi tải đơn hàng.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [tableId]);
+
+    useEffect(() => { loadOrder(); }, [loadOrder]);
+
+    const handleCallStaff = async () => {
+        setCallingStaff(true);
+        try {
+            await createManagerServiceRequest({ tableId, requestType: 'GoiMon' });
+            setStaffCalled(true);
+            setTimeout(() => setStaffCalled(false), 3000);
+        } catch (err) {
+            console.error('Gọi nhân viên lỗi:', err);
+        } finally {
+            setCallingStaff(false);
+        }
+    };
+
+    const handleCancelItem = (item) => {
+        if (item.quantity > 1) {
+            setCancelModalItem(item);
+        } else {
+            if (!window.confirm(`Huỷ món ${item.productName}?`)) return;
+            confirmCancelQuantity(item.orderDetailID, 1);
+        }
+    };
+
+    const confirmCancelQuantity = async (orderDetailID, cancelQuantity) => {
+        setCancellingId(orderDetailID);
+        try {
+            await cancelManagerOrderItem(orderDetailID, cancelQuantity);
+            setCancelModalItem(null);
+            await loadOrder(); 
+        } catch (err) {
+            alert(err.response?.data?.message || "Không thể huỷ món này.");
+        } finally {
+            setCancellingId(null);
+        }
+    };
+
+    const handleCheckout = async () => {
+        if (!order) return;
+        setCheckingOut(true);
+        try {
+            await processManagerCheckout(tableId, { paymentMethod: 'Cash' });
+            onCheckoutSuccess && onCheckoutSuccess(`Thanh toán ${tableName} thành công!`);
+            refreshTables && refreshTables();
+            onClose();
+        } catch (err) {
+            console.error('Thanh toán lỗi:', err);
+        } finally {
+            setCheckingOut(false);
+        }
+    };
+
+    // Tính tổng tiền chỉ các món chưa bị huỷ
+    const activeItems    = order?.items?.filter(i => i.itemStatus !== 'Cancelled') ?? [];
+    const cancelledItems = order?.items?.filter(i => i.itemStatus === 'Cancelled') ?? [];
+    const displayTotal   = activeItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+
+    return (
+        <div className="flex flex-col h-full bg-white">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-emerald-700 to-emerald-600 flex-shrink-0">
+                <div>
+                    <h2 className="font-bold text-white text-lg">{tableName}</h2>
+                    {order && (
+                        <p className="text-emerald-200 text-xs mt-0.5">
+                            Đơn #{order.orderID} · {order.orderStatus === 'Open' ? '🟡 Chờ xử lý' : '🟠 Đang phục vụ'}
+                        </p>
+                    )}
+                </div>
+                <button onClick={onClose}
+                    className="p-2 hover:bg-emerald-800 rounded-xl transition text-white">
+                    <X size={20} />
+                </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto">
+                {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 size={28} className="animate-spin text-emerald-500" />
+                    </div>
+                ) : error ? (
+                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                        <AlertCircle size={36} className="text-gray-300 mb-3" />
+                        <p className="text-gray-500 text-sm">{error}</p>
+                        <button onClick={loadOrder}
+                            className="mt-4 px-4 py-2 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition">
+                            Thử lại
+                        </button>
+                    </div>
+                ) : (
+                    <>
+
+                        {/* Section: Danh sách món */}
+                        <div className="px-5 py-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+                                    <ChefHat size={15} className="text-emerald-600" /> Danh sách món
+                                    <span className="text-xs font-normal text-gray-400">({activeItems.length} món)</span>
+                                </h3>
+                                <button onClick={loadOrder} className="p-1 hover:bg-gray-100 rounded-lg transition text-gray-400">
+                                    <RefreshCw size={13} />
+                                </button>
+                            </div>
+
+                            {order.items.length === 0 ? (
+                                <p className="text-center text-gray-400 text-sm py-6">Chưa có món nào</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {order.items.map(item => {
+                                        const isCancelled = item.itemStatus === 'Cancelled';
+                                        const isPending   = item.itemStatus === 'Pending';
+                                        const isCancelling = cancellingId === item.orderDetailID;
+                                        return (
+                                            <div key={item.orderDetailID}
+                                                className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
+                                                    isCancelled
+                                                        ? 'bg-gray-50 border-gray-100 opacity-60'
+                                                        : 'bg-white border-gray-100 hover:border-gray-200'
+                                                }`}>
+                                                {/* Ảnh mon */}
+                                                {item.imageURL ? (
+                                                    <img src={`http://${window.location.hostname}:5000${item.imageURL}`}
+                                                        alt={item.productName}
+                                                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-lg">🍽️</div>
+                                                )}
+                                                {/* Thông tin */}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`font-semibold text-sm ${
+                                                        isCancelled ? 'line-through text-gray-400' : 'text-gray-800'
+                                                    }`}>
+                                                        {item.productName}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs text-gray-400">x{item.quantity}</span>
+                                                        <span className="text-xs font-medium text-gray-600">
+                                                            {(item.unitPrice * item.quantity).toLocaleString('vi-VN')}đ
+                                                        </span>
+                                                    </div>
+                                                    {item.note && (
+                                                        <p className="text-xs text-amber-600 mt-0.5 italic">📝 {item.note}</p>
+                                                    )}
+                                                    <div className="mt-1.5">
+                                                        <ItemStatusBadge status={item.itemStatus} />
+                                                    </div>
+                                                </div>
+                                                {/* Nút huỷ — chỉ hiện khi Pending */}
+                                                {isPending && (
+                                                    <button
+                                                        onClick={() => handleCancelItem(item)}
+                                                        disabled={isCancelling}
+                                                        title="Huỷ món này"
+                                                        className="flex-shrink-0 p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50">
+                                                        {isCancelling
+                                                            ? <Loader2 size={14} className="animate-spin" />
+                                                            : <X size={14} />}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Ghi chú khách hàng */}
+                            {order.customerNote && (
+                                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                    <p className="text-xs font-semibold text-amber-700 mb-0.5">📝 Ghi chú khách</p>
+                                    <p className="text-xs text-amber-600">{order.customerNote}</p>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Footer: Tổng tiền + Thanh toán */}
+            {order && (
+                <div className="flex-shrink-0 border-t border-gray-100 px-5 py-4 bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium text-gray-600">Tổng tiền</span>
+                        <span className="text-xl font-black text-emerald-700">
+                            {displayTotal.toLocaleString('vi-VN')}đ
+                        </span>
+                    </div>
+                    {cancelledItems.length > 0 && (
+                        <p className="text-xs text-gray-400 mb-2 text-right">
+                            Đã huỷ {cancelledItems.length} món
+                        </p>
+                    )}
+                    <button
+                        onClick={handleCheckout}
+                        disabled={checkingOut || activeItems.length === 0}
+                        className={`w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                            activeItems.length === 0
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-red-500 to-rose-500 text-white hover:from-red-600 hover:to-rose-600 active:scale-95 shadow-sm'
+                        }`}>
+                        {checkingOut
+                            ? <><Loader2 size={15} className="animate-spin" /> Đang xử lý...</>
+                            : <><CreditCard size={15} /> Thanh toán (Tiền mặt)</>}
+                    </button>
+                </div>
+            )}
+
+            {/* Modal chọn số lượng (nếu Qty > 1) */}
+            {cancelModalItem && (
+                <CancelQuantityModal
+                    item={cancelModalItem}
+                    onClose={() => setCancelModalItem(null)}
+                    isCancelling={cancellingId === cancelModalItem.orderDetailID}
+                    onConfirm={(qty) => confirmCancelQuantity(cancelModalItem.orderDetailID, qty)}
+                />
+            )}
+        </div>
+    );
+}
+
+/* ─── Drawer Tabs: bọc 2 tab (Đơn hàng mới + Thêm món cũ) ─────────────────── */
+function TableDrawerTabs({ tableId, tableName, onClose, onCheckoutSuccess, refreshTables }) {
+    const [activeTab, setActiveTab] = useState('order'); // 'order' | 'menu'
+
+    return (
+        <div className="flex flex-col h-full bg-white">
+            {/* Tab headers */}
+            <div className="flex border-b border-gray-200 flex-shrink-0 bg-white">
+                <button
+                    onClick={() => setActiveTab('order')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${
+                        activeTab === 'order'
+                            ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}>
+                    <ClipboardList size={15} /> Đơn hàng
+                </button>
+                <button
+                    onClick={() => setActiveTab('menu')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${
+                        activeTab === 'menu'
+                            ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}>
+                    <UtensilsCrossed size={15} /> Thêm món
+                </button>
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+                {/* Tab Đơn hàng — TableOrderPanel */}
+                <div className={`flex-1 overflow-hidden flex flex-col ${activeTab === 'order' ? 'flex' : 'hidden'}`}>
+                    <TableOrderPanel
+                        tableId={tableId}
+                        tableName={tableName}
+                        onClose={onClose}
+                        onCheckoutSuccess={onCheckoutSuccess}
+                        refreshTables={refreshTables}
+                    />
+                </div>
+
+                {/* Tab Thêm món — CustomerMenu (code cũ) */}
+                <div className={`flex-1 overflow-hidden flex flex-col relative ${activeTab === 'menu' ? 'flex' : 'hidden'}`}>
+                    {/* Nút đóng cho tab menu */}
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 z-[70] p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-md"
+                    >
+                        <X size={18} />
+                    </button>
+                    <div className="flex-1 overflow-y-auto">
+                        <CustomerMenu
+                            tableIdProp={tableId}
+                            onCheckoutSuccess={(msg) => {
+                                onCheckoutSuccess && onCheckoutSuccess(msg || "Đã xác nhận order thành công!");
+                                refreshTables && refreshTables();
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ─── Toast thông báo ──────────────────────────────────────────────────────── */
 function Toast({ message, onClose }) {
     useEffect(() => {
@@ -511,6 +904,11 @@ export default function TableManagement() {
         socket.on("tableUpdate", (data) => {
             console.log("🔄 Real-time Update Received:", data);
             loadTables(); // Refresh the list
+        });
+
+        // Cảnh báo spam huỷ món
+        socket.on("spamAlert", ({ message }) => {
+            showToast(`🚨 ${message}`);
         });
 
         return () => {
@@ -766,9 +1164,11 @@ export default function TableManagement() {
             {printTables && <PrintQRModal tables={printTables} onClose={() => setPrintTables(null)} />}
             {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
-            {/* Menu Drawer */}
-            <div 
-                className={`fixed inset-y-0 right-0 w-full md:w-[600px] bg-white shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col ${menuDrawerTableId ? 'translate-x-0' : 'translate-x-full'}`}
+            {/* Drawer: 2 tabs — Đơn hàng | Thêm món */}
+            <div
+                className={`fixed inset-y-0 right-0 w-full md:w-[540px] shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col bg-white ${
+                    menuDrawerTableId ? 'translate-x-0' : 'translate-x-full'
+                }`}
             >
                 {menuDrawerTableId && (
                     <div className="relative flex-1 flex flex-col overflow-hidden">
@@ -787,6 +1187,17 @@ export default function TableManagement() {
                             />
                         </div>
                     </div>
+                    <TableDrawerTabs
+                        tableId={menuDrawerTableId}
+                        tableName={tables.find(t => t.id === menuDrawerTableId)?.name ?? 'Bàn'}
+                        onClose={() => setMenuDrawerTableId(null)}
+                        onCheckoutSuccess={(msg) => {
+                            showToast(msg || 'Thanh toán thành công!');
+                            setMenuDrawerTableId(null);
+                            loadTables();
+                        }}
+                        refreshTables={loadTables}
+                    />
                 )}
             </div>
 

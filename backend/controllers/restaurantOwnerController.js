@@ -1,5 +1,7 @@
 import prisma from "../config/prismaClient.js";
 import { Parser } from "json2csv";
+import { sendNewAccountEmail } from "../config/emailService.js";
+import fs from "fs/promises";
 
 /*
   restaurantOwnerController.js
@@ -939,7 +941,7 @@ export const deleteOwnerBranch = async (req, res) => {
 // 1. Lấy danh sách đơn hàng trong ngày của chi nhánh/bếp (FIFO)
 export const getKitchenOrders = async (req, res) => {
   try {
-    const userID = req.user.userId;
+    const userID = parseInt(req.user?.userId || req.user?.userID);
     const branchID = parseInt(req.params.branchID);
     const categoryID = req.query.categoryID ? parseInt(req.query.categoryID) : null;
 
@@ -959,9 +961,17 @@ export const getKitchenOrders = async (req, res) => {
         where: { branchID, managerUserID: userID },
       });
       if (branch) allowed = true;
+    } else if (userRole === "Staff" || userRole === "Kitchen") {
+      const user = await prisma.user.findFirst({
+        where: { userID, branchID },
+      });
+      if (user) allowed = true;
     }
 
     if (!allowed) {
+      const logMsg = `❌ Auth Denied: userID=${userID}, role=${userRole}, branchID=${branchID}, req.user=${JSON.stringify(req.user)}\n`;
+      try { await fs.appendFile('d:/Kì 6/SWP391/G4_Multi-Restaurant-Menu-Online-Ordering-Platform/backend/tmp/auth_logs.txt', logMsg); } catch(e) {}
+      console.log(logMsg);
       return res.status(403).json({ message: "Bạn không có quyền truy cập dữ liệu của chi nhánh này" });
     }
 
@@ -993,6 +1003,7 @@ export const getKitchenOrders = async (req, res) => {
       orderID: o.orderID,
       tableName: o.orderTables.map(ot => ot.table.tableName).join(", "),
       orderTime: o.orderTime,
+      orderStatus: o.orderStatus,
       customerNote: o.customerNote,
       items: o.orderDetails.map(d => ({
         orderDetailID: d.orderDetailID,
@@ -1000,6 +1011,7 @@ export const getKitchenOrders = async (req, res) => {
         quantity: d.quantity,
         note: d.note,
         itemStatus: d.itemStatus,
+        categoryID: d.product.categoryID,
       })),
     }));
 
@@ -1840,6 +1852,9 @@ export const getOwnerManagers = async (req, res) => {
       .map(b => b.managerUserID)
       .filter(id => id !== null && id !== undefined);
 
+    console.log(`[DEBUG] Owner ${userID} - Restaurant ${restaurant.restaurantID}`);
+    console.log(`[DEBUG] Found ${branches.length} branches, managerUserIDs:`, managerUserIDs);
+
     // Lấy tất cả user có role BranchManager thuộc nhà hàng này
     const managers = await prisma.user.findMany({
       where: {
@@ -1922,6 +1937,11 @@ export const updateItemStatus = async (req, res) => {
         where: { branchID, managerUserID: userID },
       });
       if (branch) allowed = true;
+    } else if (userRole === "Staff" || userRole === "Kitchen") {
+      const user = await prisma.user.findFirst({
+        where: { userID, branchID },
+      });
+      if (user) allowed = true;
     }
 
     if (!allowed) {
@@ -1931,7 +1951,7 @@ export const updateItemStatus = async (req, res) => {
     const updated = await prisma.orderDetail.update({
       where: { orderDetailID: parseInt(orderDetailID) },
       data: { itemStatus: status },
-      include: { order: true }
+      include: { order: { include: { orderTables: { select: { tableID: true }, take: 1 } } } }
     });
 
     // Nếu món được Served, kiểm tra xem toàn bộ đơn đã xong chưa
@@ -1946,10 +1966,20 @@ export const updateItemStatus = async (req, res) => {
       if (remaining === 0) {
         await prisma.order.update({
           where: { orderID: updated.orderID },
-          data: { orderStatus: "Completed", paymentStatus: "Paid" } // Cập nhật status order
+          data: { orderStatus: "Completed", paymentStatus: "Paid" }
         });
       }
     }
+
+    // Phát realtime cho trang QR của khách
+    const io = req.app.get("io");
+    const tableID = updated.order?.orderTables?.[0]?.tableID ?? null;
+    io?.emit("orderItemStatusChanged", {
+      orderDetailID: parseInt(orderDetailID),
+      itemStatus: status,
+      tableID,
+      orderID: updated.orderID,
+    });
 
     res.json({ message: "Cập nhật trạng thái món thành công", updated });
   } catch (error) {
@@ -2004,6 +2034,11 @@ export const updateMultipleItemStatus = async (req, res) => {
           where: { branchID: bID, managerUserID: userID },
         });
         if (branch) allowed = true;
+      } else if (userRole === "Staff" || userRole === "Kitchen") {
+        const user = await prisma.user.findFirst({
+          where: { userID, branchID: bID },
+        });
+        if (user) allowed = true;
       }
 
       if (!allowed) {
@@ -2038,6 +2073,17 @@ export const updateMultipleItemStatus = async (req, res) => {
           });
         }
       }
+    }
+
+    // Phát realtime cho từng orderDetailID đã cập nhật
+    const io = req.app.get("io");
+    if (io) {
+      ids.forEach(id => {
+        io.emit("orderItemStatusChanged", {
+          orderDetailID: id,
+          itemStatus: status,
+        });
+      });
     }
 
     res.json({ message: "Cập nhật trạng thái hàng loạt thành công" });
@@ -2097,6 +2143,11 @@ export const createOwnerManager = async (req, res) => {
         status: isActive === false ? 'Inactive' : 'Active',
       },
     });
+
+    // Gửi email nếu có
+    if (newUser.email) {
+      await sendNewAccountEmail(newUser.email, newUser.fullName, newUser.username, password, 'BranchManager');
+    }
 
     // Gán manager vào chi nhánh
     await prisma.branch.update({

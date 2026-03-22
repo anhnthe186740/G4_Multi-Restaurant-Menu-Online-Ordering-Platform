@@ -82,6 +82,10 @@ export default function Login() {
                     navigate("/owner/dashboard");
                 } else if (role === "BranchManager") {
                     navigate("/manager/dashboard");
+                } else if (role === "Staff") {
+                    navigate("/manager/tables");
+                } else if (role === "Kitchen") {
+                    navigate("/kitchen/kds");
                 } else {
                     navigate("/");
                 }
