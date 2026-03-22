@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { getOwnerKitchenOrders, updateOwnerItemStatus, updateOwnerMultipleItemStatus, getOwnerBranches } from '../api/ownerApi';
 import { getManagerBranchInfo } from '../api/managerApi';
+import ChangePasswordModal from '../components/modals/ChangePasswordModal';
 import {
     Clock,
     ChevronLeft,
@@ -24,6 +25,7 @@ export default function KitchenDisplaySystem() {
     const [searchParams] = useSearchParams();
     const categoryID = searchParams.get('categoryID');
     const navigate = useNavigate();
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
 
     const userData = useMemo(() => {
         try { return JSON.parse(localStorage.getItem('user') || '{}'); }
@@ -308,12 +310,21 @@ export default function KitchenDisplaySystem() {
                             <p className="text-base font-black text-slate-900 leading-none">{currentTime}</p>
                             <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">{dayjs().format('DD MMMM, YYYY')}</p>
                         </div>
-                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
+                        <button 
+                            onClick={() => setShowPasswordModal(true)}
+                            className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 hover:bg-blue-100 transition-colors"
+                            title="Đổi mật khẩu"
+                        >
                             <User size={20} className="text-blue-600" />
-                        </div>
+                        </button>
                     </div>
                 </div>
             </header>
+
+            <ChangePasswordModal 
+                isOpen={showPasswordModal} 
+                onClose={() => setShowPasswordModal(false)} 
+            />
 
             {/* Main Content */}
             <div className="flex-1 overflow-hidden relative">

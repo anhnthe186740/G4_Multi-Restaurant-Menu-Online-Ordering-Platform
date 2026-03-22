@@ -56,7 +56,7 @@ export const register = async (req, res) => {
         email,
         passwordHash,
         phone: phone || null,
-        role: "Staff", // Mặc định role là Staff
+        role: "User", // Mặc định role là User
       },
     });
 
@@ -284,7 +284,7 @@ export const googleLogin = async (req, res) => {
           fullName: name || null,
           email,
           passwordHash,
-          role: "Staff",
+          role: "User",
         },
       });
 

@@ -53,6 +53,10 @@ export const getManagerServiceRequests         = (params)     => managerAxios.ge
 export const createManagerServiceRequest       = (data)       => managerAxios.post("manager/service-requests", data);
 export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });
 
+// Menu
+export const getManagerMenuItems = () => managerAxios.get("manager/menu");
+export const saveManagerMenu = (items) => managerAxios.post("manager/menu/save", { items });
+
 // Staff Management
 export const getBranchStaff = () => managerAxios.get("manager/staff");
 export const createBranchStaff = (data) => managerAxios.post("manager/staff", data);
