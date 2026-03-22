@@ -36,6 +36,8 @@ import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
 import OrderManagement from "./pages/OrderManagement";
 import ManagerPaymentHistory from "./pages/ManagerPaymentHistory";
+import ManagerStaff from "./pages/ManagerStaff";
+import ManagerCreateStaff from "./pages/ManagerCreateStaff";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SubscriptionGuard from "./components/SubscriptionGuard";
 import SelfOrderingMenu from "./pages/SelfOrderingMenu";
@@ -302,41 +304,33 @@ export default function App() {
         <Route
           path="/manager/tables"
           element={
-            <ProtectedRoute requiredRole="BranchManager">
+            <ProtectedRoute requiredRole={["BranchManager", "Staff"]}>
               <TableManagement />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/manager/orders"
-          element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <OrderManagement />
-            </ProtectedRoute>
-          }
-        />
-         <Route
           path="/manager/kds"
           element={
-            <ProtectedRoute requiredRole="BranchManager">
+            <ProtectedRoute requiredRole={["BranchManager", "Staff", "Kitchen"]}>
               <KitchenDisplaySystem />
             </ProtectedRoute>
           }
-          />
+        />
 
-          <Route
+        <Route
           path="/manager/service-requests"
           element={
-            <ProtectedRoute requiredRole="BranchManager">
+            <ProtectedRoute requiredRole={["BranchManager", "Staff"]}>
               <ManagerServiceRequests />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/manager/orders"
+          path="/kitchen/kds"
           element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <div className="p-8 text-white">Trang quản lý đơn hàng (đang phát triển)</div>
+            <ProtectedRoute requiredRole={["BranchManager", "Kitchen", "Staff"]}>
+              <KitchenDisplaySystem />
             </ProtectedRoute>
           }
         />
@@ -353,6 +347,21 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <ManagerPaymentHistory />
+       </ProtectedRoute>
+           
+           <Route 
+          path="/manager/staff"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerStaff />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/staff/new"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerCreateStaff />
             </ProtectedRoute>
           }
         />

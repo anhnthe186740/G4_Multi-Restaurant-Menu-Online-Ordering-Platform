@@ -98,6 +98,7 @@ export const login = async (req, res) => {
         role: true,
         status: true,
         lockReason: true,
+        branchID: true,
         managedBranches: {
           select: { branchID: true }
         }
@@ -133,6 +134,7 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       {
         userId: user.userID,  // Lưu userId trong token
+        userID: user.userID,  // Thêm dự phòng
         role: user.role       // Lưu role để phân quyền
       },
       getSecret(),            // Secret key
@@ -149,6 +151,8 @@ export const login = async (req, res) => {
 
     if (user.role === "BranchManager" && user.managedBranches && user.managedBranches.length > 0) {
       userData.branchID = user.managedBranches[0].branchID;
+    } else if (user.branchID) {
+      userData.branchID = user.branchID;
     }
 
     return res.json({
@@ -183,6 +187,7 @@ export const refreshToken = async (req, res) => {
         fullName: true,
         email: true,
         role: true,
+        branchID: true,
         managedBranches: {
           select: { branchID: true }
         }
@@ -211,6 +216,8 @@ export const refreshToken = async (req, res) => {
 
     if (user.role === "BranchManager" && user.managedBranches && user.managedBranches.length > 0) {
       userData.branchID = user.managedBranches[0].branchID;
+    } else if (user.branchID) {
+      userData.branchID = user.branchID;
     }
 
     // Trả về token mới và thông tin user cập nhật
@@ -259,6 +266,7 @@ export const googleLogin = async (req, res) => {
         role: true,
         status: true,
         lockReason: true,
+        branchID: true,
         managedBranches: {
           select: { branchID: true }
         }
@@ -317,6 +325,8 @@ export const googleLogin = async (req, res) => {
 
     if (user.role === "BranchManager" && user.managedBranches && user.managedBranches.length > 0) {
       userData.branchID = user.managedBranches[0].branchID;
+    } else if (user.branchID) {
+      userData.branchID = user.branchID;
     }
 
     return res.json({

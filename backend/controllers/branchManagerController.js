@@ -10,14 +10,26 @@ if (process.env.PAYOS_CLIENT_ID && process.env.PAYOS_API_KEY && process.env.PAYO
     process.env.PAYOS_CHECKSUM_KEY
   );
 }
+import bcrypt from "bcrypt";
+import { sendNewAccountEmail } from "../config/emailService.js";
 
 /* ─── helper: lấy branchID mà user này quản lý ─── */
-const getManagerBranchId = async (userId) => {
-  const branch = await prisma.branch.findFirst({
-    where: { managerUserID: userId },
+const getManagerBranchId = async (user) => {
+  if (!user || !user.userId) return null;
+
+  if (user.role === "BranchManager") {
+    const branch = await prisma.branch.findFirst({
+      where: { managerUserID: parseInt(user.userId) },
+      select: { branchID: true },
+    });
+    return branch?.branchID ?? null;
+  }
+  // Nếu là Staff / Kitchen, lấy branchID trực tiếp từ user
+  const dbUser = await prisma.user.findUnique({
+    where: { userID: parseInt(user.userId) },
     select: { branchID: true },
   });
-  return branch?.branchID ?? null;
+  return dbUser?.branchID ?? null;
 };
 
 /* ─── helper: date range theo period ─── */
@@ -78,7 +90,7 @@ const emitTableUpdate = (req) => {
 =============================================================== */
 export const getManagerDashboardStats = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID)
       return res.status(404).json({ message: "Không tìm thấy chi nhánh được gán cho tài khoản này." });
 
@@ -89,7 +101,7 @@ export const getManagerDashboardStats = async (req, res) => {
     const [
       branch, tables,
       currRevAgg, prevRevAgg,
-      currOrders,  prevOrders,
+      currOrders, prevOrders,
       openOrders, pendingServiceReqs,
     ] = await Promise.all([
       // Thông tin chi nhánh
@@ -128,17 +140,17 @@ export const getManagerDashboardStats = async (req, res) => {
 
     res.json({
       branch,
-      totalTables:    tables.length,
+      totalTables: tables.length,
       occupiedTables: tables.filter(t => t.status === "Occupied").length,
       openOrders,
       pendingServiceRequests: pendingServiceReqs,
       // Stat cards
-      totalRevenue:   currRev,
-      totalOrders:    currOrders,
+      totalRevenue: currRev,
+      totalOrders: currOrders,
       avgOrderValue,
-      revenueGrowth:  calcGrowth(currRev, prevRev),
-      ordersGrowth:   calcGrowth(currOrders, prevOrders),
-      avgGrowth:      calcGrowth(avgOrderValue, prevAvg),
+      revenueGrowth: calcGrowth(currRev, prevRev),
+      ordersGrowth: calcGrowth(currOrders, prevOrders),
+      avgGrowth: calcGrowth(avgOrderValue, prevAvg),
     });
   } catch (err) {
     console.error("getManagerDashboardStats error:", err);
@@ -152,7 +164,7 @@ export const getManagerDashboardStats = async (req, res) => {
 =============================================================== */
 export const getManagerRevenueTrend = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const results = await prisma.$queryRaw`
@@ -169,9 +181,9 @@ export const getManagerRevenueTrend = async (req, res) => {
     `;
 
     const data = results.map(r => ({
-      month:   r.month,
+      month: r.month,
       revenue: parseFloat(r.revenue),
-      orders:  Number(r.orders),
+      orders: Number(r.orders),
     }));
 
     res.json(data);
@@ -187,7 +199,7 @@ export const getManagerRevenueTrend = async (req, res) => {
 =============================================================== */
 export const getManagerOrderStatus = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const period = req.query.period || "today";
@@ -216,7 +228,7 @@ export const getManagerOrderStatus = async (req, res) => {
 =============================================================== */
 export const getManagerTopProducts = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -248,9 +260,9 @@ export const getManagerTopProducts = async (req, res) => {
     const maxQty = rows[0]?._sum?.quantity || 1;
 
     const result = rows.map(r => ({
-      productID:  r.productID,
-      name:       productMap[r.productID] ?? "Sản phẩm không xác định",
-      quantity:   r._sum.quantity || 0,
+      productID: r.productID,
+      name: productMap[r.productID] ?? "Sản phẩm không xác định",
+      quantity: r._sum.quantity || 0,
       percentage: Math.round(((r._sum.quantity || 0) / maxQty) * 100),
     }));
 
@@ -267,7 +279,7 @@ export const getManagerTopProducts = async (req, res) => {
 =============================================================== */
 export const getManagerOrdersHeatmap = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -312,7 +324,7 @@ const mapStatusToDB = (s) => s === "Đang ngồi" ? "Occupied" : "Available";
 /* ── GET /api/manager/tables ── */
 export const getTables = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const tables = await prisma.table.findMany({
@@ -330,11 +342,11 @@ export const getTables = async (req, res) => {
           .map(other => other.tableID);
       }
       return {
-        id:            t.tableID,
-        name:          t.tableName ?? `Bàn ${t.tableID}`,
-        capacity:      t.capacity  ?? 4,
-        status:        mapStatus(t.status),
-        qrCode:        t.qrCode,
+        id: t.tableID,
+        name: t.tableName ?? `Bàn ${t.tableID}`,
+        capacity: t.capacity ?? 4,
+        status: mapStatus(t.status),
+        qrCode: t.qrCode,
         mergedGroupId: t.mergedGroupId ?? null,
         mergedWith,               // mảng ID các bàn cùng nhóm
       };
@@ -350,7 +362,7 @@ export const getTables = async (req, res) => {
 /* ── POST /api/manager/tables ── */
 export const createTable = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const { name, capacity } = req.body;
@@ -360,17 +372,17 @@ export const createTable = async (req, res) => {
       data: {
         branchID,
         tableName: name,
-        capacity:  parseInt(capacity) || 4,
-        status:    "Available",
+        capacity: parseInt(capacity) || 4,
+        status: "Available",
       },
     });
 
     res.status(201).json({
-      id:       table.tableID,
-      name:     table.tableName,
+      id: table.tableID,
+      name: table.tableName,
       capacity: table.capacity,
-      status:   "Trống",
-      qrCode:   null,
+      status: "Trống",
+      qrCode: null,
     });
 
     emitTableUpdate(req);
@@ -383,7 +395,7 @@ export const createTable = async (req, res) => {
 /* ── PUT /api/manager/tables/:id ── */
 export const updateTable = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const tableID = parseInt(req.params.id);
@@ -395,17 +407,17 @@ export const updateTable = async (req, res) => {
     const updated = await prisma.table.update({
       where: { tableID },
       data: {
-        ...(name     && { tableName: name }),
+        ...(name && { tableName: name }),
         ...(capacity && { capacity: parseInt(capacity) }),
       },
     });
 
     res.json({
-      id:       updated.tableID,
-      name:     updated.tableName,
+      id: updated.tableID,
+      name: updated.tableName,
       capacity: updated.capacity,
-      status:   mapStatus(updated.status),
-      qrCode:   updated.qrCode,
+      status: mapStatus(updated.status),
+      qrCode: updated.qrCode,
     });
 
     emitTableUpdate(req);
@@ -418,7 +430,7 @@ export const updateTable = async (req, res) => {
 /* ── PATCH /api/manager/tables/:id/status ── */
 export const updateTableStatus = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const tableID = parseInt(req.params.id);
@@ -433,7 +445,7 @@ export const updateTableStatus = async (req, res) => {
     if (dbStatus === "Available" && existing.mergedGroupId) {
       await prisma.table.updateMany({
         where: { mergedGroupId: existing.mergedGroupId, branchID },
-        data:  { status: "Available", mergedGroupId: null },
+        data: { status: "Available", mergedGroupId: null },
       });
       return res.json({ id: tableID, status: "Trống", mergedGroupId: null });
     }
@@ -455,7 +467,7 @@ export const updateTableStatus = async (req, res) => {
 /* ── DELETE /api/manager/tables/:id ── */
 export const deleteTable = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const tableID = parseInt(req.params.id);
@@ -472,19 +484,10 @@ export const deleteTable = async (req, res) => {
   }
 };
 
-/* ── POST /api/manager/tables/merge ──────────────────────────────────────────
-   Body: { sourceTableId, targetTableId }
-   Logic:
-    1. Tìm Order đang active (Open/Serving) của sourceTable và targetTable
-    2. Nếu cả 2 đều có order → gộp OrderDetails của targetOrder vào sourceOrder
-       rồi xóa targetOrder
-    3. Nếu chỉ 1 bên có order → thêm bàn kia vào OrderTable của order đó
-    4. Nếu không bên nào có order → chỉ ghi nhận (không có gì để gộp)
-    5. Cập nhật totalAmount của order còn lại
-──────────────────────────────────────────────────────────────────────────── */
+/* ── POST /api/manager/tables/merge ── */
 export const mergeTables = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const { sourceTableId, targetTableId } = req.body;
@@ -496,7 +499,6 @@ export const mergeTables = async (req, res) => {
     const srcId = parseInt(sourceTableId);
     const tgtId = parseInt(targetTableId);
 
-    // Xác nhận 2 bàn đều thuộc chi nhánh này
     const [srcTable, tgtTable] = await Promise.all([
       prisma.table.findFirst({ where: { tableID: srcId, branchID } }),
       prisma.table.findFirst({ where: { tableID: tgtId, branchID } }),
@@ -504,7 +506,6 @@ export const mergeTables = async (req, res) => {
     if (!srcTable) return res.status(404).json({ message: `Không tìm thấy bàn nguồn (id=${srcId}).` });
     if (!tgtTable) return res.status(404).json({ message: `Không tìm thấy bàn đích (id=${tgtId}).` });
 
-    // Tìm Order đang active của mỗi bàn
     const findActiveOrder = async (tableID) => {
       const ot = await prisma.orderTable.findFirst({
         where: {
@@ -524,26 +525,20 @@ export const mergeTables = async (req, res) => {
     let mergedOrderId;
 
     if (srcOrder && tgtOrder) {
-      // ── Cả 2 đều có order: gộp tgtOrder vào srcOrder ──
       await prisma.$transaction(async (tx) => {
-        // Di chuyển OrderDetails từ targetOrder → sourceOrder
         await tx.orderDetail.updateMany({
           where: { orderID: tgtOrder.orderID },
-          data:  { orderID: srcOrder.orderID },
+          data: { orderID: srcOrder.orderID },
         });
-        // Gắn targetTable vào sourceOrder (nếu chưa có)
         await tx.orderTable.upsert({
-          where:  { orderID_tableID: { orderID: srcOrder.orderID, tableID: tgtId } },
+          where: { orderID_tableID: { orderID: srcOrder.orderID, tableID: tgtId } },
           create: { orderID: srcOrder.orderID, tableID: tgtId },
           update: {},
         });
-        // Xoá liên kết của targetTable với targetOrder
         await tx.orderTable.deleteMany({
           where: { orderID: tgtOrder.orderID, tableID: tgtId },
         });
-        // Xoá targetOrder (cascade xoá Invoice nếu có)
         await tx.order.delete({ where: { orderID: tgtOrder.orderID } });
-        // Cập nhật lại totalAmount của sourceOrder
         const details = await tx.orderDetail.findMany({
           where: { orderID: srcOrder.orderID },
           select: { quantity: true, unitPrice: true },
@@ -553,55 +548,46 @@ export const mergeTables = async (req, res) => {
         );
         await tx.order.update({
           where: { orderID: srcOrder.orderID },
-          data:  { totalAmount: newTotal },
+          data: { totalAmount: newTotal },
         });
       });
       mergedOrderId = srcOrder.orderID;
 
     } else if (srcOrder && !tgtOrder) {
-      // ── Chỉ sourceTable có order: thêm targetTable vào order đó ──
       await prisma.orderTable.upsert({
-        where:  { orderID_tableID: { orderID: srcOrder.orderID, tableID: tgtId } },
+        where: { orderID_tableID: { orderID: srcOrder.orderID, tableID: tgtId } },
         create: { orderID: srcOrder.orderID, tableID: tgtId },
         update: {},
       });
       mergedOrderId = srcOrder.orderID;
 
     } else if (!srcOrder && tgtOrder) {
-      // ── Chỉ targetTable có order: thêm sourceTable vào order đó ──
       await prisma.orderTable.upsert({
-        where:  { orderID_tableID: { orderID: tgtOrder.orderID, tableID: srcId } },
+        where: { orderID_tableID: { orderID: tgtOrder.orderID, tableID: srcId } },
         create: { orderID: tgtOrder.orderID, tableID: srcId },
         update: {},
       });
       mergedOrderId = tgtOrder.orderID;
 
     } else {
-      // ── Không bàn nào có order đang mở ──
       mergedOrderId = null;
     }
 
-    // ── Cập nhật mergedGroupId cho cả 2 bàn vào cùng 1 nhóm ──
-    // Ưu tiên dùng groupId đã có (nếu bàn đã trong 1 nhóm trước đó)
     const existingGroupId = srcTable.mergedGroupId || tgtTable.mergedGroupId;
     const groupId = existingGroupId || `grp_${srcId}_${tgtId}_${Date.now()}`;
 
-    // Lấy tất cả bàn trong các nhóm cũ của cả 2 (để merge nhóm lại)
     const oldGroupIds = [srcTable.mergedGroupId, tgtTable.mergedGroupId].filter(Boolean);
     if (oldGroupIds.length > 0) {
-      // Đổi toàn bộ bàn từ các nhóm cũ sang groupId mới
       await prisma.table.updateMany({
         where: { mergedGroupId: { in: oldGroupIds }, branchID },
-        data:  { mergedGroupId: groupId },
+        data: { mergedGroupId: groupId },
       });
     }
-    // Đảm bảo cả 2 bàn hiện tại cũng có groupId
     await prisma.table.updateMany({
       where: { tableID: { in: [srcId, tgtId] } },
-      data:  { mergedGroupId: groupId },
+      data: { mergedGroupId: groupId },
     });
 
-    // Trả về mergedWith list cho cả 2 bàn
     const groupTables = await prisma.table.findMany({
       where: { mergedGroupId: groupId, branchID },
       select: { tableID: true, tableName: true },
@@ -612,7 +598,7 @@ export const mergeTables = async (req, res) => {
       message: `Đã gộp hóa đơn ${srcTable.tableName} ↔ ${tgtTable.tableName} thành công.`,
       mergedOrderId,
       mergedGroupId: groupId,
-      mergedWithIds,  // tất cả ID trong nhóm (kể cả chính bàn nguồn)
+      mergedWithIds,
       sourceTable: { id: srcId, name: srcTable.tableName },
       targetTable: { id: tgtId, name: tgtTable.tableName },
     });
@@ -624,16 +610,10 @@ export const mergeTables = async (req, res) => {
   }
 };
 
-/* ── POST /api/manager/confirm-order ──────────────────────────────────────
-   Body: { tableId, items: [{productID, quantity, price}] }
-   Logic: 
-    1. Tạo/Tìm Order hiện tại của bàn
-    2. Thêm OrderDetails
-    3. Cập nhật trạng thái Bàn -> Occupied
-──────────────────────────────────────────────────────────────────────────── */
+/* ── POST /api/manager/confirm-order ── */
 export const confirmManagerOrder = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const { tableId, items } = req.body;
@@ -644,7 +624,6 @@ export const confirmManagerOrder = async (req, res) => {
     const tId = parseInt(tableId);
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Tìm xem bàn có Order nào đang mở (Open/Serving) không
       const activeOrderTable = await tx.orderTable.findFirst({
         where: {
           tableID: tId,
@@ -657,14 +636,12 @@ export const confirmManagerOrder = async (req, res) => {
       const totalAmountToAdd = items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.price)), 0);
 
       if (activeOrderTable) {
-        // Gộp vào order cũ
         orderID = activeOrderTable.orderID;
         await tx.order.update({
           where: { orderID },
           data: { totalAmount: { increment: totalAmountToAdd } }
         });
       } else {
-        // Tạo order mới
         const newOrder = await tx.order.create({
           data: {
             branchID,
@@ -675,24 +652,22 @@ export const confirmManagerOrder = async (req, res) => {
           }
         });
         orderID = newOrder.orderID;
-        
+
         await tx.orderTable.create({
           data: { orderID, tableID: tId }
         });
       }
 
-      // 2. Tạo OrderDetails cho các món mới
       await tx.orderDetail.createMany({
         data: items.map(item => ({
           orderID,
           productID: item.productID,
           quantity: item.quantity,
           unitPrice: parseFloat(item.price),
-          itemStatus: "Pending" // Khách mới gọi món thì vào trạng thái Chờ xử lý
+          itemStatus: "Pending"
         }))
       });
 
-      // 3. Cập nhật trạng thái Bàn -> Occupied
       const table = await tx.table.findUnique({ where: { tableID: tId } });
       if (table.mergedGroupId) {
         await tx.table.updateMany({
@@ -728,10 +703,9 @@ export const confirmManagerOrder = async (req, res) => {
 /* ── GET /api/manager/tables/:id/bill ── */
 export const getBillByTable = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     const tableID = parseInt(req.params.id);
 
-    // Tìm order đang active của bàn đó
     const orderTable = await prisma.orderTable.findFirst({
       where: {
         tableID,
@@ -753,10 +727,12 @@ export const getBillByTable = async (req, res) => {
 
     const order = orderTable.order;
     const tables = order.orderTables.map(ot => ({ id: ot.table.tableID, name: ot.table.tableName }));
-    
-    // Group items by productID to sum quantities if they were ordered multiple times
+
     const itemsMap = {};
     order.orderDetails.forEach(det => {
+      // Chỉ tính các món không bị huỷ
+      if (det.itemStatus === 'Cancelled') return;
+
       const pID = det.productID;
       if (itemsMap[pID]) {
         itemsMap[pID].quantity += det.quantity;
@@ -787,11 +763,10 @@ export const getBillByTable = async (req, res) => {
 /* ── POST /api/manager/tables/:id/checkout ── */
 export const processManagerCheckout = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     const tableID = parseInt(req.params.id);
     const { paymentMethod = "Cash" } = req.body;
 
-    // 1. Tìm Order đang active
     const orderTable = await prisma.orderTable.findFirst({
       where: {
         tableID,
@@ -810,7 +785,6 @@ export const processManagerCheckout = async (req, res) => {
     const tableIdsInvolved = order.orderTables.map(ot => ot.tableID);
 
     const result = await prisma.$transaction(async (tx) => {
-      // 2. Tạo Invoice
       const invoice = await tx.invoice.create({
         data: {
           orderID: order.orderID,
@@ -821,36 +795,34 @@ export const processManagerCheckout = async (req, res) => {
         }
       });
 
-      // 3. Tạo InvoiceDetails
       await tx.invoiceDetail.createMany({
-        data: order.orderDetails.map(det => ({
-          invoiceID: invoice.invoiceID,
-          orderDetailID: det.orderDetailID,
-          productID: det.productID,
-          quantity: det.quantity,
-          unitPrice: det.unitPrice,
-          totalPrice: parseFloat(det.unitPrice) * det.quantity,
-          status: "Finalized"
-        }))
+        data: order.orderDetails
+          .filter(det => det.itemStatus !== 'Cancelled') // Bỏ qua món đã huỷ
+          .map(det => ({
+            invoiceID: invoice.invoiceID,
+            orderDetailID: det.orderDetailID,
+            productID: det.productID,
+            quantity: det.quantity,
+            unitPrice: det.unitPrice,
+            totalPrice: parseFloat(det.unitPrice) * det.quantity,
+            status: "Finalized"
+          }))
       });
 
-      // 4. Tạo Transaction
       await tx.transaction.create({
         data: {
           invoiceID: invoice.invoiceID,
           amount: order.totalAmount,
-          paymentMethod: paymentMethod, // Cash, BankTransfer
+          paymentMethod: paymentMethod,
           status: "Success"
         }
       });
 
-      // 5. Cập nhật Order -> Completed/Paid
       await tx.order.update({
         where: { orderID: order.orderID },
         data: { orderStatus: "Completed", paymentStatus: "Paid" }
       });
 
-      // 6. Giải phóng bàn (Available & xóa mergedGroupId)
       await tx.table.updateMany({
         where: { tableID: { in: tableIdsInvolved } },
         data: { status: "Available", mergedGroupId: null }
@@ -871,8 +843,7 @@ export const processManagerCheckout = async (req, res) => {
 /* ===============================================================
    PAYOS PAYMENT FOR TABLE
    POST /api/manager/tables/:id/payment-link
-   GET  /api/manager/tables/:id/payment-status/:orderCode
-=============================================================== */
+   GET  /api/manager/tables/:id/payment-status/:orderCode */
 
 /* ── POST /api/manager/tables/:id/payment-link ── */
 export const createTablePaymentLink = async (req, res) => {
@@ -881,7 +852,7 @@ export const createTablePaymentLink = async (req, res) => {
       return res.status(503).json({ message: "PayOS chưa được cấu hình trên server." });
     }
 
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     const tableID = parseInt(req.params.id);
 
     // 1. Lấy bill hiện tại của bàn
@@ -945,7 +916,7 @@ export const createTablePaymentLink = async (req, res) => {
 /* ── GET /api/manager/tables/:id/payment-status/:orderCode ── */
 export const checkTablePaymentStatus = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     const tableID = parseInt(req.params.id);
     const orderCode = BigInt(req.params.orderCode);
 
@@ -1058,16 +1029,14 @@ export const checkTablePaymentStatus = async (req, res) => {
 
 /* ===============================================================
    GET /api/manager/orders
-   Lấy danh sách tất cả Orders của chi nhánh (Open, Serving, Completed)
-   Query: ?status=Open|Serving|Completed  (tùy chọn lọc)
 =============================================================== */
 export const getOrders = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID)
       return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
-    const { status } = req.query; // optional filter
+    const { status } = req.query;
 
     const where = {
       branchID,
@@ -1090,25 +1059,24 @@ export const getOrders = async (req, res) => {
     });
 
     const result = orders.map((o) => ({
-      id:             o.orderID,
-      orderStatus:    o.orderStatus,
-      paymentStatus:  o.paymentStatus,
-      orderTime:      o.orderTime,
-      totalAmount:    parseFloat(o.totalAmount),
-      customerNote:   o.customerNote ?? "",
-      // Tên bàn (có thể gộp): "Bàn 01, Bàn 02"
+      id: o.orderID,
+      orderStatus: o.orderStatus,
+      paymentStatus: o.paymentStatus,
+      orderTime: o.orderTime,
+      totalAmount: parseFloat(o.totalAmount),
+      customerNote: o.customerNote ?? "",
       orderTable: o.orderTables
         .map((ot) => ot.table?.tableName ?? `Bàn ${ot.table?.tableID}`)
         .join(", "),
       tableIds: o.orderTables.map((ot) => ot.tableID),
       orderDetails: o.orderDetails.map((d) => ({
-        id:          d.orderDetailID,
+        id: d.orderDetailID,
         productName: d.product?.name ?? "Món đã xóa",
-        imageURL:    d.product?.imageURL ?? null,
-        quantity:    d.quantity,
-        unitPrice:   parseFloat(d.unitPrice),
-        itemStatus:  d.itemStatus,
-        note:        d.note ?? "",
+        imageURL: d.product?.imageURL ?? null,
+        quantity: d.quantity,
+        unitPrice: parseFloat(d.unitPrice),
+        itemStatus: d.itemStatus,
+        note: d.note ?? "",
       })),
     }));
 
@@ -1121,22 +1089,18 @@ export const getOrders = async (req, res) => {
 
 /* ===============================================================
    SERVICE REQUESTS
-
-/* ── GET /api/manager/service-requests ──
-   Query: type (optional), page (default 1), limit (default 10)
-──────────────────────────────────────────────────────────────── */
+=============================================================== */
 export const getServiceRequests = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID)
       return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
     const { type, page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Map frontend tab label -> Prisma enum KEY (not @map value)
     const typeMap = {
-      "Gọi món":    "GoiMon",
+      "Gọi món": "GoiMon",
       "Thanh toán": "ThanhToan",
     };
     const dbType = type ? (typeMap[type] ?? type) : undefined;
@@ -1146,9 +1110,8 @@ export const getServiceRequests = async (req, res) => {
       ...(dbType ? { requestType: dbType } : {}),
     };
 
-    // Today range for stats
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const todayEnd   = new Date(); todayEnd.setHours(23, 59, 59, 999);
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
 
     const [requests, total, pendingCount, totalToday] = await Promise.all([
       prisma.serviceRequest.findMany({
@@ -1159,7 +1122,6 @@ export const getServiceRequests = async (req, res) => {
         include: { table: { select: { tableName: true } } },
       }),
       prisma.serviceRequest.count({ where }),
-      // Đếm các yêu cầu đang xử lý (chưa xong)
       prisma.serviceRequest.count({
         where: { branchID, status: "Đang xử lý" },
       }),
@@ -1168,26 +1130,25 @@ export const getServiceRequests = async (req, res) => {
       }),
     ]);
 
-    // Map Prisma enum KEY -> display label + icon
     const displayTypeMap = {
-      GoiMon:    { label: "Gọi món",    icon: "bell" },
+      GoiMon: { label: "Gọi món", icon: "bell" },
       ThanhToan: { label: "Thanh toán", icon: "credit-card" },
     };
 
     const data = requests.map((r) => ({
-      requestID:   r.requestID,
-      tableID:     r.tableID,
-      tableName:   r.table?.tableName ?? `Bàn ${r.tableID}`,
+      requestID: r.requestID,
+      tableID: r.tableID,
+      tableName: r.table?.tableName ?? `Bàn ${r.tableID}`,
       requestType: r.requestType,
       displayType: displayTypeMap[r.requestType] ?? { label: r.requestType, icon: "more" },
-      status:      r.status,
+      status: r.status,
       createdTime: r.createdTime,
     }));
 
     res.json({
       data,
       total,
-      page:       parseInt(page),
+      page: parseInt(page),
       totalPages: Math.ceil(total / parseInt(limit)),
       stats: { pending: pendingCount, totalToday },
     });
@@ -1198,43 +1159,38 @@ export const getServiceRequests = async (req, res) => {
 };
 
 /* ===============================================================
-   PATCH /api/manager/orders/:id/status
-   Cập nhật trạng thái đơn hàng
-   Body: { orderStatus: "Serving" | "Completed" }
+   ORDER STATUS UPDATE
 =============================================================== */
 export const updateOrderStatus = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID)
       return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
-    const orderID    = parseInt(req.params.id);
+    const orderID = parseInt(req.params.id);
     const { orderStatus } = req.body;
 
     const allowed = ["Serving", "Completed"];
     if (!allowed.includes(orderStatus))
-      return res.status(400).json({ message: "Trạng thái không hợp lệ. Chỉ chấp nhận: Serving, Completed." });
+      return res.status(400).json({ message: "Trạng thái không hợp lệ." });
 
-    // Xác nhận order thuộc chi nhánh này
     const existing = await prisma.order.findFirst({ where: { orderID, branchID } });
     if (!existing)
       return res.status(404).json({ message: "Không tìm thấy đơn hàng." });
 
     const updated = await prisma.order.update({
       where: { orderID },
-      data:  { orderStatus },
+      data: { orderStatus },
     });
 
-    // Nếu Completed → giải phóng bàn (nếu chưa thanh toán thì vẫn giải phóng vật lý)
     if (orderStatus === "Completed") {
       const orderTables = await prisma.orderTable.findMany({ where: { orderID } });
       const tableIds = orderTables.map((ot) => ot.tableID);
       if (tableIds.length) {
-        // Chỉ tự động set Available nếu paymentStatus === Paid; ngược lại giữ nguyên status bàn
         if (updated.paymentStatus === "Paid") {
           await prisma.table.updateMany({
             where: { tableID: { in: tableIds } },
-            data:  { status: "Available", mergedGroupId: null },
+            data: { status: "Available", mergedGroupId: null },
           });
         }
       }
@@ -1248,12 +1204,12 @@ export const updateOrderStatus = async (req, res) => {
   }
 };
 
-/* ── PATCH /api/manager/service-requests/:id ──
-   Body: { status: "Đã xử lý" | "Đang chờ" | ... }
-──────────────────────────────────────────────────────────────── */
+/* ===============================================================
+   SERVICE REQUEST STATUS UPDATE
+=============================================================== */
 export const updateServiceRequestStatus = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID)
       return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
@@ -1270,7 +1226,7 @@ export const updateServiceRequestStatus = async (req, res) => {
 
     const updated = await prisma.serviceRequest.update({
       where: { requestID },
-      data:  { status },
+      data: { status },
     });
 
     res.json({ requestID: updated.requestID, status: updated.status });
@@ -1282,11 +1238,10 @@ export const updateServiceRequestStatus = async (req, res) => {
 
 /* ===============================================================
    7. BRANCH INFO 
-   GET /api/manager/branch-info
 =============================================================== */
 export const getBranchInfo = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID)
       return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
@@ -1309,7 +1264,6 @@ export const getBranchInfo = async (req, res) => {
       return res.status(404).json({ message: "Chi nhánh không tồn tại" });
     }
 
-    // Map logo and coverImage to logoURL and coverImageURL for frontend compatibility
     const responseData = {
       ...branch,
       restaurant: {
@@ -1327,12 +1281,11 @@ export const getBranchInfo = async (req, res) => {
 };
 
 /* ===============================================================
-   8. UPLOAD COVER IMAGE FOR BRANCH (RESTAURANT)
-   PATCH /api/manager/branch-info/cover
+   8. UPLOAD COVER IMAGE
 =============================================================== */
 export const uploadBranchCoverImage = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID) {
       return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
     }
@@ -1341,7 +1294,6 @@ export const uploadBranchCoverImage = async (req, res) => {
       return res.status(400).json({ message: "Vui lòng chọn ảnh bìa." });
     }
 
-    // Get branch to find restaurant ID
     const branch = await prisma.branch.findUnique({
       where: { branchID },
       select: { restaurantID: true },
@@ -1353,7 +1305,6 @@ export const uploadBranchCoverImage = async (req, res) => {
 
     const coverImageURL = `/uploads/${req.file.filename}`;
 
-    // Update restaurant's cover image
     await prisma.restaurant.update({
       where: { restaurantID: branch.restaurantID },
       data: { coverImage: coverImageURL },
@@ -1370,7 +1321,6 @@ export const uploadBranchCoverImage = async (req, res) => {
    9. PAYMENT HISTORY
    GET /api/manager/payment-history
    Query: startDate, endDate (ISO strings)
-=============================================================== */
 export const getPaymentHistory = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user.userId);
@@ -1445,5 +1395,391 @@ export const getPaymentHistory = async (req, res) => {
   } catch (err) {
     console.error("getPaymentHistory error:", err);
     res.status(500).json({ message: "Lỗi lấy lịch sử thanh toán." });
+   9. STAFF MANAGEMENT (Branch Manager)
+
+/**
+ * GET /api/manager/staff
+ * Lấy danh sách nhân viên và bếp của chi nhánh
+ */
+export const getBranchStaff = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const staff = await prisma.user.findMany({
+      where: {
+        branchID,
+        role: { in: ["Staff", "Kitchen"] }
+      },
+      select: {
+        userID: true,
+        username: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.json(staff);
+  } catch (err) {
+    console.error("getBranchStaff error:", err);
+    res.status(500).json({ message: "Lỗi lấy danh sách nhân viên" });
+  }
+};
+
+/**
+ * POST /api/manager/staff
+ * Tạo tài khoản nhân viên hoặc bếp mới
+ */
+export const createBranchStaff = async (req, res) => {
+  try {
+    const branch = await prisma.branch.findUnique({
+      where: { branchID: await getManagerBranchId(req.user) },
+      select: { branchID: true, restaurantID: true }
+    });
+    if (!branch) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+    const branchID = branch.branchID;
+    const restaurantID = branch.restaurantID;
+
+    const { username, password, fullName, email, phone, role } = req.body;
+
+    if (!username || !password || !role) {
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc (username, password, role)." });
+    }
+
+    if (!["Staff", "Kitchen"].includes(role)) {
+      return res.status(400).json({ message: "Role không hợp lệ. Chỉ chấp nhận Staff hoặc Kitchen." });
+    }
+
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ username }, { email: email || undefined }] }
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: "Username hoặc Email đã tồn tại." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.user.create({
+      data: {
+        username,
+        passwordHash,
+        fullName,
+        email,
+        phone,
+        role,
+        branchID,
+        restaurantID,
+        status: "Active"
+      }
+    });
+
+    if (newUser.email) {
+      try {
+        await sendNewAccountEmail(newUser.email, newUser.fullName, newUser.username, password, role);
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
+      }
+    }
+
+    res.status(201).json({
+      message: "Tạo tài khoản nhân viên thành công!",
+      user: {
+        userID: newUser.userID,
+        username: newUser.username,
+        role: newUser.role
+      }
+    });
+  } catch (err) {
+    console.error("createBranchStaff error:", err);
+    res.status(500).json({ message: "Lỗi tạo tài khoản nhân viên" });
+  }
+};
+
+/**
+ * PATCH /api/manager/staff/:id/status
+ */
+export const updateStaffStatus = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    const staffID = parseInt(req.params.id);
+    const { status } = req.body;
+
+    if (!["Active", "Inactive"].includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ." });
+    }
+
+    const staff = await prisma.user.findFirst({
+      where: { userID: staffID, branchID }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên." });
+    }
+
+    await prisma.user.update({
+      where: { userID: staffID },
+      data: { status }
+    });
+
+    res.json({ message: `Đã ${status === "Active" ? "kích hoạt" : "khoá"} tài khoản thành công.` });
+  } catch (err) {
+    console.error("updateStaffStatus error:", err);
+    res.status(500).json({ message: "Lỗi cập nhật trạng thái nhân viên" });
+  }
+};
+
+/**
+ * DELETE /api/manager/staff/:id
+ */
+export const deleteBranchStaff = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    const staffID = parseInt(req.params.id);
+
+    const staff = await prisma.user.findFirst({
+      where: { userID: staffID, branchID }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên." });
+    }
+
+    await prisma.user.delete({ where: { userID: staffID } });
+
+    res.json({ message: "Đã xoá tài khoản nhân viên thành công." });
+  } catch (err) {
+    console.error("deleteBranchStaff error:", err);
+    res.status(500).json({ message: "Lỗi xoá nhân viên" });
+  }
+};
+
+/* ===============================================================
+   GET /api/manager/tables/:id/order-details
+   Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB
+export const getTableOrderDetails = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const tableID = parseInt(req.params.id);
+
+    const orderTable = await prisma.orderTable.findFirst({
+      where: {
+        tableID,
+        order: { orderStatus: { in: ["Open", "Serving"] }, branchID },
+      },
+      include: {
+        order: {
+          include: {
+            orderDetails: {
+              include: { product: { select: { name: true, imageURL: true, price: true } } },
+              orderBy: { orderDetailID: "asc" },
+            },
+            orderTables: { include: { table: { select: { tableID: true, tableName: true } } } },
+          },
+        },
+      },
+    });
+
+    if (!orderTable) {
+      return res.status(404).json({ message: "Bàn này hiện không có đơn hàng đang mở." });
+    }
+
+    const order = orderTable.order;
+
+    res.json({
+      orderID: order.orderID,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      totalAmount: parseFloat(order.totalAmount),
+      orderTime: order.orderTime,
+      customerNote: order.customerNote ?? "",
+      tables: order.orderTables.map((ot) => ({
+        id: ot.table.tableID,
+        name: ot.table.tableName,
+      })),
+      items: order.orderDetails.map((d) => ({
+        orderDetailID: d.orderDetailID,
+        productID: d.productID,
+        productName: d.product?.name ?? "Món đã xóa",
+        imageURL: d.product?.imageURL ?? null,
+        quantity: d.quantity,
+        unitPrice: parseFloat(d.unitPrice),
+        itemStatus: d.itemStatus,
+        note: d.note ?? "",
+      })),
+    });
+  } catch (err) {
+    console.error("getTableOrderDetails error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ===============================================================
+   PATCH /api/manager/order-items/:detailId/cancel
+export const cancelOrderItem = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const orderDetailID = parseInt(req.params.detailId);
+    if (isNaN(orderDetailID)) return res.status(400).json({ message: "ID món ăn không hợp lệ." });
+
+    const { cancelQuantity } = req.body;
+
+    const detail = await prisma.orderDetail.findUnique({
+      where: { orderDetailID },
+      include: {
+        order: {
+          include: {
+            orderTables: { select: { tableID: true }, take: 1 },
+          },
+        },
+      },
+    });
+
+    if (!detail || !detail.order) return res.status(404).json({ message: "Không tìm thấy món ăn." });
+    
+    // So sánh int vs int
+    const orderBranchID = parseInt(detail.order.branchID);
+    const userBranchID = parseInt(branchID);
+    
+    if (orderBranchID !== userBranchID)
+      return res.status(403).json({ message: "Bạn không có quyền huỷ món này." });
+
+    if (detail.itemStatus !== "Pending") {
+      return res.status(400).json({
+        message: "Không thể huỷ — món này đã được bếp xử lý!",
+      });
+    }
+
+    const orderID = detail.orderID;
+    const tableID = detail.order.orderTables?.[0]?.tableID ?? null;
+    const currentQty = detail.quantity;
+    const requestedCancelQty = parseInt(cancelQuantity) || currentQty;
+
+    if (requestedCancelQty > currentQty || requestedCancelQty <= 0) {
+        return res.status(400).json({ message: "Số lượng huỷ không hợp lệ." });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (requestedCancelQty < currentQty) {
+        // Giảm số lượng
+        await tx.orderDetail.update({
+          where: { orderDetailID },
+          data: { quantity: currentQty - requestedCancelQty },
+        });
+        // Tạo log huỷ
+        await tx.orderDetail.create({
+          data: {
+            orderID,
+            productID: detail.productID,
+            quantity: requestedCancelQty,
+            unitPrice: detail.unitPrice,
+            itemStatus: "Cancelled",
+            note: detail.note ? `(Huỷ ${requestedCancelQty}) ${detail.note}` : `Huỷ ${requestedCancelQty} từ đơn gốc`,
+          },
+        });
+      } else {
+        // Huỷ toàn bộ
+        await tx.orderDetail.update({
+          where: { orderDetailID },
+          data: { itemStatus: "Cancelled" },
+        });
+      }
+
+      // Tính lại tổng tiền
+      const remainingDetails = await tx.orderDetail.findMany({
+        where: { orderID, itemStatus: { not: "Cancelled" } },
+        select: { quantity: true, unitPrice: true },
+      });
+      const newTotal = remainingDetails.reduce(
+        (sum, d) => sum + d.quantity * Number(d.unitPrice),
+        0
+      );
+
+      await tx.order.update({
+        where: { orderID },
+        data: { totalAmount: newTotal },
+      });
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("orderItemStatusChanged", {
+        orderDetailID,
+        itemStatus: requestedCancelQty < currentQty ? detail.itemStatus : "Cancelled",
+        tableID,
+        orderID,
+      });
+      io.emit("tableUpdate", { branchID: userBranchID, tableID, timestamp: Date.now() });
+    }
+
+    res.json({
+      message: requestedCancelQty < currentQty ? `Đã huỷ ${requestedCancelQty} món.` : "Đã huỷ toàn bộ món.",
+      orderDetailID,
+      itemStatus: requestedCancelQty < currentQty ? detail.itemStatus : "Cancelled"
+    });
+  } catch (err) {
+    console.error("cancelOrderItem error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ===============================================================
+   POST /api/manager/service-requests
+export const createManagerServiceRequest = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { tableId, requestType = "GoiMon" } = req.body;
+    if (!tableId) return res.status(400).json({ message: "Thiếu tableId." });
+
+    const validTypes = ["GoiMon", "GoiNuoc", "ThanhToan", "Khac"];
+    if (!validTypes.includes(requestType))
+      return res.status(400).json({ message: `requestType không hợp lệ.` });
+
+    const table = await prisma.table.findFirst({
+      where: { tableID: parseInt(tableId), branchID },
+    });
+    if (!table) return res.status(404).json({ message: "Không tìm thấy bàn." });
+
+    const newRequest = await prisma.serviceRequest.create({
+      data: {
+        branchID,
+        tableID: parseInt(tableId),
+        requestType,
+        status: "Đang chờ",
+        createdTime: new Date(),
+      },
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("serviceRequestCreated", {
+        requestID: newRequest.requestID,
+        tableID: parseInt(tableId),
+        tableName: table.tableName,
+        requestType,
+        createdTime: newRequest.createdTime,
+      });
+    }
+
+    res.status(201).json({
+      message: "Đã tạo yêu cầu gọi nhân viên thành công.",
+      requestID: newRequest.requestID,
+      tableID: parseInt(tableId),
+      requestType,
+    });
+  } catch (err) {
+    console.error("createManagerServiceRequest error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
   }
 };
