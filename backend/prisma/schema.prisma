@@ -235,6 +235,7 @@ model Branch {
   tables          Table[]
   orders          Order[]
   serviceRequests ServiceRequest[]
+  branchMenus     BranchMenu[]
 
   @@map("Branches")
 }
@@ -286,6 +287,7 @@ model Product {
   category       Category        @relation(fields: [categoryID], references: [categoryID], onDelete: Cascade)
   orderDetails   OrderDetail[]
   invoiceDetails InvoiceDetail[]
+  branchMenus    BranchMenu[]
 
   @@map("Products")
 }
@@ -481,4 +483,20 @@ model PaymentOrder {
   package    ServicePackage @relation(fields: [packageID], references: [packageID], onDelete: Cascade)
 
   @@map("PaymentOrders")
+}
+
+// 21. BranchMenus
+model BranchMenu {
+  branchMenuID Int     @id @default(autoincrement()) @map("BranchMenuID")
+  branchID     Int     @map("BranchID")
+  productID    Int     @map("ProductID")
+  isAvailable  Boolean @default(true) @map("IsAvailable")
+  quantity     Int     @default(0) @map("Quantity")
+
+  // Relations
+  branch  Branch  @relation(fields: [branchID], references: [branchID], onDelete: Cascade)
+  product Product @relation(fields: [productID], references: [productID], onDelete: Cascade)
+
+  @@unique([branchID, productID])
+  @@map("BranchMenus")
 }

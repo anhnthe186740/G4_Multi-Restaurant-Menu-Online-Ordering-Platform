@@ -36,4 +36,8 @@ export const updateManagerBranchCover = (formData) => managerAxios.patch("manage
 export const getManagerServiceRequests         = (params)     => managerAxios.get("manager/service-requests", { params });
 export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });
 
+// Menu
+export const getManagerMenuItems = () => managerAxios.get("manager/menu");
+export const saveManagerMenu = (items) => managerAxios.post("manager/menu/save", { items });
+
 export default managerAxios;

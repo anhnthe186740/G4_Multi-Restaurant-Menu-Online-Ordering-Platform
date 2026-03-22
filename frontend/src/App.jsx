@@ -32,6 +32,7 @@ import TableManagement from "./pages/TableManagement";
 import ManagerServiceRequests from "./pages/ManagerServiceRequests";
 import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
+import ManagerMenu from "./pages/ManagerMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -257,6 +258,14 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <TableManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/menu"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerMenu />
             </ProtectedRoute>
           }
         />

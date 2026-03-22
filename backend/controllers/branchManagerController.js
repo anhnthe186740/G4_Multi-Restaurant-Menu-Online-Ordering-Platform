@@ -887,3 +887,101 @@ export const uploadBranchCoverImage = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/* ===============================================================
+   9. BRANCH MENU MANAGEMENT 
+=============================================================== */
+
+export const getBranchMenuItems = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const branch = await prisma.branch.findUnique({
+      where: { branchID },
+      select: { restaurantID: true }
+    });
+
+    if (!branch) return res.status(404).json({ message: "Chi nhánh không tồn tại." });
+
+    // Lấy tất cả category và product của nhà hàng
+    const categories = await prisma.category.findMany({
+      where: { restaurantID: branch.restaurantID },
+      include: {
+        products: {
+          include: {
+            branchMenus: {
+              where: { branchID }
+            }
+          }
+        }
+      },
+      orderBy: { displayOrder: 'asc' }
+    });
+
+    // Formatting response: merge product with its branchMenu status
+    const formattedCategories = categories.map(cat => ({
+      ...cat,
+      products: cat.products.map(p => {
+        const branchMenu = p.branchMenus[0];
+        return {
+          productID: p.productID,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          imageURL: p.imageURL,
+          // Defaults for items without BranchMenu records yet
+          isAvailable: branchMenu ? branchMenu.isAvailable : false,
+          quantity: branchMenu ? branchMenu.quantity : 0
+        };
+      })
+    }));
+
+    res.json(formattedCategories);
+  } catch (err) {
+    console.error("getBranchMenuItems error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const saveBranchMenu = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { items } = req.body; 
+
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ message: "Dữ liệu không hợp lệ." });
+    }
+
+    // Upsert each item
+    await prisma.$transaction(
+      items.map(item => 
+        prisma.branchMenu.upsert({
+          where: {
+            branchID_productID: {
+              branchID: branchID,
+              productID: item.productID
+            }
+          },
+          update: {
+            isAvailable: item.isAvailable,
+            quantity: item.quantity
+          },
+          create: {
+            branchID: branchID,
+            productID: item.productID,
+            isAvailable: item.isAvailable,
+            quantity: item.quantity
+          }
+        })
+      )
+    );
+
+    res.json({ message: "Đã lưu thực đơn chi nhánh thành công." });
+  } catch (err) {
+    console.error("saveBranchMenu error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

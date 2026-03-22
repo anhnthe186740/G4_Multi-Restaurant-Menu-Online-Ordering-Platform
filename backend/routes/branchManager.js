@@ -16,6 +16,8 @@ import {
   updateServiceRequestStatus,
   getBranchInfo,
   uploadBranchCoverImage,
+  getBranchMenuItems,
+  saveBranchMenu,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -48,6 +50,10 @@ router.patch("/service-requests/:id", updateServiceRequestStatus);
 // Branch Info
 router.get("/branch-info",            getBranchInfo);
 router.patch("/branch-info/cover",    upload.single("cover"), uploadBranchCoverImage);
+
+// Menu Management
+router.get("/menu",                   getBranchMenuItems);
+router.post("/menu/save",             saveBranchMenu);
 
 export default router;
 

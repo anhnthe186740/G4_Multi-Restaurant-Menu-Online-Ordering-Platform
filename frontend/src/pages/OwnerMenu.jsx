@@ -11,12 +11,11 @@ import {
     createOwnerMenuItem,
     updateOwnerMenuItem,
     deleteOwnerMenuItem,
-    toggleOwnerMenuItem,
     createOwnerMenuCategory,
     uploadOwnerFile,
 } from '../api/ownerApi';
 
-const EMPTY_FORM = { name: '', description: '', price: '', categoryId: '', isAvailable: true, imageURL: '', imageFile: null };
+const EMPTY_FORM = { name: '', description: '', price: '', categoryId: '', imageURL: '', imageFile: null };
 
 const formatPrice = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
@@ -35,7 +34,6 @@ export default function OwnerMenu() {
     // filters / UI state
     const [activeCat, setActiveCat] = useState(0);
     const [search, setSearch] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all'); // 'all'|'available'|'hidden'
     const [toast, setToast] = useState(null);
 
     // loading / error flags
@@ -116,27 +114,9 @@ export default function OwnerMenu() {
         return items.filter(it => {
             const matchCat = activeCat === 0 || it.categoryId === activeCat;
             const matchSearch = it.name.toLowerCase().includes(search.toLowerCase());
-            const matchStatus =
-                filterStatus === 'all' ? true :
-                    filterStatus === 'available' ? it.isAvailable :
-                        !it.isAvailable;
-            return matchCat && matchSearch && matchStatus;
+            return matchCat && matchSearch;
         });
-    }, [items, activeCat, search, filterStatus]);
-
-    /* ---------- toggle availability ---------- */
-    const handleToggle = async (id) => {
-        // optimistic UI update
-        setItems(prev => prev.map(it => it.id === id ? { ...it, isAvailable: !it.isAvailable } : it));
-        try {
-            await toggleOwnerMenuItem(id);
-            showToast('Đã cập nhật trạng thái món ăn');
-        } catch (err) {
-            console.error('toggle error', err);
-            showToast('Không thể cập nhật trạng thái', 'error');
-            loadData(); // rollback
-        }
-    };
+    }, [items, activeCat, search]);
 
     /* ---------- open add modal ---------- */
     const openAdd = () => {
@@ -154,7 +134,6 @@ export default function OwnerMenu() {
             description: item.description,
             price: String(item.price),
             categoryId: item.categoryId,
-            isAvailable: item.isAvailable,
             imageURL: item.imageURL || item.image || '',
             imageFile: null,
         });
@@ -187,7 +166,6 @@ export default function OwnerMenu() {
                 description: form.description,
                 price: Number(form.price),
                 categoryID: Number(form.categoryId),
-                isAvailable: form.isAvailable,
                 imageURL,
             };
             if (editItem) {
@@ -227,9 +205,6 @@ export default function OwnerMenu() {
         }
     };
 
-    /* ---------- counts ---------- */
-    const availCount = items.filter(i => i.isAvailable).length;
-
     return (
         <RestaurantOwnerLayout>
             {/* ===== TOAST ===== */}
@@ -249,8 +224,7 @@ export default function OwnerMenu() {
                         <h1 className="text-2xl font-bold text-gray-900">Quản lý thực đơn</h1>
                     </div>
                     <p className="text-gray-500 text-sm">
-                        {items.length} món · <span className="text-emerald-600 font-medium">{availCount} đang bán</span>
-                        {' · '}<span className="text-gray-400">{items.length - availCount} tạm ẩn</span>
+                        {items.length} món trong hệ thống
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -297,7 +271,7 @@ export default function OwnerMenu() {
                 })}
             </div>
 
-            {/* ===== SEARCH & STATUS FILTER ===== */}
+            {/* ===== SEARCH & FILTER ===== */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 <div className="relative flex-1">
                     <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -308,29 +282,6 @@ export default function OwnerMenu() {
                         onChange={e => setSearch(e.target.value)}
                         className="w-full pl-9 pr-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white"
                     />
-                </div>
-                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl shrink-0">
-                    {[
-                        { key: 'all', label: 'Tất cả', count: items.length },
-                        { key: 'available', label: 'Đang bán', count: availCount },
-                        { key: 'hidden', label: 'Tạm ẩn', count: items.length - availCount },
-                    ].map(({ key, label, count }) => (
-                        <button
-                            key={key}
-                            onClick={() => setFilterStatus(key)}
-                            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all
-                                ${filterStatus === key
-                                    ? 'bg-white text-blue-600 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                        >
-                            {label}
-                            <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full
-                                ${filterStatus === key ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
-                                {count}
-                            </span>
-                        </button>
-                    ))}
                 </div>
             </div>
 
@@ -373,7 +324,7 @@ export default function OwnerMenu() {
                     <p className="text-gray-700 font-semibold">Không tìm thấy món ăn</p>
                     <p className="text-gray-400 text-sm">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
                     <button
-                        onClick={() => { setSearch(''); setActiveCat(0); setFilterStatus('all'); }}
+                        onClick={() => { setSearch(''); setActiveCat(0); }}
                         className="text-sm text-blue-600 hover:underline"
                     >
                         Xóa bộ lọc
@@ -383,12 +334,11 @@ export default function OwnerMenu() {
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     {/* Table header */}
                     <div className="grid items-center px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                        style={{ gridTemplateColumns: '72px 1fr 120px 130px 110px 96px' }}>
+                        style={{ gridTemplateColumns: '72px 1fr 120px 130px 96px' }}>
                         <div></div>
                         <div className="pl-3">Tên món</div>
                         <div className="text-center">Danh mục</div>
                         <div className="text-right">Giá</div>
-                        <div className="text-center">Trạng thái</div>
                         <div className="text-center">Thao tác</div>
                     </div>
                     {/* Rows */}
@@ -437,15 +387,14 @@ export default function OwnerMenu() {
 /* ============================================================
    MENU ITEM ROW (horizontal list)
    ============================================================ */
-function MenuItemRow({ item, categories, onToggle, onEdit, onDelete }) {
+function MenuItemRow({ item, categories, onEdit, onDelete }) {
     const catLabel = categories.find(c => c.id === item.categoryId)?.label || '';
     const [imgErr, setImgErr] = useState(false);
 
     return (
         <div
-            className={`grid items-center px-5 py-3.5 hover:bg-blue-50/40 transition-colors
-                ${!item.isAvailable ? 'opacity-60' : ''}`}
-            style={{ gridTemplateColumns: '72px 1fr 120px 130px 110px 96px' }}
+            className={`grid items-center px-5 py-3.5 hover:bg-blue-50/40 transition-colors`}
+            style={{ gridTemplateColumns: '72px 1fr 120px 130px 96px' }}
         >
             {/* Thumbnail — fixed 72×72, object-cover, no stretch */}
             <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
@@ -480,33 +429,6 @@ function MenuItemRow({ item, categories, onToggle, onEdit, onDelete }) {
             {/* Price */}
             <div className="text-right">
                 <span className="font-bold text-gray-900 text-sm">{formatPrice(item.price)}</span>
-            </div>
-
-            {/* Status + toggle */}
-            <div className="flex flex-col items-center gap-1.5">
-                {item.isAvailable ? (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Đang bán
-                    </span>
-                ) : (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">
-                        <EyeOff size={9} />
-                        Tạm ẩn
-                    </span>
-                )}
-                <button
-                    onClick={onToggle}
-                    title={item.isAvailable ? 'Ẩn món' : 'Hiện món'}
-                    className={`relative rounded-full transition-colors duration-300 focus:outline-none shrink-0
-                        ${item.isAvailable ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 hover:bg-gray-400'}`}
-                    style={{ width: 36, height: 20 }}
-                >
-                    <span
-                        className={`absolute top-0.5 bg-white rounded-full shadow transition-transform duration-300`}
-                        style={{ width: 16, height: 16, left: 2, transform: item.isAvailable ? 'translateX(16px)' : 'translateX(0)' }}
-                    />
-                </button>
             </div>
 
             {/* Actions */}
@@ -638,24 +560,6 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onClo
                                 onError={e => { e.target.style.display = 'none'; }}
                             />
                         )}
-                    </div>
-
-                    {/* Status toggle */}
-                    <div className="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <div>
-                            <p className="text-sm font-semibold text-gray-700">Trạng thái</p>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                                {form.isAvailable ? 'Món đang được bán' : 'Món đang bị ẩn'}
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => setForm(prev => ({ ...prev, isAvailable: !prev.isAvailable }))}
-                            className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none shrink-0
-                                ${form.isAvailable ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 hover:bg-gray-400'}`}
-                        >
-                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300
-                                ${form.isAvailable ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
                     </div>
                 </div>
 
