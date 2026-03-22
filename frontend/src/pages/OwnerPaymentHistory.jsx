@@ -5,7 +5,7 @@ import {
     Search, Download, Eye, TrendingUp, TrendingDown,
     Banknote, CreditCard, Smartphone, RefreshCw,
     ChevronLeft, ChevronRight, X, Calendar, Filter,
-    CheckCircle2, XCircle, RotateCcw, Receipt, Building2
+    RotateCcw, Receipt, Building2
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -28,10 +28,7 @@ const METHOD_MAP = {
     'E-Wallet': { label: 'Ví điện tử', icon: Smartphone, color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
 };
 
-const STATUS_MAP = {
-    Success: { label: 'Thành công', color: '#22c55e', bg: 'rgba(34,197,94,0.12)', icon: CheckCircle2 },
-    Failed: { label: 'Thất bại', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', icon: XCircle },
-};
+
 
 // Tính startDate/endDate theo khoảng chọn
 const getDateRange = (rangeKey) => {
@@ -71,9 +68,7 @@ const getDateRange = (rangeKey) => {
 function TransactionModal({ tx, onClose }) {
     if (!tx) return null;
     const method = METHOD_MAP[tx.paymentMethod] || {};
-    const statusInfo = STATUS_MAP[tx.status] || {};
     const MethodIcon = method.icon || CreditCard;
-    const StatusIcon = statusInfo.icon || CheckCircle2;
 
     return (
         <div
@@ -107,11 +102,6 @@ function TransactionModal({ tx, onClose }) {
                     {/* Amount */}
                     <div className="text-center py-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
                         <p className="text-3xl font-black text-white">{fmtVND(tx.amount)}</p>
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
-                            style={{ background: statusInfo.bg, color: statusInfo.color }}>
-                            <StatusIcon size={12} />
-                            {statusInfo.label || tx.status}
-                        </div>
                     </div>
 
                     {/* Details grid */}
@@ -160,7 +150,6 @@ export default function OwnerPaymentHistory() {
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
     const [methodFilter, setMethodFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
 
@@ -179,10 +168,9 @@ export default function OwnerPaymentHistory() {
             if (range.endDate) params.endDate = range.endDate;
         }
         if (methodFilter) params.paymentMethod = methodFilter;
-        if (statusFilter) params.status = statusFilter;
         if (search) params.search = search;
         return params;
-    }, [page, rangeKey, customStart, customEnd, methodFilter, statusFilter, search]);
+    }, [page, rangeKey, customStart, customEnd, methodFilter, search]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -214,7 +202,6 @@ export default function OwnerPaymentHistory() {
         setCustomStart('');
         setCustomEnd('');
         setMethodFilter('');
-        setStatusFilter('');
         setSearch('');
         setSearchInput('');
         setPage(1);
@@ -362,19 +349,6 @@ export default function OwnerPaymentHistory() {
                         </select>
                     </div>
 
-                    {/* Status */}
-                    <div className="flex flex-col gap-1 min-w-[150px]">
-                        <label className="text-xs text-gray-400 font-medium">Trạng thái</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-400 bg-white text-gray-700"
-                        >
-                            <option value="">Tất cả trạng thái</option>
-                            <option value="Success">Thành công</option>
-                            <option value="Failed">Thất bại</option>
-                        </select>
-                    </div>
 
                     {/* Reset */}
                     <div className="flex flex-col gap-1">
@@ -405,7 +379,7 @@ export default function OwnerPaymentHistory() {
                         <table className="w-full">
                             <thead>
                                 <tr style={{ background: '#f8fafc' }}>
-                                    {['NGÀY', 'MÃ ĐƠN HÀNG', 'CHI NHÁNH', 'PHƯƠNG THỨC', 'SỐ TIỀN', 'TRẠNG THÁI', ''].map((h) => (
+                                    {['NGÀY', 'MÃ ĐƠN HÀNG', 'CHI NHÁNH', 'PHƯƠNG THỨC', 'SỐ TIỀN', ''].map((h) => (
                                         <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold" style={{ color: '#94a3b8', letterSpacing: '0.05em' }}>
                                             {h}
                                         </th>
@@ -415,7 +389,7 @@ export default function OwnerPaymentHistory() {
                             <tbody>
                                 {transactions.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7" className="text-center py-16 text-gray-400 text-sm">
+                                        <td colSpan="6" className="text-center py-16 text-gray-400 text-sm">
                                             <div className="flex flex-col items-center gap-2">
                                                 <Receipt size={36} className="text-gray-200" />
                                                 <p>Không có giao dịch nào</p>
@@ -425,7 +399,6 @@ export default function OwnerPaymentHistory() {
                                 ) : transactions.map((tx, idx) => {
                                     const method = METHOD_MAP[tx.paymentMethod] || { label: tx.paymentMethod, icon: CreditCard, color: '#64748b', bg: 'rgba(100,116,139,0.1)' };
                                     const MethodIcon = method.icon;
-                                    const statusInfo = STATUS_MAP[tx.status] || { label: tx.status, color: '#64748b', bg: 'rgba(100,116,139,0.1)' };
 
                                     return (
                                         <tr key={tx.transactionID}
@@ -457,16 +430,7 @@ export default function OwnerPaymentHistory() {
                                             <td className="px-5 py-4">
                                                 <span className="text-sm font-black text-gray-900">{fmtVND(tx.amount)}</span>
                                             </td>
-                                            {/* Status */}
-                                            <td className="px-5 py-4">
-                                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                                                    style={{ background: statusInfo.bg, color: statusInfo.color }}>
-                                                    {tx.status === 'Success'
-                                                        ? <CheckCircle2 size={12} />
-                                                        : <XCircle size={12} />}
-                                                    {statusInfo.label}
-                                                </div>
-                                            </td>
+
                                             {/* Action */}
                                             <td className="px-5 py-4">
                                                 <button
