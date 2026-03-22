@@ -26,6 +26,7 @@ import {
   getBranchStaff,
   createBranchStaff,
   updateStaffStatus,
+  updateBranchStaff,
   deleteBranchStaff,
   getTableOrderDetails,
   cancelOrderItem,
@@ -83,6 +84,7 @@ router.patch("/branch-info/cover",    requireRole("BranchManager"), upload.singl
 // Staff Management (Manager only)
 router.get("/staff",              requireRole("BranchManager"), getBranchStaff);
 router.post("/staff",             requireRole("BranchManager"), createBranchStaff);
+router.put("/staff/:id", requireRole("BranchManager"), updateBranchStaff);
 router.patch("/staff/:id/status", requireRole("BranchManager"), updateStaffStatus);
 router.delete("/staff/:id",       requireRole("BranchManager"), deleteBranchStaff);
 

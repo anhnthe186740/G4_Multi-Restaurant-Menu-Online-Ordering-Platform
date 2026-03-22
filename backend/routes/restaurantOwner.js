@@ -42,6 +42,7 @@ import {
   createOwnerManager,
   toggleOwnerManager,
   deleteOwnerManager,
+  updateOwnerManager,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import checkSubscription from "../middlewares/checkSub.js";
@@ -111,6 +112,7 @@ router.post("/tickets/:id/reply", requireRole("RestaurantOwner"), replyOwnerTick
 // ===== MANAGER / STAFF MANAGEMENT (Owner only) =====
 router.get("/managers", requireRole("RestaurantOwner"), getOwnerManagers);
 router.post("/managers", requireRole("RestaurantOwner"), createOwnerManager);
+router.put("/managers/:id", requireRole("RestaurantOwner"), updateOwnerManager);
 router.patch("/managers/:id/toggle", requireRole("RestaurantOwner"), toggleOwnerManager);
 router.delete("/managers/:id", requireRole("RestaurantOwner"), deleteOwnerManager);
 

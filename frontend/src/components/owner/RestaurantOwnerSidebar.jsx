@@ -10,7 +10,7 @@ export default function RestaurantOwnerSidebar() {
         { icon: GitBranch, label: 'Chi nhánh', path: '/owner/branches' },
         { icon: BookOpen, label: 'Thực đơn', path: '/owner/menu' },
         { icon: UtensilsCrossed, label: 'Theo dõi đơn hàng bếp', path: '/owner/kitchen-tracking' },
-        { icon: Users, label: 'Nhân viên', path: '/owner/staff' },
+        { icon: Users, label: 'Danh Sách Quản Lý', path: '/owner/staff' },
         { icon: CreditCard, label: 'Lịch sử thanh toán', path: '/owner/payment-history' },
         { icon: MessageSquare, label: 'Báo cáo & Hỗ trợ', path: '/owner/tickets' },
         { icon: Zap, label: 'Gói dịch vụ', path: '/owner/service-packages' },

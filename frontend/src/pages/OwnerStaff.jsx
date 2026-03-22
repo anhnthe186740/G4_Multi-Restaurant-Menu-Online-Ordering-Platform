@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
-import { getOwnerManagers, toggleOwnerManager, deleteOwnerManager, getOwnerBranches } from '../api/ownerApi';
+import { getOwnerManagers, toggleOwnerManager, deleteOwnerManager, getOwnerBranches, updateOwnerManager } from '../api/ownerApi';
 import {
     Users, Plus, Search, MoreVertical, CheckCircle2, XCircle,
-    UserCheck, UserX, Trash2, Edit2, ChevronDown, Store
+    UserCheck, UserX, Trash2, Edit2, ChevronDown, Store, X
 } from 'lucide-react';
 
 export default function OwnerStaff() {
@@ -18,6 +18,8 @@ export default function OwnerStaff() {
     const [toast, setToast] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [confirmDelete, setConfirmDelete] = useState(null);
+    const [editManager, setEditManager] = useState(null);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -65,6 +67,22 @@ export default function OwnerStaff() {
             showToast('Không thể xóa tài khoản', 'error');
         } finally {
             setConfirmDelete(null);
+        }
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        setIsUpdating(true);
+        try {
+            const { id, fullName, email, phone, branchId } = editManager;
+            await updateOwnerManager(id, { fullName, email, phone, branchId });
+            setManagers(prev => prev.map(m => m.id === id ? { ...m, fullName, email, phone, branchId } : m));
+            showToast('Cập nhật thành công');
+            setEditManager(null);
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Không thể cập nhật', 'error');
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -121,12 +139,84 @@ export default function OwnerStaff() {
                 </div>
             )}
 
+            {/* Edit Modal */}
+            {editManager && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <h3 className="font-bold text-gray-900">Chỉnh sửa thông tin</h3>
+                            <button onClick={() => setEditManager(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdate} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Họ và tên</label>
+                                    <input
+                                        required
+                                        value={editManager.fullName || ''}
+                                        onChange={e => setEditManager({ ...editManager, fullName: e.target.value })}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Số điện thoại</label>
+                                    <input
+                                        value={editManager.phone || ''}
+                                        onChange={e => setEditManager({ ...editManager, phone: e.target.value })}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Email</label>
+                                <input
+                                    required type="email"
+                                    value={editManager.email || ''}
+                                    onChange={e => setEditManager({ ...editManager, email: e.target.value })}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Chi nhánh quản lý</label>
+                                <div className="relative">
+                                    <Store size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <select
+                                        value={editManager.branchId || ''}
+                                        onChange={e => setEditManager({ ...editManager, branchId: e.target.value })}
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm appearance-none bg-white"
+                                    >
+                                        <option value="">Chọn chi nhánh</option>
+                                        {branches.map(b => (
+                                            <option key={b.id || b.branchID} value={b.id || b.branchID}>{b.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+                            <div className="pt-4 flex gap-3">
+                                <button type="button" onClick={() => setEditManager(null)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                                    Hủy
+                                </button>
+                                <button type="submit" disabled={isUpdating}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
+                                    {isUpdating && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                    Lưu thay đổi
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <div className="flex items-center gap-3 mb-1.5">
                         <Users size={22} className="text-blue-500" />
-                        <h1 className="text-2xl font-bold text-gray-900">Quản lý Nhân viên</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">Danh Sách Quản Lý</h1>
                     </div>
                     <p className="text-gray-400 text-sm pl-9">
                         Quản lý tài khoản Quản lý Chi nhánh trong hệ thống
@@ -205,7 +295,7 @@ export default function OwnerStaff() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                 {loading ? (
                     <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
                         <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mr-3" />
@@ -233,7 +323,7 @@ export default function OwnerStaff() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {filtered.map(m => (
+                            {filtered.map((m, index) => (
                                 <tr key={m.id} className="hover:bg-gray-50/60 transition-colors group">
                                     {/* Account */}
                                     <td className="px-5 py-4">
@@ -285,12 +375,16 @@ export default function OwnerStaff() {
                                                 <MoreVertical size={16} />
                                             </button>
                                             {openMenuId === m.id && (
-                                                <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 w-44"
+                                                <div className={`absolute right-0 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 w-44 transition-all duration-200
+                                                    ${(index > 0 && index >= filtered.length - 2) ? 'bottom-full mb-1' : 'top-8'}`}
                                                     onMouseLeave={() => setOpenMenuId(null)}>
-                                                    <button className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                    <button 
+                                                        onClick={() => { setEditManager({ ...m }); setOpenMenuId(null); }}
+                                                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                                         <Edit2 size={14} className="text-blue-500" />
                                                         Chỉnh sửa
                                                     </button>
+                                                    <div className="h-px bg-gray-50 my-1" />
                                                     <button
                                                         onClick={() => { setConfirmDelete(m); setOpenMenuId(null); }}
                                                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">

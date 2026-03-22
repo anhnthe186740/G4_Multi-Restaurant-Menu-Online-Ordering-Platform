@@ -1525,6 +1525,9 @@ export const updateStaffStatus = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);
     const staffID = parseInt(req.params.id);
+    if (isNaN(staffID)) {
+      return res.status(400).json({ message: "ID nhân viên không hợp lệ." });
+    }
     const { status } = req.body;
 
     if (!["Active", "Inactive"].includes(status)) {
@@ -1558,6 +1561,9 @@ export const deleteBranchStaff = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);
     const staffID = parseInt(req.params.id);
+    if (isNaN(staffID)) {
+      return res.status(400).json({ message: "ID nhân viên không hợp lệ." });
+    }
 
     const staff = await prisma.user.findFirst({
       where: { userID: staffID, branchID }
@@ -1573,6 +1579,51 @@ export const deleteBranchStaff = async (req, res) => {
   } catch (err) {
     console.error("deleteBranchStaff error:", err);
     res.status(500).json({ message: "Lỗi xoá nhân viên" });
+  }
+};
+
+/**
+ * PUT /api/manager/staff/:id
+ */
+export const updateBranchStaff = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    const staffID = parseInt(req.params.id);
+    if (isNaN(staffID)) {
+      return res.status(400).json({ message: "ID nhân viên không hợp lệ." });
+    }
+
+    const { fullName, email, phone, role } = req.body;
+
+    const staff = await prisma.user.findFirst({
+      where: { userID: staffID, branchID }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên trong chi nhánh này." });
+    }
+
+    if (email && email.trim() !== staff.email) {
+      const existing = await prisma.user.findFirst({
+        where: { email: email.trim() }
+      });
+      if (existing) return res.status(400).json({ message: "Email đã tồn tại" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { userID: staffID },
+      data: {
+        fullName: fullName || staff.fullName,
+        email: email ? email.trim() : staff.email,
+        phone: phone || staff.phone,
+        role: role || staff.role,
+      }
+    });
+
+    res.json({ message: "Cập nhật thông tin nhân viên thành công", staff: updated });
+  } catch (err) {
+    console.error("updateBranchStaff error:", err);
+    res.status(500).json({ message: "Lỗi cập nhật thông tin nhân viên" });
   }
 };
 
