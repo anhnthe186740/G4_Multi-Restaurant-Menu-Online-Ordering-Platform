@@ -44,11 +44,16 @@ import {
   deleteOwnerManager,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
+import checkSubscription from "../middlewares/checkSub.js";
 
 const router = express.Router();
 
-// Yêu cầu đăng nhập
+// Yêu cầu đăng nhập và role RestaurantOwner
 router.use(authenticateToken);
+router.use(requireRole("RestaurantOwner"));
+
+// Yêu cầu Subscription hợp lệ với owner (nếu chưa mua/hết hạn => báo lỗi 403)
+router.use(checkSubscription);
 
 // Dashboard (Owner only)
 router.get("/dashboard/stats", requireRole("RestaurantOwner"), getDashboardStats);
