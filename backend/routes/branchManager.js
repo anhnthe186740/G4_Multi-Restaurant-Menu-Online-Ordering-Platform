@@ -22,6 +22,7 @@ import {
   updateServiceRequestStatus,
   getBranchInfo,
   uploadBranchCoverImage,
+  getPaymentHistory,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -55,6 +56,7 @@ router.get("/tables/:id/payment-status/:orderCode", checkTablePaymentStatus);
 // Orders
 router.get("/orders",              getOrders);
 router.patch("/orders/:id/status", updateOrderStatus);
+router.get("/payment-history",    getPaymentHistory);
 // Service Requests
 router.get("/service-requests",       getServiceRequests);
 router.patch("/service-requests/:id", updateServiceRequestStatus);

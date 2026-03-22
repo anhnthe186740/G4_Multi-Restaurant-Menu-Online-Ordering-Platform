@@ -1365,3 +1365,85 @@ export const uploadBranchCoverImage = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/* ===============================================================
+   9. PAYMENT HISTORY
+   GET /api/manager/payment-history
+   Query: startDate, endDate (ISO strings)
+=============================================================== */
+export const getPaymentHistory = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { startDate, endDate } = req.query;
+
+    const where = {
+      invoice: {
+        order: {
+          branchID: branchID,
+        },
+      },
+      status: "Success",
+    };
+
+    if (startDate || endDate) {
+      where.transactionTime = {};
+      if (startDate) {
+        where.transactionTime.gte = new Date(startDate);
+      }
+      if (endDate) {
+        const dEnd = new Date(endDate);
+        dEnd.setHours(23, 59, 59, 999); // Hết ngày
+        where.transactionTime.lte = dEnd;
+      }
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      orderBy: { transactionTime: "desc" },
+      include: {
+        invoice: {
+          include: {
+            order: {
+              include: {
+                orderTables: {
+                  include: { table: { select: { tableName: true, tableID: true } } },
+                },
+                orderDetails: {
+                  include: { product: { select: { name: true, imageURL: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const result = transactions.map((t) => {
+      const order = t.invoice?.order;
+      return {
+        transactionID:   t.transactionID,
+        transactionTime: t.transactionTime,
+        amount:          parseFloat(t.amount),
+        paymentMethod:   t.paymentMethod,
+        invoiceID:       t.invoiceID,
+        orderID:         order?.orderID,
+        tableName:       order?.orderTables
+          .map((ot) => ot.table?.tableName ?? `Bàn ${ot.tableID}`)
+          .join(", "),
+        items: order?.orderDetails.map((d) => ({
+          productName: d.product?.name ?? "Món đã xóa",
+          quantity:    d.quantity,
+          unitPrice:   parseFloat(d.unitPrice),
+        })) || [],
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("getPaymentHistory error:", err);
+    res.status(500).json({ message: "Lỗi lấy lịch sử thanh toán." });
+  }
+};
