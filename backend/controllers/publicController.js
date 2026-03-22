@@ -320,63 +320,108 @@ export const getPublicOrderByTable = async (req, res) => {
 ───────────────────────────────────────────────────────────── */
 export const cancelPublicOrderItem = async (req, res) => {
     try {
-        const { tableId, orderDetailID } = req.body;
+        const { tableId, orderDetailID, cancelQuantity } = req.body;
         if (!tableId || !orderDetailID) {
             return res.status(400).json({ message: "Thiếu tableId hoặc orderDetailID." });
         }
 
         const tId      = parseInt(tableId);
         const detailId = parseInt(orderDetailID);
+        const qtyToCancel = parseInt(cancelQuantity) || 1;
 
-        // Kiểm tra orderDetail này có thuộc đơn đang active của đúng bàn không
-        const link = await prisma.orderTable.findFirst({
-            where: {
-                tableID: tId,
+        if (qtyToCancel <= 0) {
+            return res.status(400).json({ message: "Số lượng huỷ không hợp lệ." });
+        }
+
+        // 1. Kiểm tra orderDetail này có thuộc đơn đang active của đúng bàn không
+        const orderDetail = await prisma.orderDetail.findUnique({
+            where: { orderDetailID: detailId },
+            include: {
                 order: {
-                    orderStatus: { in: ["Open", "Serving"] },
-                    orderDetails: { some: { orderDetailID: detailId } },
-                },
-            },
+                    include: {
+                        orderTables: true
+                    }
+                }
+            }
         });
 
-        if (!link) {
+        if (!orderDetail || !orderDetail.order) {
+            return res.status(404).json({ message: "Không tìm thấy món ăn này trong đơn hàng." });
+        }
+
+        // Kiểm tra xem đơn hàng có thuộc bàn này không
+        const isCorrectTable = orderDetail.order.orderTables.some(ot => ot.tableID === tId);
+        if (!isCorrectTable) {
             return res.status(403).json({ message: "Món này không thuộc đơn hàng của bàn bạn." });
         }
 
-        // ATOMIC: chỉ cancel nếu itemStatus vẫn là "Pending"
-        const result = await prisma.orderDetail.updateMany({
-            where: { orderDetailID: detailId, itemStatus: "Pending" },
-            data:  { itemStatus: "Cancelled" },
-        });
+        // Kiểm tra trạng thái đơn hàng
+        if (!["Open", "Serving"].includes(orderDetail.order.orderStatus)) {
+            return res.status(400).json({ message: "Đơn hàng đã hoàn thành hoặc đã hủy, không thể chỉnh sửa." });
+        }
 
-        if (result.count === 0) {
+        // 2. ATOMIC: chỉ cancel nếu itemStatus vẫn là "Pending"
+        if (orderDetail.itemStatus !== "Pending") {
             return res.status(400).json({
                 message: "Không thể huỷ — bếp đã bắt đầu chuẩn bị món này!",
             });
         }
 
-        // Recalculate totalAmount
-        const orderDetail = await prisma.orderDetail.findUnique({
-            where: { orderDetailID: detailId },
-            select: { orderID: true },
-        });
+        if (qtyToCancel > orderDetail.quantity) {
+            return res.status(400).json({ message: "Số lượng huỷ vượt quá số lượng hiện có." });
+        }
+
         const orderID = orderDetail.orderID;
 
-        const remaining = await prisma.orderDetail.findMany({
+        // 3. Xử lý chia tách bản ghi nếu quantity > qtyToCancel
+        if (orderDetail.quantity > qtyToCancel) {
+            // Giảm số lượng của bản ghi hiện tại
+            await prisma.orderDetail.update({
+                where: { orderDetailID: detailId },
+                data: { quantity: orderDetail.quantity - qtyToCancel }
+            });
+
+            // Tạo bản ghi mới đã bị huỷ với số lượng là qtyToCancel
+            await prisma.orderDetail.create({
+                data: {
+                    orderID: orderID,
+                    productID: orderDetail.productID,
+                    quantity: qtyToCancel,
+                    unitPrice: orderDetail.unitPrice,
+                    note: orderDetail.note,
+                    itemStatus: "Cancelled"
+                }
+            });
+        } else {
+            // Nếu huỷ toàn bộ số lượng, đổi trạng thái sang Cancelled
+            await prisma.orderDetail.update({
+                where: { orderDetailID: detailId },
+                data: { itemStatus: "Cancelled" }
+            });
+        }
+
+        // 4. Recalculate totalAmount (Dựa trên tất cả món có status khác Cancelled)
+        const remainingItems = await prisma.orderDetail.findMany({
             where: { orderID, itemStatus: { not: "Cancelled" } },
             select: { quantity: true, unitPrice: true },
         });
-        const newTotal = remaining.reduce((s, d) => s + d.quantity * parseFloat(d.unitPrice), 0);
+        const newTotal = remainingItems.reduce((s, d) => s + d.quantity * parseFloat(d.unitPrice), 0);
         await prisma.order.update({ where: { orderID }, data: { totalAmount: newTotal } });
 
-        // Phát realtime
+        // 5. Phát tín hiệu realtime
         const io = req.app.get("io");
+        // Gửi sự kiện cập nhật để manager và các client khác reload
+        io?.emit("tableUpdate", { branchID: orderDetail.order.branchID, tableID: tId, timestamp: Date.now() });
+        // Sự kiện cụ thể cho item status
         io?.emit("orderItemStatusChanged", { orderDetailID: detailId, itemStatus: "Cancelled", tableID: tId });
-        io?.emit("tableUpdate", { tableID: tId, timestamp: Date.now() });
 
-        res.json({ message: "Đã huỷ món thành công.", orderDetailID: detailId, itemStatus: "Cancelled" });
+        res.json({ 
+            message: `Đã huỷ ${qtyToCancel} món thành công.`, 
+            orderDetailID: detailId, 
+            cancelledQuantity: qtyToCancel 
+        });
     } catch (error) {
         console.error("cancelPublicOrderItem error:", error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: "Lỗi khi huỷ món.", error: error.message });
     }
 };

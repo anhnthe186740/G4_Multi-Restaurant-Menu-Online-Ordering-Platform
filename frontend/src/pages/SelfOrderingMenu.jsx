@@ -32,6 +32,59 @@ function ItemStatusBadge({ status }) {
 }
 
 /* ────────────────────────────────────────────────────────────
+   Modal chọn số lượng huỷ (nếu món có Qty > 1)
+──────────────────────────────────────────────────────────── */
+function CancelQuantityModal({ item, onClose, onConfirm, isCancelling }) {
+  const [qty, setQty] = useState(1);
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-scale-in">
+        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto border border-red-200">
+          <X size={24} className="text-red-600" />
+        </div>
+        <h2 className="text-lg font-black text-center text-gray-900 mb-1">Huỷ số lượng?</h2>
+        <p className="text-sm text-center text-gray-500 mb-5">
+          Bạn muốn huỷ bao nhiêu <strong className="text-gray-800">{item.productName}</strong>? (Tối đa {item.quantity})
+        </p>
+
+        <div className="flex items-center justify-center gap-6 mb-8">
+          <button
+            onClick={() => setQty(Math.max(1, qty - 1))}
+            className="w-12 h-12 rounded-full border-2 border-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-90 transition-all"
+          >
+            <Minus size={20} strokeWidth={3} />
+          </button>
+          <span className="text-3xl font-black text-gray-800 min-w-[40px] text-center">
+            {qty}
+          </span>
+          <button
+            onClick={() => setQty(Math.min(item.quantity, qty + 1))}
+            className="w-12 h-12 rounded-full border-2 border-emerald-100 bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 active:scale-90 transition-all"
+          >
+            <Plus size={20} strokeWidth={3} />
+          </button>
+        </div>
+
+        <div className="flex gap-3">
+          <button disabled={isCancelling} onClick={onClose}
+            className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 transition disabled:opacity-50">
+            Đóng
+          </button>
+          <button
+            disabled={isCancelling}
+            onClick={() => onConfirm(qty)}
+            className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition shadow-lg shadow-red-500/30 disabled:opacity-50 flex justify-center items-center gap-2"
+          >
+            {isCancelling ? <Loader2 size={18} className="animate-spin" /> : "Xác nhận huỷ"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────
    Tab 1: Đơn hàng — giống hệt TableOrderPanel của manager
 ──────────────────────────────────────────────────────────── */
 function OrderTab({ tableId, tableName }) {
@@ -41,6 +94,7 @@ function OrderTab({ tableId, tableName }) {
   const [callingStaff, setCallingStaff] = useState(false);
   const [staffCalled, setStaffCalled]   = useState(false);
   const [cancellingId, setCancellingId] = useState(null);
+  const [cancelModalItem, setCancelModalItem] = useState(null);
 
   const loadOrder = useCallback(async () => {
     setLoading(true);
@@ -96,17 +150,21 @@ function OrderTab({ tableId, tableName }) {
     }
   };
 
-  const handleCancelItem = async (orderDetailID) => {
-    if (!window.confirm("Huỷ món này?")) return;
+  const handleCancelItem = (item) => {
+    if (item.quantity > 1) {
+      setCancelModalItem(item);
+    } else {
+      if (!window.confirm("Huỷ món này?")) return;
+      confirmCancelQuantity(item.orderDetailID, 1);
+    }
+  };
+
+  const confirmCancelQuantity = async (orderDetailID, cancelQuantity) => {
     setCancellingId(orderDetailID);
     try {
-      await cancelPublicOrderItem({ tableId, orderDetailID });
-      setOrder(prev => ({
-        ...prev,
-        items: prev.items.map(i =>
-          i.orderDetailID === orderDetailID ? { ...i, itemStatus: "Cancelled" } : i
-        ),
-      }));
+      await cancelPublicOrderItem({ tableId, orderDetailID, cancelQuantity });
+      setCancelModalItem(null);
+      loadOrder(); 
     } catch (err) {
       alert(err.response?.data?.message || "Không thể huỷ món này.");
     } finally {
@@ -206,7 +264,7 @@ function OrderTab({ tableId, tableName }) {
                           {/* Nút huỷ — chỉ hiện khi Pending */}
                           {item.itemStatus === "Pending" && (
                             <button
-                              onClick={() => handleCancelItem(item.orderDetailID)}
+                              onClick={() => handleCancelItem(item)}
                               disabled={cancellingId === item.orderDetailID}
                               className="ml-auto flex items-center gap-1 text-xs text-red-500 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg px-2.5 py-1 transition-all disabled:opacity-40 flex-shrink-0"
                             >
@@ -252,6 +310,16 @@ function OrderTab({ tableId, tableName }) {
           </>
         )}
       </div>
+
+      {/* Modal số lượng huỷ */}
+      {cancelModalItem && (
+        <CancelQuantityModal
+          item={cancelModalItem}
+          isCancelling={cancellingId === cancelModalItem.orderDetailID}
+          onClose={() => setCancelModalItem(null)}
+          onConfirm={(qty) => confirmCancelQuantity(cancelModalItem.orderDetailID, qty)}
+        />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
     MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer,
-    Bell, ChefHat, Loader2, AlertCircle, ClipboardList, UtensilsCrossed
+    Bell, ChefHat, Loader2, AlertCircle, ClipboardList, UtensilsCrossed, Minus
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -459,6 +459,59 @@ function ItemStatusBadge({ status }) {
     );
 }
 
+/* ────────────────────────────────────────────────────────────
+   Modal chọn số lượng huỷ (Manager side)
+──────────────────────────────────────────────────────────── */
+function CancelQuantityModal({ item, onClose, onConfirm, isCancelling }) {
+    const [qty, setQty] = useState(1);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-scale-in">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto border border-red-200">
+                    <X size={24} className="text-red-600" />
+                </div>
+                <h2 className="text-lg font-black text-center text-gray-900 mb-1">Huỷ món/số lượng?</h2>
+                <p className="text-sm text-center text-gray-500 mb-5">
+                    Bạn muốn huỷ bao nhiêu <strong className="text-gray-800">{item.productName}</strong>? (Tối đa {item.quantity})
+                </p>
+
+                <div className="flex items-center justify-center gap-6 mb-8">
+                    <button
+                        onClick={() => setQty(Math.max(1, qty - 1))}
+                        className="w-12 h-12 rounded-full border-2 border-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-90 transition-all"
+                    >
+                        <Minus size={20} strokeWidth={3} />
+                    </button>
+                    <span className="text-3xl font-black text-gray-800 min-w-[40px] text-center">
+                        {qty}
+                    </span>
+                    <button
+                        onClick={() => setQty(Math.min(item.quantity, qty + 1))}
+                        className="w-12 h-12 rounded-full border-2 border-emerald-100 bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 active:scale-90 transition-all"
+                    >
+                        <Plus size={20} strokeWidth={3} />
+                    </button>
+                </div>
+
+                <div className="flex gap-3">
+                    <button disabled={isCancelling} onClick={onClose}
+                        className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 transition disabled:opacity-50">
+                        Đóng
+                    </button>
+                    <button
+                        disabled={isCancelling}
+                        onClick={() => onConfirm(qty)}
+                        className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition shadow-lg shadow-red-500/30 disabled:opacity-50 flex justify-center items-center gap-2"
+                    >
+                        {isCancelling ? <Loader2 size={18} className="animate-spin" /> : "Xác nhận huỷ"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ─── Panel Order của bàn ──────────────────────────────────────────────────── */
 function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refreshTables }) {
     const [order, setOrder]           = useState(null);
@@ -468,6 +521,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
     const [staffCalled, setStaffCalled]   = useState(false);
     const [cancellingId, setCancellingId] = useState(null);
     const [checkingOut, setCheckingOut]   = useState(false);
+    const [cancelModalItem, setCancelModalItem] = useState(null);
 
     const loadOrder = useCallback(async () => {
         setLoading(true);
@@ -501,13 +555,23 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
         }
     };
 
-    const handleCancelItem = async (orderDetailID) => {
+    const handleCancelItem = (item) => {
+        if (item.quantity > 1) {
+            setCancelModalItem(item);
+        } else {
+            if (!window.confirm(`Huỷ món ${item.productName}?`)) return;
+            confirmCancelQuantity(item.orderDetailID, 1);
+        }
+    };
+
+    const confirmCancelQuantity = async (orderDetailID, cancelQuantity) => {
         setCancellingId(orderDetailID);
         try {
-            await cancelManagerOrderItem(orderDetailID);
-            await loadOrder(); // Reload để cập nhật danh sách + tổng tiền
+            await cancelManagerOrderItem(orderDetailID, cancelQuantity);
+            setCancelModalItem(null);
+            await loadOrder(); 
         } catch (err) {
-            console.error('Huỷ món lỗi:', err);
+            alert(err.response?.data?.message || "Không thể huỷ món này.");
         } finally {
             setCancellingId(null);
         }
@@ -627,7 +691,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                                                 {/* Nút huỷ — chỉ hiện khi Pending */}
                                                 {isPending && (
                                                     <button
-                                                        onClick={() => handleCancelItem(item.orderDetailID)}
+                                                        onClick={() => handleCancelItem(item)}
                                                         disabled={isCancelling}
                                                         title="Huỷ món này"
                                                         className="flex-shrink-0 p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50">
@@ -681,6 +745,16 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                             : <><CreditCard size={15} /> Thanh toán (Tiền mặt)</>}
                     </button>
                 </div>
+            )}
+
+            {/* Modal chọn số lượng (nếu Qty > 1) */}
+            {cancelModalItem && (
+                <CancelQuantityModal
+                    item={cancelModalItem}
+                    onClose={() => setCancelModalItem(null)}
+                    isCancelling={cancellingId === cancelModalItem.orderDetailID}
+                    onConfirm={(qty) => confirmCancelQuantity(cancelModalItem.orderDetailID, qty)}
+                />
             )}
         </div>
     );
