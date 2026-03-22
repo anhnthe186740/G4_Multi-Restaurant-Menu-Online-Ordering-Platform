@@ -29,6 +29,8 @@ export const confirmManagerOrder       = (data)     => managerAxios.post("manage
 // Checkout & Bill
 export const getManagerBillByTable     = (id)       => managerAxios.get(`manager/tables/${id}/bill`);
 export const processManagerCheckout    = (id, data) => managerAxios.post(`manager/tables/${id}/checkout`, data);
+export const createTablePaymentLink    = (id)       => managerAxios.post(`manager/tables/${id}/payment-link`);
+export const checkTablePaymentStatus   = (id, orderCode) => managerAxios.get(`manager/tables/${id}/payment-status/${orderCode}`);
 
 // Orders
 export const getManagerOrders          = (status)   => managerAxios.get("manager/orders", { params: status ? { status } : {} });

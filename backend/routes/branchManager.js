@@ -14,6 +14,8 @@ import {
   confirmManagerOrder,
   getBillByTable,
   processManagerCheckout,
+  createTablePaymentLink,
+  checkTablePaymentStatus,
   getOrders,
   updateOrderStatus,
   getServiceRequests,
@@ -54,6 +56,10 @@ router.get("/tables/:id/bill",           requireRole("BranchManager", "Staff"), 
 router.post("/tables/:id/checkout",      requireRole("BranchManager", "Staff"), processManagerCheckout);
 router.get("/tables/:id/order-details",  requireRole("BranchManager", "Staff"), getTableOrderDetails);
 
+router.get("/tables/:id/bill",     getBillByTable);
+router.post("/tables/:id/checkout", processManagerCheckout);
+router.post("/tables/:id/payment-link", createTablePaymentLink);
+router.get("/tables/:id/payment-status/:orderCode", checkTablePaymentStatus);
 // Orders (Manager + Staff)
 router.get("/orders",              requireRole("BranchManager", "Staff"), getOrders);
 router.patch("/orders/:id/status", requireRole("BranchManager", "Staff"), updateOrderStatus);
