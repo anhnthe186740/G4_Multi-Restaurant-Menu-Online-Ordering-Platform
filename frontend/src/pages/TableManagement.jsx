@@ -568,27 +568,6 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                     </div>
                 ) : (
                     <>
-                        {/* Section: Gọi nhân viên */}
-                        <div className="px-5 py-4 border-b border-gray-100">
-                            <button
-                                onClick={handleCallStaff}
-                                disabled={callingStaff || staffCalled}
-                                className={`w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
-                                    staffCalled
-                                        ? 'bg-green-100 text-green-700 border border-green-200'
-                                        : callingStaff
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 active:scale-95'
-                                }`}>
-                                {staffCalled ? (
-                                    <><CheckCircle size={16} /> Đã gửi yêu cầu gọi nhân viên!</>
-                                ) : callingStaff ? (
-                                    <><Loader2 size={16} className="animate-spin" /> Đang gửi...</>
-                                ) : (
-                                    <><Bell size={16} /> 🔔 Gọi nhân viên</>  
-                                )}
-                            </button>
-                        </div>
 
                         {/* Section: Danh sách món */}
                         <div className="px-5 py-4">
