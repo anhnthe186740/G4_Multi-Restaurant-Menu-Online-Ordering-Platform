@@ -30,7 +30,9 @@ export default function KitchenDisplaySystem() {
         catch { return {}; }
     }, []);
 
-    const branchID = userData.role === 'BranchManager' ? userData.branchID : paramBranchID;
+    const branchID = (userData.role === 'BranchManager' || userData.role === 'Staff' || userData.role === 'Kitchen')
+        ? userData.branchID
+        : paramBranchID;
     const isReadOnly = userData.role === 'RestaurantOwner';
 
     const [orders, setOrders] = useState([]);
@@ -53,9 +55,9 @@ export default function KitchenDisplaySystem() {
         const fetchBranchInfo = async () => {
             if (!branchID) return;
             try {
-                if (userData.role === 'BranchManager') {
+                if (userData.role === 'BranchManager' || userData.role === 'Staff' || userData.role === 'Kitchen') {
                     const response = await getManagerBranchInfo();
-                    setBranchName(response.data.branch.name);
+                    setBranchName(response.data.branch?.name || response.data.name || `Chi nhánh ${branchID}`);
                 } else if (userData.role === 'RestaurantOwner') {
                     const response = await getOwnerBranches();
                     const currentBranch = response.data.branches?.find(b => b.branchID === branchID);

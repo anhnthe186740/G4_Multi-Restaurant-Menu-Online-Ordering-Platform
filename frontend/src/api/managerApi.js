@@ -50,4 +50,10 @@ export const getManagerServiceRequests         = (params)     => managerAxios.ge
 export const createManagerServiceRequest       = (data)       => managerAxios.post("manager/service-requests", data);
 export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });
 
+// Staff Management
+export const getBranchStaff = () => managerAxios.get("manager/staff");
+export const createBranchStaff = (data) => managerAxios.post("manager/staff", data);
+export const updateStaffStatus = (id, status) => managerAxios.patch(`manager/staff/${id}/status`, { status });
+export const deleteBranchStaff = (id) => managerAxios.delete(`manager/staff/${id}`);
+
 export default managerAxios;

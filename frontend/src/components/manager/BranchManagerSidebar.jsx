@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-    LayoutDashboard, Bell, Info, UtensilsCrossed, LayoutGrid, LogOut
+    LayoutDashboard, Bell, Info, UtensilsCrossed, LayoutGrid, LogOut, Users
 } from 'lucide-react';
 
 export default function BranchManagerSidebar() {
@@ -12,6 +12,7 @@ export default function BranchManagerSidebar() {
         { icon: LayoutGrid,      label: 'Sơ đồ bàn',        path: '/manager/tables' },
         { icon: UtensilsCrossed, label: 'Theo dõi bếp',     path: '/manager/kds' },
         { icon: Bell,            label: 'Yêu cầu phục vụ',  path: '/manager/service-requests' },
+        { icon: Users,           label: 'Quản lý nhân viên',path: '/manager/staff' },
         { icon: Info,            label: 'Thông tin nhà hàng',path: '/manager/info' },
     ];
 

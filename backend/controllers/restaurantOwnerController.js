@@ -1,6 +1,7 @@
 import prisma from "../config/prismaClient.js";
 import { Parser } from "json2csv";
 import { sendNewAccountEmail } from "../config/emailService.js";
+import fs from "fs/promises";
 
 /*
   restaurantOwnerController.js
@@ -940,7 +941,7 @@ export const deleteOwnerBranch = async (req, res) => {
 // 1. Lấy danh sách đơn hàng trong ngày của chi nhánh/bếp (FIFO)
 export const getKitchenOrders = async (req, res) => {
   try {
-    const userID = req.user.userId;
+    const userID = parseInt(req.user?.userId || req.user?.userID);
     const branchID = parseInt(req.params.branchID);
     const categoryID = req.query.categoryID ? parseInt(req.query.categoryID) : null;
 
@@ -960,9 +961,17 @@ export const getKitchenOrders = async (req, res) => {
         where: { branchID, managerUserID: userID },
       });
       if (branch) allowed = true;
+    } else if (userRole === "Staff" || userRole === "Kitchen") {
+      const user = await prisma.user.findFirst({
+        where: { userID, branchID },
+      });
+      if (user) allowed = true;
     }
 
     if (!allowed) {
+      const logMsg = `❌ Auth Denied: userID=${userID}, role=${userRole}, branchID=${branchID}, req.user=${JSON.stringify(req.user)}\n`;
+      try { await fs.appendFile('d:/Kì 6/SWP391/G4_Multi-Restaurant-Menu-Online-Ordering-Platform/backend/tmp/auth_logs.txt', logMsg); } catch(e) {}
+      console.log(logMsg);
       return res.status(403).json({ message: "Bạn không có quyền truy cập dữ liệu của chi nhánh này" });
     }
 
@@ -1926,6 +1935,11 @@ export const updateItemStatus = async (req, res) => {
         where: { branchID, managerUserID: userID },
       });
       if (branch) allowed = true;
+    } else if (userRole === "Staff" || userRole === "Kitchen") {
+      const user = await prisma.user.findFirst({
+        where: { userID, branchID },
+      });
+      if (user) allowed = true;
     }
 
     if (!allowed) {
@@ -2018,6 +2032,11 @@ export const updateMultipleItemStatus = async (req, res) => {
           where: { branchID: bID, managerUserID: userID },
         });
         if (branch) allowed = true;
+      } else if (userRole === "Staff" || userRole === "Kitchen") {
+        const user = await prisma.user.findFirst({
+          where: { userID, branchID: bID },
+        });
+        if (user) allowed = true;
       }
 
       if (!allowed) {
