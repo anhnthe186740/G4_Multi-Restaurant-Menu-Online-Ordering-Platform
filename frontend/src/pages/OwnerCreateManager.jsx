@@ -331,9 +331,9 @@ export default function OwnerCreateManager() {
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
                 <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
                 <div>
-                    <p className="text-sm font-semibold text-blue-700 mb-1">Lưu ý bảo mật</p>
+                    <p className="text-sm font-semibold text-blue-700 mb-1">Lưu ý quản trị tài khoản</p>
                     <p className="text-xs text-blue-600 leading-relaxed">
-                        Mật khẩu nên chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt để đảm bảo an toàn tối đa cho hệ thống quản trị. Hãy thông báo thông tin đăng nhập cho nhân viên một cách an toàn.
+                        Hệ thống sẽ <strong>tự động gửi email</strong> thông báo tên đăng nhập và mật khẩu cho quản lý sau khi được tạo. Vui lòng đảm bảo địa chỉ email nhập ở trên là chính xác.
                     </p>
                 </div>
             </div>

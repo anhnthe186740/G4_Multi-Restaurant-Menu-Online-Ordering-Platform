@@ -41,6 +41,12 @@ export const updateManagerBranchCover = (formData) => managerAxios.patch("manage
     headers: { "Content-Type": "multipart/form-data" }
 });
 
+// Staff Management
+export const getBranchStaff     = ()         => managerAxios.get("manager/staff");
+export const createBranchStaff   = (data)     => managerAxios.post("manager/staff", data);
+export const updateStaffStatus  = (id, status) => managerAxios.patch(`manager/staff/${id}/status`, { status });
+export const deleteBranchStaff  = (id)       => managerAxios.delete(`manager/staff/${id}`);
+
 // Service Requests
 export const getManagerServiceRequests         = (params)     => managerAxios.get("manager/service-requests", { params });
 export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });

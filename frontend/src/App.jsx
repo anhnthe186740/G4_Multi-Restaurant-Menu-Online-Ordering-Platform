@@ -35,6 +35,7 @@ import ManagerServiceRequests from "./pages/ManagerServiceRequests";
 import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
 import OrderManagement from "./pages/OrderManagement";
+import ManagerAccountManagement from "./pages/ManagerAccountManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SelfOrderingMenu from "./pages/SelfOrderingMenu";
 
@@ -302,19 +303,19 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/manager/orders"
-          element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <div className="p-8 text-white">Trang quản lý đơn hàng (đang phát triển)</div>
-            </ProtectedRoute>
-          }
-        />
           <Route
           path="/manager/info"
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <ManagerBranchInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/staff"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerAccountManagement />
             </ProtectedRoute>
           }
         />
