@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/";
+const API_URL = `http://${window.location.hostname}:5000/api/`;
 
 const managerAxios = axios.create({ baseURL: API_URL });
 
@@ -26,18 +26,42 @@ export const updateManagerTableStatus  = (id, status) => managerAxios.patch(`man
 export const deleteManagerTable        = (id)       => managerAxios.delete(`manager/tables/${id}`);
 export const confirmManagerOrder       = (data)     => managerAxios.post("manager/confirm-order", data);
 
+// Checkout & Bill
+export const getManagerBillByTable     = (id)       => managerAxios.get(`manager/tables/${id}/bill`);
+export const processManagerCheckout    = (id, data) => managerAxios.post(`manager/tables/${id}/checkout`, data);
+export const createTablePaymentLink    = (id)       => managerAxios.post(`manager/tables/${id}/payment-link`);
+export const checkTablePaymentStatus   = (id, orderCode) => managerAxios.get(`manager/tables/${id}/payment-status/${orderCode}`);
+
+// Orders
+export const getManagerOrders          = (status)   => managerAxios.get("manager/orders", { params: status ? { status } : {} });
+export const updateManagerOrderStatus  = (id, orderStatus) => managerAxios.patch(`manager/orders/${id}/status`, { orderStatus });
+export const getManagerPaymentHistory  = (params)   => managerAxios.get("manager/payment-history", { params });
+
+
 // Branch Info
 export const getManagerBranchInfo = () => managerAxios.get("manager/branch-info");
 export const updateManagerBranchCover = (formData) => managerAxios.patch("manager/branch-info/cover", formData, {
     headers: { "Content-Type": "multipart/form-data" }
 });
 
+// Order Details per Table (with itemStatus from DB)
+export const getManagerTableOrderDetails  = (id)       => managerAxios.get(`manager/tables/${id}/order-details`);
+export const cancelManagerOrderItem       = (detailId, cancelQuantity) => managerAxios.patch(`manager/order-items/${detailId}/cancel`, { cancelQuantity });
+
 // Service Requests
 export const getManagerServiceRequests         = (params)     => managerAxios.get("manager/service-requests", { params });
+export const createManagerServiceRequest       = (data)       => managerAxios.post("manager/service-requests", data);
 export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });
 
 // Menu
 export const getManagerMenuItems = () => managerAxios.get("manager/menu");
 export const saveManagerMenu = (items) => managerAxios.post("manager/menu/save", { items });
+
+// Staff Management
+export const getBranchStaff = () => managerAxios.get("manager/staff");
+export const createBranchStaff = (data) => managerAxios.post("manager/staff", data);
+export const updateStaffStatus = (id, status) => managerAxios.patch(`manager/staff/${id}/status`, { status });
+export const updateBranchStaff = (id, data) => managerAxios.put(`manager/staff/${id}`, data);
+export const deleteBranchStaff = (id) => managerAxios.delete(`manager/staff/${id}`);
 
 export default managerAxios;

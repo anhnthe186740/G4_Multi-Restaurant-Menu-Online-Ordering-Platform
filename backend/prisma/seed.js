@@ -245,6 +245,12 @@ async function main() {
     },
   });
 
+  // Gán branch cho Staff 1
+  await prisma.user.update({
+    where: { userID: staff1.userID },
+    data: { branchID: branch1.branchID }
+  });
+
   const branch2 = await prisma.branch.create({
     data: {
       restaurantID: rest1.restaurantID,

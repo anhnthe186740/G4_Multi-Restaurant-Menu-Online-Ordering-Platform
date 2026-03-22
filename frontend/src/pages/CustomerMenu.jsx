@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getMenuByTable } from '../api/publicApi';
-import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle, CheckCircle, Bell, CreditCard, Loader2 } from 'lucide-react';
-import { confirmManagerOrder } from '../api/managerApi';
-import axios from 'axios';
-
-const PUBLIC_API = 'http://localhost:5000/api/public/';
+import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle, CheckCircle } from 'lucide-react';
+import { confirmManagerOrder, getManagerBillByTable, processManagerCheckout, createTablePaymentLink } from '../api/managerApi';
+import { Receipt, CreditCard, History } from 'lucide-react';
+import TablePaymentModal from '../components/manager/TablePaymentModal';
 
 export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const [searchParams] = useSearchParams();
@@ -18,10 +17,15 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const [cart, setCart] = useState([]);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    
+    // Management - Bill logic
+    const [activeTab, setActiveTab] = useState('menu'); // 'menu' | 'bill'
+    const [billData, setBillData] = useState(null);
+    const [loadingBill, setLoadingBill] = useState(false);
 
-    // srState per type: null | 'sending' | 'pending'
-    const [srState, setSrState] = useState({ GoiMon: null, ThanhToan: null });
-    const srTimers = useRef({});
+    // QR Payment Modal state
+    const [qrPaymentData, setQrPaymentData] = useState(null);
+    const [qrModalOpen, setQrModalOpen] = useState(false);
 
     // Cart Logic
     const addToCart = (product) => {
@@ -83,33 +87,76 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
         fetchMenu();
     }, [tableId]);
 
-    // Gọi API tạo / cập nhật yêu cầu phục vụ
-    const sendServiceRequest = async (requestType) => {
-        if (srState[requestType] === 'sending' || srState[requestType] === 'pending') return;
-        setSrState(s => ({ ...s, [requestType]: 'sending' }));
-        clearTimeout(srTimers.current[requestType]);
+    // Fetch bill when switching to Bill tab
+    useEffect(() => {
+        if (activeTab === 'bill' && tableId) {
+            fetchBill();
+        }
+    }, [activeTab, tableId]);
+
+    const fetchBill = async () => {
         try {
-            const res = await axios.post(`${PUBLIC_API}service-request`, { tableId, requestType });
-            const isPending = res.data.action !== 'done'; // created or updated → still pending
-            setSrState(s => ({ ...s, [requestType]: isPending ? 'pending' : null }));
+            setLoadingBill(true);
+            const res = await getManagerBillByTable(tableId);
+            setBillData(res.data);
         } catch (err) {
-            console.error('sendServiceRequest error', err);
-            setSrState(s => ({ ...s, [requestType]: null }));
+            console.error("Fetch bill error", err);
+            setBillData(null);
+        } finally {
+            setLoadingBill(false);
         }
     };
 
-    // Khi manager xử lý xong, state sẽ reset khi trang reload
-    // Nhưng để UX mượt hơn: sau 3 phút tự reset state UI (không ảnh hưởng DB)
-    useEffect(() => {
-        Object.keys(srState).forEach(type => {
-            if (srState[type] === 'pending') {
-                clearTimeout(srTimers.current[type]);
-                srTimers.current[type] = setTimeout(() => {
-                    setSrState(s => ({ ...s, [type]: null }));
-                }, 3 * 60 * 1000); // 3 phút
+    const handleProcessPayment = async (method = "Cash") => {
+        if (!window.confirm(`Xác nhận thanh toán ${formatPrice(billData.totalAmount)} bằng Tiền mặt?`)) {
+            return;
+        }
+        try {
+            setIsProcessing(true);
+            await processManagerCheckout(tableId, { paymentMethod: method });
+            if (onCheckoutSuccess) {
+
+                const allNames = billData?.tables?.map(t => t.name).join(' + ') || `Bàn ${tableId}`;
+                onCheckoutSuccess(`Thanh toán ${allNames} thành công!`);
+
+//                 onCheckoutSuccess(`Bàn đã thanh toán thành công!`, { type: 'Cash', tableId });
+
             }
-        });
-    }, [srState]);
+        } catch (err) {
+            console.error("Checkout error", err);
+            alert("Lỗi thanh toán: " + (err.response?.data?.message || err.message));
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    // Handle QR/Bank Transfer payment — creates PayOS link
+    const handleBankTransfer = async () => {
+        try {
+            setIsProcessing(true);
+            const res = await createTablePaymentLink(tableId);
+            
+            // Báo lên cha (TableManagement) để thêm vào Queue
+            if (onCheckoutSuccess) {
+                onCheckoutSuccess('', {
+                    type: 'QR',
+                    tableId,
+                    tableName: billData?.tables?.[0]?.name || `Bàn ${tableId}`,
+                    paymentData: res.data,
+                    billData: billData
+                });
+            } else {
+                setQrPaymentData(res.data);
+                setQrModalOpen(true);
+            }
+            
+        } catch (err) {
+            console.error("Create payment link error", err);
+            alert("Lỗi tạo mã QR: " + (err.response?.data?.message || err.message));
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -144,7 +191,10 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
     };
 
+    const isManagerView = !!tableIdProp; // Nếu là Drawer trong quản lý
+
     return (
+        <>
         <div className="h-full bg-gray-50 pb-24 relative">
             {/* Header / Cover Image */}
             <div className="relative h-64 bg-gray-900 shrink-0">
@@ -173,156 +223,203 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                 </div>
             </div>
 
-            {/* Thông tin Bàn + Nút yêu cầu */}
-            <div className="px-4 -mt-4 relative z-10 space-y-3">
-                {/* Bàn & liên hệ */}
-                <div className="bg-white rounded-2xl shadow-md p-4 flex justify-between items-center border border-gray-100">
-                    <div>
-                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Vị trí của bạn</p>
-                        <p className="font-bold text-lg text-emerald-600">{table.name}</p>
-                    </div>
-                    {branch.phone && (
-                        <a href={`tel:${branch.phone}`} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition">
-                            <Phone size={14} /> Liên hệ
-                        </a>
-                    )}
-                </div>
-
-                {/* Nút yêu cầu phục vụ */}
-                <div className="grid grid-cols-2 gap-3">
-                    {/* Gọi món */}
-                    {(() => {
-                        const st = srState.GoiMon;
-                        const isPending = st === 'pending';
-                        const isSending = st === 'sending';
-                        return (
-                            <button
-                                onClick={() => sendServiceRequest('GoiMon')}
-                                disabled={isPending || isSending}
-                                className={`flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm shadow-sm transition-all ${
-                                    isPending
-                                        ? 'bg-orange-50 text-orange-500 border-2 border-orange-200 cursor-not-allowed'
-                                        : isSending
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        : 'bg-red-50 text-red-600 border-2 border-red-100 hover:bg-red-100 active:scale-95'
-                                }`}
-                            >
-                                {isSending ? (
-                                    <Loader2 size={16} className="animate-spin" />
-                                ) : isPending ? (
-                                    <CheckCircle size={16} />
-                                ) : (
-                                    <Bell size={16} />
-                                )}
-                                {isPending ? 'Đang xử lý...' : 'Gọi món'}
-                            </button>
-                        );
-                    })()}
-
-                    {/* Thanh toán */}
-                    {(() => {
-                        const st = srState.ThanhToan;
-                        const isPending = st === 'pending';
-                        const isSending = st === 'sending';
-                        return (
-                            <button
-                                onClick={() => sendServiceRequest('ThanhToan')}
-                                disabled={isPending || isSending}
-                                className={`flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm shadow-sm transition-all ${
-                                    isPending
-                                        ? 'bg-orange-50 text-orange-500 border-2 border-orange-200 cursor-not-allowed'
-                                        : isSending
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        : 'bg-emerald-50 text-emerald-700 border-2 border-emerald-100 hover:bg-emerald-100 active:scale-95'
-                                }`}
-                            >
-                                {isSending ? (
-                                    <Loader2 size={16} className="animate-spin" />
-                                ) : isPending ? (
-                                    <CheckCircle size={16} />
-                                ) : (
-                                    <CreditCard size={16} />
-                                )}
-                                {isPending ? 'Đang xử lý...' : 'Thanh toán'}
-                            </button>
-                        );
-                    })()}
-                </div>
-            </div>
-
-            {/* Thanh Danh mục (Sticky) */}
-            <div className="sticky top-0 z-30 bg-white shadow-sm mt-4 border-b border-gray-100">
-                <div className="flex overflow-x-auto hide-scrollbar px-4 py-3 gap-2">
-                    {categories.map((cat) => (
-                        <button
-                            key={cat.categoryID}
-                            onClick={() => {
-                                setActiveCategory(cat.categoryID);
-                                document.getElementById(`cat-${cat.categoryID}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }}
-                            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all ${
-                                activeCategory === cat.categoryID
-                                    ? 'bg-emerald-600 text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            {/* Quản lý: Chuyển đổi Menu / Hóa đơn */}
+            {isManagerView && (
+                <div className="px-4 mt-4">
+                    <div className="bg-white p-1 rounded-2xl flex shadow-sm border border-gray-100">
+                        <button 
+                            onClick={() => setActiveTab('menu')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
+                                activeTab === 'menu' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
                             }`}
                         >
-                            {cat.name}
+                            <ChefHat size={18} /> Menu
                         </button>
-                    ))}
+                        <button 
+                            onClick={() => setActiveTab('bill')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
+                                activeTab === 'bill' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+                            }`}
+                        >
+                            <Receipt size={18} /> Hóa đơn
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
-            {/* Danh sách món ăn */}
+            {/* Thanh Danh mục (Sticky) - Chỉ hiện ở Tab Menu */}
+            {activeTab === 'menu' && (
+                <div className="sticky top-0 z-30 bg-white shadow-sm mt-4 border-b border-gray-100">
+                    <div className="flex overflow-x-auto hide-scrollbar px-4 py-3 gap-2">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat.categoryID}
+                                onClick={() => {
+                                    setActiveCategory(cat.categoryID);
+                                    document.getElementById(`cat-${cat.categoryID}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }}
+                                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all ${
+                                    activeCategory === cat.categoryID
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                {cat.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Danh sách món ăn OR Hóa đơn */}
             <div className="p-4 space-y-8 max-w-3xl mx-auto">
-                {categories.map((cat) => (
-                    <div key={cat.categoryID} id={`cat-${cat.categoryID}`} className="scroll-mt-24">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            {cat.name}
-                            <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                                {cat.products.length} món
-                            </span>
-                        </h2>
+                {activeTab === 'menu' ? (
+                    categories.map((cat) => (
+                        <div key={cat.categoryID} id={`cat-${cat.categoryID}`} className="scroll-mt-24">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                {cat.name}
+                                <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                    {cat.products.length} món
+                                </span>
+                            </h2>
 
-                        {cat.products.length === 0 ? (
-                            <p className="text-sm text-gray-400 italic bg-white p-4 rounded-xl border border-dashed border-gray-200">
-                                Danh mục này chưa có món ăn nào.
-                            </p>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {cat.products.map((p) => (
-                                    <div key={p.productID} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex gap-4">
-                                        <div className="w-24 h-24 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
-                                            {p.imageURL ? (
-                                                <img src={p.imageURL} alt={p.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                                    <ChefHat size={32} />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
-                                            <div>
-                                                <h3 className="font-bold text-gray-800 text-base leading-tight mb-1 truncate">{p.name}</h3>
-                                                {p.description && (
-                                                    <p className="text-xs text-gray-500 line-clamp-2">{p.description}</p>
+                            {cat.products.length === 0 ? (
+                                <p className="text-sm text-gray-400 italic bg-white p-4 rounded-xl border border-dashed border-gray-200">
+                                    Danh mục này chưa có món ăn nào.
+                                </p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {cat.products.map((p) => (
+                                        <div key={p.productID} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex gap-4">
+                                            <div className="w-24 h-24 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
+                                                {p.imageURL ? (
+                                                    <img src={p.imageURL} alt={p.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                        <ChefHat size={32} />
+                                                    </div>
                                                 )}
                                             </div>
-                                            <div className="flex items-center justify-between mt-2">
-                                                <p className="font-extrabold text-emerald-600">{formatPrice(p.price)}</p>
-                                                <button 
-                                                    onClick={() => addToCart(p)}
-                                                    className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition shadow-sm border border-emerald-100"
-                                                >
-                                                    <ShoppingCart size={14} className="ml-[-1px]" />
-                                                </button>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800 text-base leading-tight mb-1 truncate">{p.name}</h3>
+                                                    {p.description && (
+                                                        <p className="text-xs text-gray-500 line-clamp-2">{p.description}</p>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center justify-between mt-2">
+                                                    <p className="font-extrabold text-emerald-600">{formatPrice(p.price)}</p>
+                                                    <button 
+                                                        onClick={() => addToCart(p)}
+                                                        className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition shadow-sm border border-emerald-100"
+                                                    >
+                                                        <ShoppingCart size={14} className="ml-[-1px]" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))
+                ) : (
+                    // BILL TAB CONTENT
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-black text-gray-800">Chi tiết hóa đơn</h2>
+                            <button onClick={fetchBill} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
+                                <History size={18} className="text-gray-600" />
+                            </button>
+                        </div>
+
+                        {loadingBill ? (
+                            <div className="py-20 flex flex-col items-center justify-center gap-4">
+                                <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                <p className="text-gray-500 font-bold">Đang tải hóa đơn...</p>
+                            </div>
+                        ) : billData ? (
+                            <div className="space-y-4">
+                                {/* Thông tin gộp bàn */}
+                                {billData.tables.length > 1 && (
+                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                                        <p className="text-blue-700 text-sm font-bold flex items-center gap-2">
+                                            <MapPin size={14} /> Điểm gộp: {billData.tables.map(t => t.name).join(' + ')}
+                                        </p>
                                     </div>
-                                ))}
+                                )}
+
+                                {/* Danh sách món đã phục vụ */}
+                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                                    <div className="p-6 space-y-4">
+                                        {billData.items.map(item => (
+                                            <div key={item.productID} className="flex items-center gap-4">
+                                                <div className="w-14 h-14 rounded-xl bg-gray-50 overflow-hidden flex-shrink-0">
+                                                    {item.imageURL ? <img src={item.imageURL} alt={item.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ChefHat size={20} /></div>}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-gray-800 truncate">{item.name}</p>
+                                                    <p className="text-xs text-gray-500 font-bold">{formatPrice(item.price)} x {item.quantity}</p>
+                                                </div>
+                                                <p className="font-black text-gray-700">{formatPrice(item.price * item.quantity)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="bg-gray-50 p-6 space-y-3">
+                                        <div className="flex justify-between items-center text-gray-500">
+                                            <span className="font-medium">Tạm tính</span>
+                                            <span className="font-bold">{formatPrice(billData.totalAmount)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-emerald-600">
+                                            <span className="font-medium">Giảm giá</span>
+                                            <span className="font-bold">0 đ</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                                            <span className="text-xl font-black text-gray-900">TỔNG CỘNG</span>
+                                            <span className="text-3xl font-black text-emerald-600 leading-none">{formatPrice(billData.totalAmount)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Nút thanh toán */}
+                                <div className="grid grid-cols-2 gap-4 pt-4">
+                                    <button 
+                                        disabled={isProcessing}
+                                        onClick={() => handleProcessPayment('Cash')}
+                                        className="bg-gray-900 text-white rounded-2xl py-4 font-black flex flex-col items-center gap-1 shadow-lg hover:bg-black transition disabled:opacity-50"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {isProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CreditCard size={20} />}
+                                            Tiền mặt
+                                        </div>
+                                    </button>
+                                    <button 
+                                        disabled={isProcessing}
+                                        onClick={handleBankTransfer}
+                                        className="bg-emerald-600 text-white rounded-2xl py-4 font-black flex flex-col items-center gap-1 shadow-lg hover:bg-emerald-700 transition disabled:opacity-50"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {isProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CreditCard size={20} />}
+                                            QR Chuyển khoản
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="py-20 text-center">
+                                <Receipt size={48} className="mx-auto text-gray-200 mb-4" />
+                                <p className="text-gray-400 font-medium">Bàn này chưa có hóa đơn.</p>
+                                <button 
+                                    onClick={() => setActiveTab('menu')}
+                                    className="mt-4 text-emerald-600 font-bold hover:underline"
+                                >
+                                    Quay lại thực đơn
+                                </button>
                             </div>
                         )}
                     </div>
-                ))}
+                )}
             </div>
 
             {/* Giỏ hàng nổi (Floating Cart - UI tạm) */}
@@ -430,5 +527,21 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
             )}
             
         </div>
+
+        {/* QR Payment Modal */}
+        <TablePaymentModal
+            isOpen={qrModalOpen}
+            onClose={() => setQrModalOpen(false)}
+            paymentData={qrPaymentData}
+            billData={billData}
+            tableName={billData?.tables?.[0]?.name}
+            onPaymentSuccess={() => {
+                setQrModalOpen(false);
+                if (onCheckoutSuccess) {
+                    onCheckoutSuccess('Thanh toán chuyển khoản thành công!', { type: 'Cash', tableId }); // Cash để trigger refresh
+                }
+            }}
+        />
+        </>
     );
 }

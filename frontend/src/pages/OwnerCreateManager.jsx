@@ -20,7 +20,6 @@ export default function OwnerCreateManager() {
 
     const [form, setForm] = useState({
         fullName: '',
-        username: '',
         email: '',
         phone: '',
         password: '',
@@ -45,10 +44,6 @@ export default function OwnerCreateManager() {
         const errs = {};
         if (!form.fullName.trim())
             errs.fullName = 'Họ và tên không được để trống';
-        if (!form.username.trim())
-            errs.username = 'Tên đăng nhập không được để trống';
-        else if (!/^[a-zA-Z0-9_]{4,20}$/.test(form.username))
-            errs.username = 'Tên đăng nhập 4-20 ký tự, chỉ chữ cái, số và dấu _';
         if (!form.email.trim())
             errs.email = 'Email không được để trống';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
@@ -83,7 +78,7 @@ export default function OwnerCreateManager() {
         try {
             await createOwnerManager({
                 fullName: form.fullName,
-                username: form.username,
+                username: form.email, // Sử dụng email làm tên đăng nhập
                 email: form.email,
                 phone: form.phone,
                 password: form.password,
@@ -157,24 +152,6 @@ export default function OwnerCreateManager() {
                         {errors.fullName && <p className="mt-1.5 text-xs text-red-500">{errors.fullName}</p>}
                     </div>
 
-                    {/* Tên đăng nhập */}
-                    <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                            Tên đăng nhập <span className="text-red-400">*</span>
-                        </label>
-                        <div className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm transition-all
-                            ${errors.username ? 'border-red-400 bg-red-50 focus-within:ring-2 focus-within:ring-red-100' : 'border-gray-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50'}`}>
-                            <AtSign size={15} className="text-gray-400 shrink-0" />
-                            <input
-                                value={form.username}
-                                onChange={e => handleField('username', e.target.value)}
-                                placeholder="manager_q1"
-                                className="flex-1 bg-transparent text-gray-800 focus:outline-none placeholder:text-gray-300"
-                            />
-                        </div>
-                        {errors.username && <p className="mt-1.5 text-xs text-red-500">{errors.username}</p>}
-                    </div>
-
                     {/* Email */}
                     <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
@@ -209,6 +186,30 @@ export default function OwnerCreateManager() {
                             />
                         </div>
                         {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
+                    </div>
+
+                    {/* Chi nhánh */}
+                    <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
+                            Chi nhánh <span className="text-red-400">*</span>
+                        </label>
+                        <div className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm transition-all
+                            ${errors.branchId ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50'}`}>
+                            <Store size={15} className="text-gray-400 shrink-0" />
+                            <select
+                                value={form.branchId}
+                                onChange={e => handleField('branchId', e.target.value)}
+                                className="flex-1 bg-transparent text-gray-800 focus:outline-none appearance-none"
+                            >
+                                <option value="">Chọn chi nhánh...</option>
+                                {branches.map(b => (
+                                    <option key={b.branchID || b.id} value={String(b.branchID || b.id)}>
+                                        {b.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {errors.branchId && <p className="mt-1.5 text-xs text-red-500">{errors.branchId}</p>}
                     </div>
 
                     {/* Mật khẩu */}
@@ -255,30 +256,6 @@ export default function OwnerCreateManager() {
                             </button>
                         </div>
                         {errors.confirmPassword && <p className="mt-1.5 text-xs text-red-500">{errors.confirmPassword}</p>}
-                    </div>
-
-                    {/* Chi nhánh */}
-                    <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                            Chi nhánh <span className="text-red-400">*</span>
-                        </label>
-                        <div className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm transition-all
-                            ${errors.branchId ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50'}`}>
-                            <Store size={15} className="text-gray-400 shrink-0" />
-                            <select
-                                value={form.branchId}
-                                onChange={e => handleField('branchId', e.target.value)}
-                                className="flex-1 bg-transparent text-gray-800 focus:outline-none appearance-none"
-                            >
-                                <option value="">Chọn chi nhánh...</option>
-                                {branches.map(b => (
-                                    <option key={b.branchID || b.id} value={String(b.branchID || b.id)}>
-                                        {b.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        {errors.branchId && <p className="mt-1.5 text-xs text-red-500">{errors.branchId}</p>}
                     </div>
 
                     {/* Vai trò */}

@@ -6,15 +6,38 @@ export const createRegistrationRequest = async (req, res) => {
     try {
         const { ownerName, email, phone, restaurantName, note } = req.body;
 
-        if (!ownerName || !restaurantName) {
-            return res.status(400).json({ message: "Họ tên chủ sở hữu và Tên nhà hàng là bắt buộc" });
+        // Bắt buộc điền đủ các trường cơ bản
+        if (!ownerName || !restaurantName || !email || !phone) {
+            return res.status(400).json({ message: "Vui lòng điền đầy đủ: Họ tên, Email, Số điện thoại và Tên nhà hàng" });
+        }
+
+        // Kiểm tra format Mã số thuế (nếu có trong note payload hoặc truyền riêng)
+        // Lưu ý: Ở bản hiện tại, taxCode đang được đóng gói vào `note` từ frontend.
+        // Tuy nhiên, tôi sẽ thêm kiểm tra nếu taxCode được truyền trực tiếp hoặc parse từ note.
+        let taxCode = "";
+        try {
+            if (note && note.startsWith("__FORM_DATA__:")) {
+                const extraData = JSON.parse(note.split("__FORM_DATA__:")[1]);
+                taxCode = extraData.taxCode;
+                
+                // Kiểm tra các trường trong extraData nếu cần bắt buộc ở backend
+                if (!extraData.taxCode || !extraData.businessLicense || !extraData.description || !extraData.logo || !extraData.coverImage) {
+                    return res.status(400).json({ message: "Vui lòng hoàn tất bộ nhận diện hình ảnh, mô tả và thông tin pháp lý" });
+                }
+            }
+        } catch (e) {
+            console.error("Parse extraData error:", e);
+        }
+
+        if (taxCode) {
+            const taxRegex = /^\d{10}(-\d{3})?$/;
+            if (!taxRegex.test(taxCode)) {
+                return res.status(400).json({ message: "Mã số thuế không đúng định dạng (10 số hoặc 10 số kèm gạch ngang và 3 số nhánh)" });
+            }
         }
 
         // Gộp email + phone vào contactInfo
-        const contactParts = [];
-        if (email) contactParts.push(email);
-        if (phone) contactParts.push(phone);
-        const contactInfo = contactParts.join(" | ");
+        const contactInfo = `${email} | ${phone}`;
 
         // Nếu user đã đăng nhập (token hợp lệ được gửi kèm), lưu userID của họ
         // req.user được set bởi verifyToken optional middleware ở route

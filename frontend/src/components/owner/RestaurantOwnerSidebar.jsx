@@ -1,16 +1,19 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, GitBranch, BookOpen, Users, Settings, UtensilsCrossed, LogOut, CreditCard, MessageSquare, Zap } from 'lucide-react';
+import { useState } from 'react';
+import ChangePasswordModal from '../modals/ChangePasswordModal';
+import { LayoutDashboard, BarChart3, GitBranch, BookOpen, Users, Settings, UtensilsCrossed, LogOut, CreditCard, MessageSquare, Zap, Lock } from 'lucide-react';
 
 export default function RestaurantOwnerSidebar() {
     const location = useLocation();
     const navigate = useNavigate();
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Tổng quan', path: '/owner/dashboard' },
-        { icon: BarChart3, label: 'Báo cáo chi tiết', path: '/owner/reports' },
         { icon: GitBranch, label: 'Chi nhánh', path: '/owner/branches' },
         { icon: BookOpen, label: 'Thực đơn', path: '/owner/menu' },
-        { icon: Users, label: 'Nhân viên', path: '/owner/staff' },
+        { icon: UtensilsCrossed, label: 'Theo dõi đơn hàng bếp', path: '/owner/kitchen-tracking' },
+        { icon: Users, label: 'Danh Sách Quản Lý', path: '/owner/staff' },
         { icon: CreditCard, label: 'Lịch sử thanh toán', path: '/owner/payment-history' },
         { icon: MessageSquare, label: 'Báo cáo & Hỗ trợ', path: '/owner/tickets' },
         { icon: Zap, label: 'Gói dịch vụ', path: '/owner/service-packages' },
@@ -67,7 +70,7 @@ export default function RestaurantOwnerSidebar() {
 
             {/* User Footer */}
             <div className="p-3 border-t border-slate-700/40">
-                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800/60 cursor-pointer transition-colors group" onClick={handleLogout}>
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800/60 transition-colors group">
                     <div className="w-9 h-9 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-sm border border-blue-500/30 shrink-0">
                         {userData.fullName?.[0]?.toUpperCase() || 'R'}
                     </div>
@@ -75,8 +78,28 @@ export default function RestaurantOwnerSidebar() {
                         <p className="text-white text-sm font-medium truncate">{userData.fullName || 'Chủ nhà hàng'}</p>
                         <p className="text-slate-500 text-xs">Chủ sở hữu</p>
                     </div>
-                    <LogOut size={15} className="text-slate-500 group-hover:text-red-400 transition-colors shrink-0" />
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setShowPasswordModal(true)}
+                            className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-md transition-colors"
+                            title="Đổi mật khẩu"
+                        >
+                            <Lock size={15} />
+                        </button>
+                        <button 
+                            onClick={handleLogout}
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                            title="Đăng xuất"
+                        >
+                            <LogOut size={15} />
+                        </button>
+                    </div>
                 </div>
+
+                <ChangePasswordModal 
+                    isOpen={showPasswordModal} 
+                    onClose={() => setShowPasswordModal(false)} 
+                />
             </div>
         </aside>
     );

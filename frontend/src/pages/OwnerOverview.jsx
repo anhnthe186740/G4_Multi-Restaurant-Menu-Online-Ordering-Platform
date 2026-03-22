@@ -94,7 +94,7 @@ const BranchTick = ({ x, y, payload }) => {
 };
 
 /* ─── Main Page ─── */
-export default function OwnerReports() {
+export default function OwnerOverview() {
     const [preset, setPreset] = useState(30);
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
@@ -150,10 +150,10 @@ export default function OwnerReports() {
     useEffect(() => { loadData(); }, [loadData]);
 
     /* Derived summary stats */
-    const totalRevenue = trend.reduce((s, d) => s + d.revenue, 0);
-    const totalOrders = trend.reduce((s, d) => s + d.orders, 0);
-    const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-    const activeBranches = branchSummary.filter(b => b.isActive).length;
+    // const totalRevenue = trend.reduce((s, d) => s + d.revenue, 0);
+    // const totalOrders = trend.reduce((s, d) => s + d.orders, 0);
+    // const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+    // const activeBranches = branchSummary.filter(b => b.isActive).length;
 
     const dateRange = getParams();
 
@@ -188,8 +188,8 @@ export default function OwnerReports() {
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Báo cáo chi tiết</h1>
-                    <p className="text-gray-400 text-sm mt-0.5">Phân tích hiệu suất kinh doanh theo khoảng thời gian</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
+                    <p className="text-gray-400 text-sm mt-0.5">Quản lý hiệu suất kinh doanh trên toàn hệ thống</p>
                 </div>
                 <button
                     onClick={handleExportCSV}
@@ -197,7 +197,7 @@ export default function OwnerReports() {
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
                     <Download size={18} />
-                    Xuất CSV
+                    Xuất báo cáo
                 </button>
             </div>
 
@@ -224,7 +224,7 @@ export default function OwnerReports() {
                     <input
                         type="date"
                         value={customStart}
-                        max={customEnd || undefined} // Không cho phép chọn ngày bắt đầu sau ngày kết thúc
+                        max={customEnd || undefined}
                         onChange={e => { setCustomStart(e.target.value); setIsCustom(true); }}
                         className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
@@ -232,8 +232,8 @@ export default function OwnerReports() {
                     <input
                         type="date"
                         value={customEnd}
-                        min={customStart || undefined} // Không cho phép chọn ngày kết thúc trước ngày bắt đầu
-                        max={new Date().toISOString().split('T')[0]} // Không cho phép chọn ngày tương lai
+                        min={customStart || undefined}
+                        max={new Date().toISOString().split('T')[0]}
                         onChange={e => { setCustomEnd(e.target.value); setIsCustom(true); }}
                         className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
@@ -324,7 +324,6 @@ export default function OwnerReports() {
 
                     {/* ── Row: Branch Bar + Product List ── */}
                     <div className="grid grid-cols-2 gap-5">
-                        {/* Area Chart replaces Branch Revenue because the layout dictates Area Chart is left and Products is right. But Area Chart is already above. Let's do Branch Summary on left and Top Products on right */}
                         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
                             <h3 className="font-bold text-gray-800 mb-1">Doanh thu theo chi nhánh</h3>
                             <p className="text-xs text-gray-400 mb-4">So sánh hiệu suất từng chi nhánh</p>
@@ -346,7 +345,6 @@ export default function OwnerReports() {
                             )}
                         </div>
 
-                        {/* Top Product List */}
                         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
                             <div className="flex items-center gap-2 mb-1">
                                 <Package size={16} className="text-blue-500" />
@@ -407,22 +405,18 @@ export default function OwnerReports() {
 
                         <div className="overflow-x-auto pb-2">
                             <div className="min-w-[700px]">
-                                {/* Heatmap Grid */}
                                 <div className="flex gap-1">
-                                    {/* Y-Axis Labels (Days) */}
                                     <div className="flex flex-col gap-1 pr-3 justify-between text-xs text-gray-400 font-medium py-1">
                                         {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => (
                                             <div key={d} className="h-6 flex items-center">{d}</div>
                                         ))}
                                     </div>
 
-                                    {/* Grid Cells */}
                                     <div className="flex-1 flex flex-col gap-1">
                                         {[0, 1, 2, 3, 4, 5, 6].map(dayIdx => (
                                             <div key={dayIdx} className="flex gap-1 flex-1">
                                                 {[...Array(24)].map((_, hourIdx) => {
                                                     const count = heatmap[dayIdx]?.[hourIdx] || 0;
-                                                    // Max count estimation for opacity scaling (assume max ~15 orders per hour for color scale)
                                                     const maxOrders = 15;
                                                     const opacity = count === 0 ? 0.05 : Math.min(0.2 + (count / maxOrders) * 0.8, 1);
                                                     return (
@@ -442,7 +436,6 @@ export default function OwnerReports() {
                                     </div>
                                 </div>
 
-                                {/* X-Axis Labels (Hours) */}
                                 <div className="flex mt-2 ml-7 text-[10px] text-gray-400 font-medium">
                                     <div className="flex-1">00:00</div>
                                     <div className="flex-1 text-center">06:00</div>
@@ -454,15 +447,12 @@ export default function OwnerReports() {
                         </div>
                     </div>
 
-                    {/* ── Product Analysis Table (Replaces Detailed Orders) ── */}
+                    {/* ── Product Analysis Table ── */}
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-10">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-gray-800">Phân tích Sản phẩm</h3>
                             </div>
-                            <button className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
-                                Tải dữ liệu đầy đủ (.xlsx)
-                            </button>
                         </div>
 
                         {productStats.products?.length > 0 ? (

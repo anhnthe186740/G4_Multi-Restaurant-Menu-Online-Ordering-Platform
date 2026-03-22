@@ -1,9 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { UtensilsCrossed } from 'lucide-react';
+import { useState } from 'react';
+import { UtensilsCrossed, Lock, LogOut } from 'lucide-react';
+import ChangePasswordModal from '../modals/ChangePasswordModal';
 
 export default function AdminSidebar() {
     const location = useLocation();
     const navigate = useNavigate();
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
 
     const menuItems = [
         { icon: '📊', label: 'Tổng quan', path: '/admin/dashboard' },
@@ -73,20 +76,38 @@ export default function AdminSidebar() {
 
             {/* User Info Footer */}
             <div className="p-4 border-t border-slate-700/50 bg-[#0f172a]">
-                <div className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-                    onClick={handleLogout}
-                    title="Đăng xuất"
-                >
-                    <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 font-bold text-sm border border-emerald-500/30">
+                <div className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+                    <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 font-bold text-sm border border-emerald-500/30 shrink-0">
                         {userData.fullName?.[0]?.toUpperCase() || 'A'}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-left">
                         <p className="text-white text-sm font-medium truncate">
                             {userData.fullName || 'Admin'}
                         </p>
-                        <p className="text-slate-500 text-xs truncate uppercase font-semibold">Đăng xuất</p>
+                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Hệ thống</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setShowPasswordModal(true)}
+                            className="p-1.5 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-md transition-colors"
+                            title="Đổi mật khẩu"
+                        >
+                            <Lock size={15} />
+                        </button>
+                        <button 
+                            onClick={handleLogout}
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                            title="Đăng xuất"
+                        >
+                            <LogOut size={15} />
+                        </button>
                     </div>
                 </div>
+
+                <ChangePasswordModal 
+                    isOpen={showPasswordModal} 
+                    onClose={() => setShowPasswordModal(false)} 
+                />
             </div>
         </aside>
     );

@@ -199,8 +199,30 @@ export default function RegisterRestaurant() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg("");
-        if (!form.ownerName.trim() || !form.restaurantName.trim() || !form.email.trim()) {
-            setErrorMsg("Vui lòng điền đầy đủ các trường bắt buộc (*)");
+
+        // Kiểm tra tất cả các trường bắt buộc
+        const requiredFields = [
+            { field: form.ownerName, label: "Họ và tên" },
+            { field: form.restaurantName, label: "Tên nhà hàng" },
+            { field: form.email, label: "Email" },
+            { field: form.phone, label: "Số điện thoại" },
+            { field: form.taxCode, label: "Mã số thuế" },
+            { field: form.businessLicense, label: "Giấy phép kinh doanh" },
+            { field: form.description, label: "Mô tả nhà hàng" },
+            { field: form.logo, label: "Logo" },
+            { field: form.coverImage, label: "Ảnh bìa" }
+        ];
+
+        const missingField = requiredFields.find(item => !item.field || !item.field.trim());
+        if (missingField) {
+            setErrorMsg(`Vui lòng điền/tải lên trường bắt buộc: ${missingField.label}`);
+            return;
+        }
+
+        // Kiểm tra định dạng Mã số thuế (10 hoặc 13 số)
+        const taxRegex = /^\d{10}(-\d{3})?$/;
+        if (!taxRegex.test(form.taxCode.trim())) {
+            setErrorMsg("Mã số thuế không đúng định dạng (10 số hoặc 10 số-3 số nhánh)");
             return;
         }
         setSubmitting(true);
@@ -275,7 +297,7 @@ export default function RegisterRestaurant() {
                             {/* Cover */}
                             <div className="md:col-span-2">
                                 <p className="text-sm text-gray-300 mb-2 font-medium">
-                                    Ảnh bìa nhà hàng <span className="text-gray-500 font-normal">(1920×1080 khuyến nghị)</span>
+                                    Ảnh bìa nhà hàng <span className="text-red-400">*</span> <span className="text-gray-500 font-normal">(1920×1080 khuyến nghị)</span>
                                 </p>
                                 <div
                                     className="relative w-full h-44 rounded-xl border-2 border-dashed border-white/10 bg-white/5 overflow-hidden cursor-pointer hover:border-green-500/50 transition group"
@@ -309,7 +331,7 @@ export default function RegisterRestaurant() {
                             {/* Logo */}
                             <div>
                                 <p className="text-sm text-gray-300 mb-2 font-medium">
-                                    Logo thương hiệu <span className="text-gray-500 font-normal">(tỉ lệ 1:1)</span>
+                                    Logo thương hiệu <span className="text-red-400">*</span> <span className="text-gray-500 font-normal">(tỉ lệ 1:1)</span>
                                 </p>
                                 <div
                                     className="relative w-full h-44 rounded-xl border-2 border-dashed border-white/10 bg-white/5 overflow-hidden cursor-pointer hover:border-green-500/50 transition group"
@@ -363,7 +385,9 @@ export default function RegisterRestaurant() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Website</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                                        Website <span className="text-red-400">*</span>
+                                    </label>
                                     <input
                                         type="url" name="website" value={form.website} onChange={handleChange}
                                         placeholder="https://nhahang.vn"
@@ -381,7 +405,9 @@ export default function RegisterRestaurant() {
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Mã số thuế (Tax ID)</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                                        Mã số thuế (Tax ID) <span className="text-red-400">*</span>
+                                    </label>
                                     <input
                                         type="text" name="taxCode" value={form.taxCode} onChange={handleChange}
                                         placeholder="0123456789"
@@ -389,7 +415,9 @@ export default function RegisterRestaurant() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Giấy phép kinh doanh</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                                        Giấy phép kinh doanh <span className="text-red-400">*</span>
+                                    </label>
                                     <div className="flex items-center justify-between px-4 py-3 rounded-lg border border-white/10 bg-white/5">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
@@ -430,7 +458,9 @@ export default function RegisterRestaurant() {
                             <BookOpen size={16} className="text-green-500" />
                             <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400">Mô tả nhà hàng</h2>
                         </div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Giới thiệu ngắn gọn</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Giới thiệu ngắn gọn <span className="text-red-400">*</span>
+                        </label>
                         <textarea
                             name="description" value={form.description} onChange={handleChange}
                             rows={3}
@@ -468,7 +498,9 @@ export default function RegisterRestaurant() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">Số điện thoại</label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                    Số điện thoại <span className="text-red-400">*</span>
+                                </label>
                                 <input
                                     type="tel" name="phone" value={form.phone} onChange={handleChange}
                                     placeholder="0912 345 678"

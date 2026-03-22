@@ -21,6 +21,8 @@ enum UserRole {
   RestaurantOwner
   BranchManager
   Staff
+  Kitchen
+  User
 }
 
 enum UserStatus {
@@ -126,10 +128,14 @@ model User {
   status       UserStatus @default(Active) @map("Status")
   lockReason   String?    @map("LockReason") @db.Text
   createdAt    DateTime   @default(now()) @map("CreatedAt")
+  branchID     Int?       @map("BranchID")
+  restaurantID Int?       @map("RestaurantID")
 
   // Relations
   ownedRestaurants     Restaurant[]          @relation("RestaurantOwner")
+  restaurant           Restaurant?           @relation("RestaurantStaff", fields: [restaurantID], references: [restaurantID])
   managedBranches      Branch[]              @relation("BranchManager")
+  branch               Branch?               @relation("BranchStaff", fields: [branchID], references: [branchID])
   registrationRequests RegistrationRequest[] @relation("RequestOwner")
   approvedRequests     RegistrationRequest[] @relation("RequestApprover")
   createdOrders        Order[]
@@ -173,6 +179,7 @@ model Restaurant {
   branches             Branch[]
   categories           Category[]
   discounts            Discount[]
+  staff                User[]                @relation("RestaurantStaff")
   registrationRequests RegistrationRequest[]
   paymentOrders        PaymentOrder[]
 
@@ -226,7 +233,7 @@ model Branch {
   name          String  @map("Name") @db.VarChar(255)
   address       String? @map("Address") @db.VarChar(255)
   phone         String? @map("Phone") @db.VarChar(20)
-  openingHours  String? @map("OpeningHours") @db.VarChar(100)
+  openingHours  String? @map("OpeningHours") @db.Text
   isActive      Boolean @default(true) @map("IsActive")
 
   // Relations
@@ -236,6 +243,7 @@ model Branch {
   orders          Order[]
   serviceRequests ServiceRequest[]
   branchMenus     BranchMenu[]
+  staff           User[]           @relation("BranchStaff")
 
   @@map("Branches")
 }
@@ -249,6 +257,7 @@ model Table {
   status        TableStatus @default(Available) @map("Status")
   qrCode        String?     @map("QRCode") @db.Text
   mergedGroupId String?     @map("MergedGroupId") @db.VarChar(50)  // NULL = không gộp; cùng giá trị = cùng nhóm gộp
+  isActive      Boolean     @default(true) @map("IsActive")
 
   // Relations
   branch          Branch           @relation(fields: [branchID], references: [branchID], onDelete: Cascade)
@@ -499,4 +508,20 @@ model BranchMenu {
 
   @@unique([branchID, productID])
   @@map("BranchMenus")
+}
+
+// 22. TablePaymentSessions - PayOS checkout cho bàn ăn
+model TablePaymentSession {
+  id          Int       @id @default(autoincrement()) @map("ID")
+  tableId     Int       @map("TableID")
+  orderCode   BigInt    @unique @map("OrderCode")
+  amount      Int       @map("Amount")
+  status      String    @default("PENDING") @map("Status") @db.VarChar(20) // PENDING | PAID | CANCELLED | EXPIRED
+  payosLinkId String?   @map("PayOSLinkId") @db.VarChar(255)
+  qrCode      String?   @map("QRCode") @db.Text
+  checkoutUrl String?   @map("CheckoutUrl") @db.VarChar(500)
+  createdAt   DateTime  @default(now()) @map("CreatedAt")
+  paidAt      DateTime? @map("PaidAt")
+
+  @@map("TablePaymentSessions")
 }

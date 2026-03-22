@@ -14,10 +14,13 @@ export default function ProtectedRoute({ children, requiredRole }) {
     const user = JSON.parse(userStr);
 
     // Check if user has required role
-    if (requiredRole && user.role !== requiredRole) {
-        // Redirect to home if user doesn't have required role
-        alert('Bạn không có quyền truy cập trang này!');
-        return <Navigate to="/" replace />;
+    if (requiredRole) {
+        const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+        if (!roles.includes(user.role)) {
+            // Redirect to home if user doesn't have required role
+            alert('Bạn không có quyền truy cập trang này!');
+            return <Navigate to="/" replace />;
+        }
     }
 
     // User is authenticated and has required role

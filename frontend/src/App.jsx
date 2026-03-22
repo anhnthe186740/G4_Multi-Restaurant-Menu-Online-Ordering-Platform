@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import MainLayout from "./components/layout/MainLayout";
 import AuthLayout from "./components/layout/AuthLayout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -11,7 +12,6 @@ import AdminReports from "./pages/AdminReports";
 import RestaurantManagement from "./pages/RestaurantManagement";
 import AdminServicePackages from "./pages/AdminServicePackages";
 import AdminRequests from "./pages/AdminRequests";
-import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
 import OwnerSettings from "./pages/OwnerSettings";
 import RegisterRestaurant from "./pages/RegisterRestaurant";
 import PendingStatus from "./pages/PendingStatus";
@@ -19,7 +19,9 @@ import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerCreateBranch from "./pages/OwnerCreateBranch";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
-import OwnerReports from "./pages/OwnerReports";
+import OwnerKitchenTracking from "./pages/OwnerKitchenTracking";
+import KitchenDisplaySystem from "./pages/KitchenDisplaySystem";
+import OwnerOverview from "./pages/OwnerOverview";
 import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
 import OwnerStaff from "./pages/OwnerStaff";
@@ -33,11 +35,17 @@ import ManagerServiceRequests from "./pages/ManagerServiceRequests";
 import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
 import ManagerMenu from "./pages/ManagerMenu";
+import ManagerPaymentHistory from "./pages/ManagerPaymentHistory";
+import ManagerStaff from "./pages/ManagerStaff";
+import ManagerCreateStaff from "./pages/ManagerCreateStaff";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SubscriptionGuard from "./components/SubscriptionGuard";
+import SelfOrderingMenu from "./pages/SelfOrderingMenu";
 
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" reverseOrder={false} />
       <Routes>
         <Route
           path="/"
@@ -87,6 +95,7 @@ export default function App() {
         <Route path="/register-restaurant" element={<RegisterRestaurant />} />
         <Route path="/pending-status" element={<PendingStatus />} />
         <Route path="/menu" element={<CustomerMenu />} />
+        <Route path="/self-order" element={<SelfOrderingMenu />} />
 
         <Route
           path="/admin/dashboard"
@@ -140,7 +149,13 @@ export default function App() {
           path="/owner/dashboard"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <RestaurantOwnerDashboard />
+
+              <SubscriptionGuard>
+
+                <OwnerOverview />
+              </SubscriptionGuard>
+
+
             </ProtectedRoute>
           }
         />
@@ -158,7 +173,9 @@ export default function App() {
           path="/owner/settings"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerSettings />
+              <SubscriptionGuard>
+                <OwnerSettings />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -167,7 +184,9 @@ export default function App() {
           path="/owner/branches"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerBranches />
+              <SubscriptionGuard>
+                <OwnerBranches />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -176,7 +195,9 @@ export default function App() {
           path="/owner/branches/new"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerCreateBranch />
+              <SubscriptionGuard>
+                <OwnerCreateBranch />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -185,7 +206,9 @@ export default function App() {
           path="/owner/branches/:id"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerBranchSettings />
+              <SubscriptionGuard>
+                <OwnerBranchSettings />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -194,16 +217,33 @@ export default function App() {
           path="/owner/payment-history"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerPaymentHistory />
+              <SubscriptionGuard>
+                <OwnerPaymentHistory />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
 
         <Route
-          path="/owner/reports"
+          path="/owner/kitchen-tracking"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerReports />
+              <SubscriptionGuard>
+                <OwnerKitchenTracking />
+              </SubscriptionGuard>
+            </ProtectedRoute>
+          }
+        />
+
+
+
+        <Route
+          path="/owner/kds/:branchID"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <SubscriptionGuard>
+                <KitchenDisplaySystem />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -212,7 +252,9 @@ export default function App() {
           path="/owner/menu"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerMenu />
+              <SubscriptionGuard>
+                <OwnerMenu />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -221,7 +263,9 @@ export default function App() {
           path="/owner/tickets"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerTickets />
+              <SubscriptionGuard>
+                <OwnerTickets />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -230,7 +274,9 @@ export default function App() {
           path="/owner/staff"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerStaff />
+              <SubscriptionGuard>
+                <OwnerStaff />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -239,7 +285,9 @@ export default function App() {
           path="/owner/staff/new"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerCreateManager />
+              <SubscriptionGuard>
+                <OwnerCreateManager />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -256,7 +304,7 @@ export default function App() {
         <Route
           path="/manager/tables"
           element={
-            <ProtectedRoute requiredRole="BranchManager">
+            <ProtectedRoute requiredRole={["BranchManager", "Staff"]}>
               <TableManagement />
             </ProtectedRoute>
           }
@@ -264,16 +312,32 @@ export default function App() {
         <Route
           path="/manager/menu"
           element={
-            <ProtectedRoute requiredRole="BranchManager">
+            <ProtectedRoute requiredRole={["BranchManager", "Staff"]}>
               <ManagerMenu />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/kds"
+          element={
+            <ProtectedRoute requiredRole={["BranchManager", "Staff", "Kitchen"]}>
+              <KitchenDisplaySystem />
             </ProtectedRoute>
           }
         />
         <Route
           path="/manager/service-requests"
           element={
-            <ProtectedRoute requiredRole="BranchManager">
+            <ProtectedRoute requiredRole={["BranchManager", "Staff"]}>
               <ManagerServiceRequests />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kitchen/kds"
+          element={
+            <ProtectedRoute requiredRole={["BranchManager", "Kitchen", "Staff"]}>
+              <KitchenDisplaySystem />
             </ProtectedRoute>
           }
         />
@@ -285,7 +349,31 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/manager/payment-history"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerPaymentHistory />
+            </ProtectedRoute>
+          }
+        />
 
+        <Route
+          path="/manager/staff"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerStaff />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/staff/new"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerCreateStaff />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

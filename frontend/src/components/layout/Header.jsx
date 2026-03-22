@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import ChangePasswordModal from "../modals/ChangePasswordModal";
 
 export default function Header() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -98,6 +100,13 @@ export default function Header() {
                   </button>
 
                   <button
+                    onClick={() => { setOpen(false); setShowPasswordModal(true); }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    🔑 Đổi mật khẩu
+                  </button>
+
+                  <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50"
                   >
@@ -105,6 +114,11 @@ export default function Header() {
                   </button>
                 </div>
               )}
+              
+              <ChangePasswordModal 
+                isOpen={showPasswordModal} 
+                onClose={() => setShowPasswordModal(false)} 
+              />
             </div>
           )}
         </div>
