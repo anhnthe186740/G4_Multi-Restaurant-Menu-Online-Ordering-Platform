@@ -482,3 +482,19 @@ model PaymentOrder {
 
   @@map("PaymentOrders")
 }
+
+// 21. TablePaymentSessions - PayOS checkout cho bàn ăn
+model TablePaymentSession {
+  id          Int       @id @default(autoincrement()) @map("ID")
+  tableId     Int       @map("TableID")
+  orderCode   BigInt    @unique @map("OrderCode")
+  amount      Int       @map("Amount")
+  status      String    @default("PENDING") @map("Status") @db.VarChar(20) // PENDING | PAID | CANCELLED | EXPIRED
+  payosLinkId String?   @map("PayOSLinkId") @db.VarChar(255)
+  qrCode      String?   @map("QRCode") @db.Text
+  checkoutUrl String?   @map("CheckoutUrl") @db.VarChar(500)
+  createdAt   DateTime  @default(now()) @map("CreatedAt")
+  paidAt      DateTime? @map("PaidAt")
+
+  @@map("TablePaymentSessions")
+}

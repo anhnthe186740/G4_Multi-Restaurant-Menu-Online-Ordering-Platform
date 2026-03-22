@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getMenuByTable } from '../api/publicApi';
 import { ShoppingCart, ChefHat, MapPin, Phone, AlertCircle, CheckCircle } from 'lucide-react';
-import { confirmManagerOrder, getManagerBillByTable, processManagerCheckout } from '../api/managerApi';
+import { confirmManagerOrder, getManagerBillByTable, processManagerCheckout, createTablePaymentLink } from '../api/managerApi';
 import { Receipt, CreditCard, History } from 'lucide-react';
+import TablePaymentModal from '../components/manager/TablePaymentModal';
 
 export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const [searchParams] = useSearchParams();
@@ -21,6 +22,10 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const [activeTab, setActiveTab] = useState('menu'); // 'menu' | 'bill'
     const [billData, setBillData] = useState(null);
     const [loadingBill, setLoadingBill] = useState(false);
+
+    // QR Payment Modal state
+    const [qrPaymentData, setQrPaymentData] = useState(null);
+    const [qrModalOpen, setQrModalOpen] = useState(false);
 
     // Cart Logic
     const addToCart = (product) => {
@@ -103,19 +108,46 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     };
 
     const handleProcessPayment = async (method = "Cash") => {
-        if (!window.confirm(`Xác nhận thanh toán ${formatPrice(billData.totalAmount)} bằng ${method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản'}?`)) {
+        if (!window.confirm(`Xác nhận thanh toán ${formatPrice(billData.totalAmount)} bằng Tiền mặt?`)) {
             return;
         }
-
         try {
             setIsProcessing(true);
             await processManagerCheckout(tableId, { paymentMethod: method });
             if (onCheckoutSuccess) {
-                onCheckoutSuccess(`Bàn ${tableId} đã thanh toán thành công!`);
+                onCheckoutSuccess(`Bàn đã thanh toán thành công!`, { type: 'Cash', tableId });
             }
         } catch (err) {
             console.error("Checkout error", err);
             alert("Lỗi thanh toán: " + (err.response?.data?.message || err.message));
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    // Handle QR/Bank Transfer payment — creates PayOS link
+    const handleBankTransfer = async () => {
+        try {
+            setIsProcessing(true);
+            const res = await createTablePaymentLink(tableId);
+            
+            // Báo lên cha (TableManagement) để thêm vào Queue
+            if (onCheckoutSuccess) {
+                onCheckoutSuccess('', {
+                    type: 'QR',
+                    tableId,
+                    tableName: billData?.tables?.[0]?.name || `Bàn ${tableId}`,
+                    paymentData: res.data,
+                    billData: billData
+                });
+            } else {
+                setQrPaymentData(res.data);
+                setQrModalOpen(true);
+            }
+            
+        } catch (err) {
+            console.error("Create payment link error", err);
+            alert("Lỗi tạo mã QR: " + (err.response?.data?.message || err.message));
         } finally {
             setIsProcessing(false);
         }
@@ -157,6 +189,7 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     const isManagerView = !!tableIdProp; // Nếu là Drawer trong quản lý
 
     return (
+        <>
         <div className="h-full bg-gray-50 pb-24 relative">
             {/* Header / Cover Image */}
             <div className="relative h-64 bg-gray-900 shrink-0">
@@ -356,12 +389,12 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                                     </button>
                                     <button 
                                         disabled={isProcessing}
-                                        onClick={() => handleProcessPayment('BankTransfer')}
+                                        onClick={handleBankTransfer}
                                         className="bg-emerald-600 text-white rounded-2xl py-4 font-black flex flex-col items-center gap-1 shadow-lg hover:bg-emerald-700 transition disabled:opacity-50"
                                     >
                                         <div className="flex items-center gap-2">
                                             {isProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CreditCard size={20} />}
-                                            Chuyển khoản
+                                            QR Chuyển khoản
                                         </div>
                                     </button>
                                 </div>
@@ -487,5 +520,21 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
             )}
             
         </div>
+
+        {/* QR Payment Modal */}
+        <TablePaymentModal
+            isOpen={qrModalOpen}
+            onClose={() => setQrModalOpen(false)}
+            paymentData={qrPaymentData}
+            billData={billData}
+            tableName={billData?.tables?.[0]?.name}
+            onPaymentSuccess={() => {
+                setQrModalOpen(false);
+                if (onCheckoutSuccess) {
+                    onCheckoutSuccess('Thanh toán chuyển khoản thành công!', { type: 'Cash', tableId }); // Cash để trigger refresh
+                }
+            }}
+        />
+        </>
     );
 }

@@ -14,6 +14,8 @@ import {
   confirmManagerOrder,
   getBillByTable,
   processManagerCheckout,
+  createTablePaymentLink,
+  checkTablePaymentStatus,
   getOrders,
   updateOrderStatus,
   getServiceRequests,
@@ -47,6 +49,8 @@ router.post("/confirm-order",      confirmManagerOrder);
 
 router.get("/tables/:id/bill",     getBillByTable);
 router.post("/tables/:id/checkout", processManagerCheckout);
+router.post("/tables/:id/payment-link", createTablePaymentLink);
+router.get("/tables/:id/payment-status/:orderCode", checkTablePaymentStatus);
 
 // Orders
 router.get("/orders",              getOrders);
