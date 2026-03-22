@@ -852,7 +852,7 @@ export const createTablePaymentLink = async (req, res) => {
       return res.status(503).json({ message: "PayOS chưa được cấu hình trên server." });
     }
 
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     const tableID = parseInt(req.params.id);
 
     // 1. Lấy bill hiện tại của bàn
@@ -916,7 +916,7 @@ export const createTablePaymentLink = async (req, res) => {
 /* ── GET /api/manager/tables/:id/payment-status/:orderCode ── */
 export const checkTablePaymentStatus = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     const tableID = parseInt(req.params.id);
     const orderCode = BigInt(req.params.orderCode);
 
