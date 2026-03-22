@@ -12,7 +12,6 @@ import AdminReports from "./pages/AdminReports";
 import RestaurantManagement from "./pages/RestaurantManagement";
 import AdminServicePackages from "./pages/AdminServicePackages";
 import AdminRequests from "./pages/AdminRequests";
-import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
 import OwnerSettings from "./pages/OwnerSettings";
 import RegisterRestaurant from "./pages/RegisterRestaurant";
 import PendingStatus from "./pages/PendingStatus";
@@ -22,7 +21,7 @@ import OwnerCreateBranch from "./pages/OwnerCreateBranch";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
 import OwnerKitchenTracking from "./pages/OwnerKitchenTracking";
 import KitchenDisplaySystem from "./pages/KitchenDisplaySystem";
-import OwnerReports from "./pages/OwnerReports";
+import OwnerOverview from "./pages/OwnerOverview";
 import OwnerMenu from "./pages/OwnerMenu";
 import OwnerTickets from "./pages/OwnerTickets";
 import OwnerStaff from "./pages/OwnerStaff";
@@ -146,7 +145,7 @@ export default function App() {
           path="/owner/dashboard"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <RestaurantOwnerDashboard />
+              <OwnerOverview />
             </ProtectedRoute>
           }
         />
@@ -214,14 +213,7 @@ export default function App() {
           }
         />
 
-        <Route
-          path="/owner/reports"
-          element={
-            <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerReports />
-            </ProtectedRoute>
-          }
-        />
+
 
         <Route
           path="/owner/kds/:branchID"
