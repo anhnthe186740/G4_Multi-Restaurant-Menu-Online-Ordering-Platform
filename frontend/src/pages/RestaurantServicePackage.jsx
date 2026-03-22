@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import RestaurantOwnerLayout from "../components/owner/RestaurantOwnerLayout";
 import { getPublicPackages, getMySubscription, createPaymentLink } from "../api/subscriptionApi";
-import { Settings, Check, Zap, ArrowRight, Clock, Star } from "lucide-react";
+import { Settings, Check, Zap, ArrowRight, Clock, Star, AlertTriangle, LogOut } from "lucide-react";
 import PayOSPaymentModal from "../components/restaurant/PayOSPaymentModal";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function RestaurantServicePackage() {
    const [packages, setPackages] = useState([]);
@@ -11,6 +12,11 @@ export default function RestaurantServicePackage() {
    const [daysRemaining, setDaysRemaining] = useState(0);
 
    const [loading, setLoading] = useState(true);
+   const location = useLocation();
+   const navigate = useNavigate();
+   
+   // Check if the user was forced here by the SubscriptionGuard
+   const isForced = location.state?.forced === true;
 
    // Payment link data
    const [modalOpen, setModalOpen] = useState(false);
@@ -40,6 +46,16 @@ export default function RestaurantServicePackage() {
       fetchData();
    }, []);
 
+   // Auto-redirect to dashboard when package is active and user was forced to be here
+   useEffect(() => {
+      const searchParams = new URLSearchParams(location.search);
+      const isPayOSReturnAuth = searchParams.get("status") === "PAID" || searchParams.get("cancel") === "false";
+      
+      if (isPayOSReturnAuth || (subStatus === "Active" && isForced)) {
+         navigate("/owner/dashboard", { replace: true, state: {} });
+      }
+   }, [subStatus, isForced, navigate, location.search]);
+
    const handleBuyPackage = async (pkg) => {
       try {
          setPaymentLoading(true);
@@ -56,8 +72,14 @@ export default function RestaurantServicePackage() {
    };
 
    const handlePaymentSuccess = () => {
-      // Refresh the data after payment
-      fetchData();
+      // Tự động chuyển thẳng về dashboard
+      navigate('/owner/dashboard', { replace: true, state: {} });
+   };
+   
+   const handleLogout = () => {
+       localStorage.removeItem('user');
+       localStorage.removeItem('token');
+       navigate('/login');
    };
 
    if (loading) {
@@ -73,15 +95,36 @@ export default function RestaurantServicePackage() {
    // Determine current badge style
    const isExpiringSoon = subStatus === "Active" && daysRemaining <= 7;
 
-   return (
-      <RestaurantOwnerLayout>
+   const content = (
+      <>
          <div className="max-w-6xl mx-auto space-y-8">
+            {/* Forced Mode Banner */}
+            {isForced && (
+               <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start justify-between">
+                  <div className="flex items-start">
+                     <AlertTriangle className="text-red-500 mt-0.5 mr-3 flex-shrink-0" size={24} />
+                     <div>
+                        <h3 className="text-red-800 font-bold text-lg">Yêu cầu gói dịch vụ</h3>
+                        <p className="text-red-700 mt-1">
+                           Bạn cần mua hoặc gia hạn gói dịch vụ để có thể truy cập vào hệ thống quản lý Restaurant Owner Dashboard.
+                        </p>
+                     </div>
+                  </div>
+                  <button 
+                     onClick={handleLogout}
+                     className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-lg shadow-sm text-sm font-medium transition-colors"
+                  >
+                     <LogOut size={16} />
+                     Đăng xuất
+                  </button>
+               </div>
+            )}
 
             {/* Header Title */}
             <div className="flex items-center justify-between">
                <div>
                   <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                     <Settings className="text-blue-600" />
+                     <Settings className={isForced ? "text-red-600" : "text-blue-600"} />
                      Quản lý Gói Dịch Vụ
                   </h1>
                   <p className="text-gray-500 text-sm mt-1">Nâng cấp hoặc gia hạn để mở khóa toàn bộ tính năng quản lý nhà hàng.</p>
@@ -196,6 +239,16 @@ export default function RestaurantServicePackage() {
             selectedPackage={selectedPackage}
             onPaymentSuccess={handlePaymentSuccess}
          />
+      </>
+   );
+
+   return isForced ? (
+      <div className="min-h-screen bg-[#f0f4f8] p-8">
+         {content}
+      </div>
+   ) : (
+      <RestaurantOwnerLayout>
+         {content}
       </RestaurantOwnerLayout>
    );
 }

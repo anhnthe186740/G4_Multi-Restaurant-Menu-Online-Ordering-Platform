@@ -1,21 +1,39 @@
-import { db } from '../config/db.js';
+import prisma from "../config/prismaClient.js";
 
 const checkSubscription = async (req, res, next) => {
-    try {
-        const { restaurantId } = req.user; // Lấy từ JWT token
-        const [rows] = await db.query(
-            'SELECT EndDate, Status FROM Subscriptions WHERE RestaurantID = ? AND Status = "Active"',
-            [restaurantId]
-        );
+  try {
+    const userId = req.user.userId;
+    const restaurant = await prisma.restaurant.findFirst({
+      where: { ownerUserID: userId },
+    });
 
-        if (rows.length === 0 || new Date(rows[0].EndDate) < new Date()) {
-            return res.status(403).json({ message: "Gói tài khoản đã hết hạn hoặc chưa đăng ký!" });
-        }
-        next();
-    } catch (err) {
-        console.error("checkSubscription error:", err);
-        return res.status(500).json({ message: "Lỗi server kiểm tra subscription" });
+    if (!restaurant) {
+      return res.status(403).json({
+        message: "Không tìm thấy nhà hàng.",
+        subscriptionRequired: true,
+      });
     }
+
+    const activeSub = await prisma.subscription.findFirst({
+      where: {
+        restaurantID: restaurant.restaurantID,
+        status: "Active",
+        endDate: { gt: new Date() },
+      },
+    });
+
+    if (!activeSub) {
+      return res.status(403).json({
+        message: "Bạn cần mua hoặc gia hạn gói dịch vụ để sử dụng tính năng này.",
+        subscriptionRequired: true,
+      });
+    }
+
+    next();
+  } catch (err) {
+    console.error("checkSubscription error:", err);
+    return res.status(500).json({ message: "Lỗi server kiểm tra subscription" });
+  }
 };
 
 export default checkSubscription;
