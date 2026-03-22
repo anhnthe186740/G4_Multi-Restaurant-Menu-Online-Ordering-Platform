@@ -20,6 +20,10 @@ import {
   updateServiceRequestStatus,
   getBranchInfo,
   uploadBranchCoverImage,
+  getBranchStaff,
+  createBranchStaff,
+  updateStaffStatus,
+  deleteBranchStaff,
   getTableOrderDetails,
   cancelOrderItem,
   createManagerServiceRequest,
@@ -66,6 +70,12 @@ router.patch("/service-requests/:id", updateServiceRequestStatus);
 // Branch Info
 router.get("/branch-info",            getBranchInfo);
 router.patch("/branch-info/cover",    upload.single("cover"), uploadBranchCoverImage);
+
+// Staff Management
+router.get("/staff",              getBranchStaff);
+router.post("/staff",             createBranchStaff);
+router.patch("/staff/:id/status", updateStaffStatus);
+router.delete("/staff/:id",       deleteBranchStaff);
 
 export default router;
 

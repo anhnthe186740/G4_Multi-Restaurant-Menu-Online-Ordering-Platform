@@ -1,4 +1,6 @@
 import prisma from "../config/prismaClient.js";
+import bcrypt from "bcrypt";
+import { sendNewAccountEmail } from "../config/emailService.js";
 
 /* ─── helper: lấy branchID mà user này quản lý ─── */
 const getManagerBranchId = async (userId) => {
@@ -1169,15 +1171,176 @@ export const uploadBranchCoverImage = async (req, res) => {
 };
 
 /* ===============================================================
+   9. STAFF MANAGEMENT (Branch Manager)
+
+/**
+ * GET /api/manager/staff
+ * Lấy danh sách nhân viên và bếp của chi nhánh
+ */
+export const getBranchStaff = async (req, res) => {
    GET /api/manager/tables/:id/order-details
    Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB
    Dùng cho panel đơn hàng trong sơ đồ bàn
-=============================================================== */
 export const getTableOrderDetails = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user.userId);
     if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
+    const staff = await prisma.user.findMany({
+      where: {
+        branchID,
+        role: { in: ["Staff", "Kitchen"] }
+      },
+      select: {
+        userID: true,
+        username: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.json(staff);
+  } catch (err) {
+    console.error("getBranchStaff error:", err);
+    res.status(500).json({ message: "Lỗi lấy danh sách nhân viên" });
+  }
+};
+
+/**
+ * POST /api/manager/staff
+ * Tạo tài khoản nhân viên hoặc bếp mới
+ */
+export const createBranchStaff = async (req, res) => {
+  try {
+    const branch = await prisma.branch.findUnique({
+      where: { branchID: await getManagerBranchId(req.user.userId) },
+      select: { branchID: true, restaurantID: true }
+    });
+    if (!branch) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+    const branchID = branch.branchID;
+    const restaurantID = branch.restaurantID;
+
+    const { username, password, fullName, email, phone, role } = req.body;
+
+    if (!username || !password || !role) {
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc (username, password, role)." });
+    }
+
+    if (!["Staff", "Kitchen"].includes(role)) {
+      return res.status(400).json({ message: "Role không hợp lệ. Chỉ chấp nhận Staff hoặc Kitchen." });
+    }
+
+    // Kiểm tra username/email đã tồn tại chưa
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ username }, { email: email || undefined }] }
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: "Username hoặc Email đã tồn tại." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.user.create({
+      data: {
+        username,
+        passwordHash,
+        fullName,
+        email,
+        phone,
+        role,
+        branchID,
+        restaurantID,
+        status: "Active"
+      }
+    });
+
+    // Gửi email nếu có
+    if (newUser.email) {
+      try {
+        await sendNewAccountEmail(newUser.email, newUser.fullName, newUser.username, password, role);
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
+      }
+    }
+
+    res.status(201).json({
+      message: "Tạo tài khoản nhân viên thành công!",
+      user: {
+        userID: newUser.userID,
+        username: newUser.username,
+        role: newUser.role
+      }
+    });
+  } catch (err) {
+    console.error("createBranchStaff error:", err);
+    res.status(500).json({ message: "Lỗi tạo tài khoản nhân viên" });
+  }
+};
+
+/**
+ * PATCH /api/manager/staff/:id/status
+ * Bật/Tắt trạng thái tài khoản
+ */
+export const updateStaffStatus = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    const staffID = parseInt(req.params.id);
+    const { status } = req.body;
+
+    if (!["Active", "Inactive"].includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ." });
+    }
+
+    // Đảm bảo user này thuộc chi nhánh của manager
+    const staff = await prisma.user.findFirst({
+      where: { userID: staffID, branchID }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên trong chi nhánh này." });
+    }
+
+    await prisma.user.update({
+      where: { userID: staffID },
+      data: { status }
+    });
+
+    res.json({ message: `Đã ${status === "Active" ? "kích hoạt" : "khoá"} tài khoản thành công.` });
+  } catch (err) {
+    console.error("updateStaffStatus error:", err);
+    res.status(500).json({ message: "Lỗi cập nhật trạng thái nhân viên" });
+  }
+};
+
+/**
+ * DELETE /api/manager/staff/:id
+ * Xoá tài khoản nhân viên
+ */
+export const deleteBranchStaff = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    const staffID = parseInt(req.params.id);
+
+    const staff = await prisma.user.findFirst({
+      where: { userID: staffID, branchID }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên trong chi nhánh này." });
+    }
+
+    await prisma.user.delete({ where: { userID: staffID } });
+
+    res.json({ message: "Đã xoá tài khoản nhân viên thành công." });
+  } catch (err) {
+    console.error("deleteBranchStaff error:", err);
+    res.status(500).json({ message: "Lỗi xoá nhân viên" });
     const tableID = parseInt(req.params.id);
 
     // Tìm order đang active (Open hoặc Serving) của bàn này
@@ -1263,7 +1426,6 @@ function trackCancelSpam(tableID, io, branchID) {
    PATCH /api/manager/order-items/:detailId/cancel
    Huỷ từng món — ATOMIC: chỉ cho phép khi itemStatus === "Pending"
    Dùng updateMany với điều kiện itemStatus để tránh race condition
-=============================================================== */
 export const cancelOrderItem = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user.userId);
@@ -1377,7 +1539,6 @@ export const cancelOrderItem = async (req, res) => {
    POST /api/manager/service-requests
    Tạo yêu cầu phục vụ (gọi nhân viên) từ sơ đồ bàn
    Body: { tableId, requestType: "GoiMon" | "ThanhToan" | "GoiNuoc" | "Khac" }
-=============================================================== */
 export const createManagerServiceRequest = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user.userId);

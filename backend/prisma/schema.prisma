@@ -21,6 +21,7 @@ enum UserRole {
   RestaurantOwner
   BranchManager
   Staff
+  Kitchen
 }
 
 enum UserStatus {
@@ -126,10 +127,14 @@ model User {
   status       UserStatus @default(Active) @map("Status")
   lockReason   String?    @map("LockReason") @db.Text
   createdAt    DateTime   @default(now()) @map("CreatedAt")
+  branchID     Int?       @map("BranchID")
+  restaurantID Int?       @map("RestaurantID")
 
   // Relations
   ownedRestaurants     Restaurant[]          @relation("RestaurantOwner")
+  restaurant           Restaurant?           @relation("RestaurantStaff", fields: [restaurantID], references: [restaurantID])
   managedBranches      Branch[]              @relation("BranchManager")
+  branch               Branch?               @relation("BranchStaff", fields: [branchID], references: [branchID])
   registrationRequests RegistrationRequest[] @relation("RequestOwner")
   approvedRequests     RegistrationRequest[] @relation("RequestApprover")
   createdOrders        Order[]
@@ -173,6 +178,7 @@ model Restaurant {
   branches             Branch[]
   categories           Category[]
   discounts            Discount[]
+  staff                User[]                @relation("RestaurantStaff")
   registrationRequests RegistrationRequest[]
   paymentOrders        PaymentOrder[]
 
@@ -235,6 +241,7 @@ model Branch {
   tables          Table[]
   orders          Order[]
   serviceRequests ServiceRequest[]
+  staff           User[]           @relation("BranchStaff")
 
   @@map("Branches")
 }
