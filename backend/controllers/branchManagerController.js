@@ -1167,3 +1167,182 @@ export const uploadBranchCoverImage = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/* ===============================================================
+   GET /api/manager/tables/:id/order-details
+   Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB
+   Dùng cho panel đơn hàng trong sơ đồ bàn
+=============================================================== */
+export const getTableOrderDetails = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const tableID = parseInt(req.params.id);
+
+    // Tìm order đang active (Open hoặc Serving) của bàn này
+    const orderTable = await prisma.orderTable.findFirst({
+      where: {
+        tableID,
+        order: { orderStatus: { in: ["Open", "Serving"] }, branchID },
+      },
+      include: {
+        order: {
+          include: {
+            orderDetails: {
+              include: { product: { select: { name: true, imageURL: true, price: true } } },
+              orderBy: { orderDetailID: "asc" },
+            },
+            orderTables: { include: { table: { select: { tableID: true, tableName: true } } } },
+          },
+        },
+      },
+    });
+
+    if (!orderTable) {
+      return res.status(404).json({ message: "Bàn này hiện không có đơn hàng đang mở." });
+    }
+
+    const order = orderTable.order;
+
+    res.json({
+      orderID: order.orderID,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      totalAmount: parseFloat(order.totalAmount),
+      orderTime: order.orderTime,
+      customerNote: order.customerNote ?? "",
+      tables: order.orderTables.map((ot) => ({
+        id: ot.table.tableID,
+        name: ot.table.tableName,
+      })),
+      // Trả về TỪNG orderDetail riêng lẻ (không group) → giữ nguyên itemStatus
+      items: order.orderDetails.map((d) => ({
+        orderDetailID: d.orderDetailID,
+        productID: d.productID,
+        productName: d.product?.name ?? "Món đã xóa",
+        imageURL: d.product?.imageURL ?? null,
+        quantity: d.quantity,
+        unitPrice: parseFloat(d.unitPrice),
+        itemStatus: d.itemStatus,   // Pending | Cooking | Ready | Served | Cancelled
+        note: d.note ?? "",
+      })),
+    });
+  } catch (err) {
+    console.error("getTableOrderDetails error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ===============================================================
+   PATCH /api/manager/order-items/:detailId/cancel
+   Huỷ từng món — chỉ được khi itemStatus === "Pending"
+   Tự động recalculate totalAmount của order sau khi huỷ
+=============================================================== */
+export const cancelOrderItem = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const orderDetailID = parseInt(req.params.detailId);
+
+    // Tìm chi tiết món + xác nhận thuộc chi nhánh này
+    const detail = await prisma.orderDetail.findFirst({
+      where: { orderDetailID },
+      include: { order: { select: { orderID: true, branchID: true } } },
+    });
+
+    if (!detail) return res.status(404).json({ message: "Không tìm thấy món ăn." });
+    if (detail.order.branchID !== branchID)
+      return res.status(403).json({ message: "Bạn không có quyền huỷ món này." });
+    if (detail.itemStatus !== "Pending")
+      return res.status(400).json({ message: `Chỉ có thể huỷ món đang ở trạng thái "Đơn mới". Trạng thái hiện tại: ${detail.itemStatus}` });
+
+    const orderID = detail.order.orderID;
+
+    // Huỷ món và recalculate totalAmount trong 1 transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.orderDetail.update({
+        where: { orderDetailID },
+        data: { itemStatus: "Cancelled" },
+      });
+
+      // Tính lại tổng tiền (chỉ các món chưa bị Cancelled)
+      const remaining = await tx.orderDetail.findMany({
+        where: { orderID, itemStatus: { not: "Cancelled" } },
+        select: { quantity: true, unitPrice: true },
+      });
+      const newTotal = remaining.reduce(
+        (sum, d) => sum + d.quantity * parseFloat(d.unitPrice),
+        0
+      );
+      await tx.order.update({
+        where: { orderID },
+        data: { totalAmount: newTotal },
+      });
+    });
+
+    emitTableUpdate(req);
+    res.json({ message: "Đã huỷ món thành công.", orderDetailID, itemStatus: "Cancelled" });
+  } catch (err) {
+    console.error("cancelOrderItem error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/* ===============================================================
+   POST /api/manager/service-requests
+   Tạo yêu cầu phục vụ (gọi nhân viên) từ sơ đồ bàn
+   Body: { tableId, requestType: "GoiMon" | "ThanhToan" | "GoiNuoc" | "Khac" }
+=============================================================== */
+export const createManagerServiceRequest = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user.userId);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { tableId, requestType = "GoiMon" } = req.body;
+    if (!tableId) return res.status(400).json({ message: "Thiếu tableId." });
+
+    const validTypes = ["GoiMon", "GoiNuoc", "ThanhToan", "Khac"];
+    if (!validTypes.includes(requestType))
+      return res.status(400).json({ message: `requestType không hợp lệ. Chỉ chấp nhận: ${validTypes.join(", ")}` });
+
+    // Xác nhận bàn thuộc chi nhánh
+    const table = await prisma.table.findFirst({
+      where: { tableID: parseInt(tableId), branchID },
+    });
+    if (!table) return res.status(404).json({ message: "Không tìm thấy bàn." });
+
+    const newRequest = await prisma.serviceRequest.create({
+      data: {
+        branchID,
+        tableID: parseInt(tableId),
+        requestType,
+        status: "Đang chờ",
+        createdTime: new Date(),
+      },
+    });
+
+    // Phát realtime cho manager
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("serviceRequestCreated", {
+        requestID: newRequest.requestID,
+        tableID: parseInt(tableId),
+        tableName: table.tableName,
+        requestType,
+        createdTime: newRequest.createdTime,
+      });
+    }
+
+    res.status(201).json({
+      message: "Đã tạo yêu cầu gọi nhân viên thành công.",
+      requestID: newRequest.requestID,
+      tableID: parseInt(tableId),
+      requestType,
+    });
+  } catch (err) {
+    console.error("createManagerServiceRequest error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};

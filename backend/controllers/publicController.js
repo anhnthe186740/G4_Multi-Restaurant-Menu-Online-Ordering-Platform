@@ -240,3 +240,74 @@ export const createServiceRequest = async (req, res) => {
         res.status(500).json({ message: "Lỗi tạo yêu cầu.", error: error.message });
     }
 };
+
+/* ─────────────────────────────────────────────────────────────
+   GET /api/public/table/:tableId/order
+   Lấy đơn hàng đang active của bàn (Open/Serving) — public, không cần auth
+   Dùng cho trang QR của khách để xem trạng thái món đã gọi
+───────────────────────────────────────────────────────────── */
+export const getPublicOrderByTable = async (req, res) => {
+    try {
+        const tableId = parseInt(req.params.tableId);
+        if (isNaN(tableId)) return res.status(400).json({ message: "tableId không hợp lệ." });
+
+        // Tìm bàn
+        const table = await prisma.table.findUnique({
+            where: { tableID: tableId },
+            select: { tableID: true, tableName: true, branchID: true },
+        });
+        if (!table) return res.status(404).json({ message: "Không tìm thấy bàn." });
+
+        // Tìm order đang active
+        const orderTable = await prisma.orderTable.findFirst({
+            where: {
+                tableID: tableId,
+                order: { orderStatus: { in: ["Open", "Serving"] } },
+            },
+            include: {
+                order: {
+                    include: {
+                        orderDetails: {
+                            include: {
+                                product: { select: { name: true, imageURL: true } },
+                            },
+                            orderBy: { orderDetailID: "asc" },
+                        },
+                        orderTables: {
+                            include: { table: { select: { tableID: true, tableName: true } } },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!orderTable) {
+            return res.status(404).json({ message: "Bàn này chưa có đơn hàng nào đang mở." });
+        }
+
+        const order = orderTable.order;
+        res.json({
+            orderID: order.orderID,
+            orderStatus: order.orderStatus,
+            totalAmount: parseFloat(order.totalAmount),
+            orderTime: order.orderTime,
+            customerNote: order.customerNote ?? "",
+            tables: order.orderTables.map(ot => ({
+                id: ot.table.tableID,
+                name: ot.table.tableName,
+            })),
+            items: order.orderDetails.map(d => ({
+                orderDetailID: d.orderDetailID,
+                productName:   d.product?.name ?? "Món đã xóa",
+                imageURL:      d.product?.imageURL ?? null,
+                quantity:      d.quantity,
+                unitPrice:     parseFloat(d.unitPrice),
+                itemStatus:    d.itemStatus,  // Pending | Cooking | Ready | Served | Cancelled
+                note:          d.note ?? "",
+            })),
+        });
+    } catch (error) {
+        console.error("getPublicOrderByTable error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};

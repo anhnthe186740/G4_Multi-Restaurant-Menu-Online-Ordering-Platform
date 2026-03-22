@@ -41,8 +41,13 @@ export const updateManagerBranchCover = (formData) => managerAxios.patch("manage
     headers: { "Content-Type": "multipart/form-data" }
 });
 
+// Order Details per Table (with itemStatus from DB)
+export const getManagerTableOrderDetails  = (id)       => managerAxios.get(`manager/tables/${id}/order-details`);
+export const cancelManagerOrderItem       = (detailId) => managerAxios.patch(`manager/order-items/${detailId}/cancel`);
+
 // Service Requests
 export const getManagerServiceRequests         = (params)     => managerAxios.get("manager/service-requests", { params });
+export const createManagerServiceRequest       = (data)       => managerAxios.post("manager/service-requests", data);
 export const updateManagerServiceRequestStatus = (id, status) => managerAxios.patch(`manager/service-requests/${id}`, { status });
 
 export default managerAxios;

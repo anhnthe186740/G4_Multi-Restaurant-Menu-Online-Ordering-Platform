@@ -20,6 +20,9 @@ import {
   updateServiceRequestStatus,
   getBranchInfo,
   uploadBranchCoverImage,
+  getTableOrderDetails,
+  cancelOrderItem,
+  createManagerServiceRequest,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -45,14 +48,19 @@ router.patch("/tables/:id/status", updateTableStatus);
 router.delete("/tables/:id",       deleteTable);
 router.post("/confirm-order",      confirmManagerOrder);
 
-router.get("/tables/:id/bill",     getBillByTable);
-router.post("/tables/:id/checkout", processManagerCheckout);
+router.get("/tables/:id/bill",           getBillByTable);
+router.post("/tables/:id/checkout",      processManagerCheckout);
+router.get("/tables/:id/order-details",  getTableOrderDetails);
 
 // Orders
 router.get("/orders",              getOrders);
 router.patch("/orders/:id/status", updateOrderStatus);
+// Order items
+router.patch("/order-items/:detailId/cancel", cancelOrderItem);
+
 // Service Requests
 router.get("/service-requests",       getServiceRequests);
+router.post("/service-requests",      createManagerServiceRequest);
 router.patch("/service-requests/:id", updateServiceRequestStatus);
 
 // Branch Info
