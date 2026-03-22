@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { getOwnerKitchenOrders, updateOwnerItemStatus, updateOwnerMultipleItemStatus } from '../api/ownerApi';
+import { getOwnerKitchenOrders, updateOwnerItemStatus, updateOwnerMultipleItemStatus, getOwnerBranches } from '../api/ownerApi';
+import { getManagerBranchInfo } from '../api/managerApi';
 import {
     Clock,
     ChevronLeft,
@@ -33,6 +34,7 @@ export default function KitchenDisplaySystem() {
     const isReadOnly = userData.role === 'RestaurantOwner';
 
     const [orders, setOrders] = useState([]);
+    const [branchName, setBranchName] = useState('Đang tải...');
     const [loading, setLoading] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [currentTime, setCurrentTime] = useState(dayjs().format('HH:mm:ss'));
@@ -46,7 +48,36 @@ export default function KitchenDisplaySystem() {
         return () => clearInterval(timer);
     }, []);
 
+    // Lấy thông tin chi nhánh
+    useEffect(() => {
+        const fetchBranchInfo = async () => {
+            if (!branchID) return;
+            try {
+                if (userData.role === 'BranchManager') {
+                    const response = await getManagerBranchInfo();
+                    setBranchName(response.data.branch.name);
+                } else if (userData.role === 'RestaurantOwner') {
+                    const response = await getOwnerBranches();
+                    const currentBranch = response.data.branches?.find(b => b.branchID === branchID);
+                    if (currentBranch) {
+                        setBranchName(currentBranch.name);
+                    } else {
+                        setBranchName(`Chi nhánh ${branchID}`);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching branch info:", error);
+                setBranchName(`Chi nhánh ${branchID}`);
+            }
+        };
+        fetchBranchInfo();
+    }, [branchID, userData]);
+
     const fetchOrders = useCallback(async () => {
+        if (!branchID) {
+            setLoading(false);
+            return;
+        }
         try {
             const response = await getOwnerKitchenOrders(branchID, categoryID);
             const newOrders = response.data;
@@ -169,79 +200,114 @@ export default function KitchenDisplaySystem() {
     }, [orders]);
 
     const getLaneOrders = (status) => {
+        const statuses = Array.isArray(status) ? status : [status];
         return orders.filter(order =>
-            order.items.some(item => item.itemStatus === status)
+            order.items.some(item => statuses.includes(item.itemStatus))
         ).map(order => ({
             ...order,
-            items: order.items.filter(item => item.itemStatus === status)
+            items: order.items.filter(item => statuses.includes(item.itemStatus))
         }));
     };
 
+    if (!branchID) {
+        return (
+            <div className="fixed inset-0 bg-[#0a0f18] flex flex-col items-center justify-center text-white">
+                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
+                    <User size={32} className="text-red-400" />
+                </div>
+                <h2 className="text-xl font-bold mb-2">Thiếu thông tin chi nhánh</h2>
+                <p className="text-slate-400 text-center max-w-md px-6">
+                    Tài khoản của bạn chưa được gán cho chi nhánh nào hoặc thông tin chưa được cập nhật. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.
+                </p>
+                <div className="flex gap-4 mt-8">
+                    <button 
+                        onClick={() => navigate(-1)} 
+                        className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all font-bold text-sm"
+                    >
+                        Quay lại
+                    </button>
+                    <button 
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            navigate('/login');
+                        }} 
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl transition-all font-bold text-sm shadow-lg shadow-blue-600/20"
+                    >
+                        Đăng nhập lại
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (loading && orders.length === 0) {
-        return <div className="fixed inset-0 bg-[#0a0f18] flex items-center justify-center text-white">Đang tải...</div>;
+        return (
+            <div className="fixed inset-0 bg-[#0a0f18] flex flex-col items-center justify-center text-white gap-4">
+                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                <p className="text-slate-400 font-medium animate-pulse">Đang tải dữ liệu bếp...</p>
+            </div>
+        );
     }
 
     return (
-        <div className="fixed inset-0 bg-[#0a0f18] text-slate-300 flex flex-col font-sans select-none overflow-hidden text-sm">
+        <div className="fixed inset-0 bg-slate-50 text-slate-600 flex flex-col font-sans select-none overflow-hidden text-sm">
             {/* Header */}
-            <header className="h-16 bg-[#161e2e] border-b border-slate-700/50 flex items-center justify-between px-6 shrink-0">
+            <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-10">
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate(userData.role === 'RestaurantOwner' ? '/owner/kitchen-tracking' : '/manager/dashboard')} 
-                        className="text-slate-400 hover:text-white transition-colors"
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
                     >
                         <ChevronLeft size={24} />
                     </button>
                     <div>
-                        <h1 className="text-lg font-bold text-white leading-tight">KDS Bếp Chính</h1>
-                        <p className="text-blue-400 text-[10px] font-bold tracking-widest uppercase">CHI NHÁNH {branchID} • TRỰC TUYẾN</p>
+                        <h1 className="text-lg font-bold text-slate-900 leading-tight">Màn Hình Bếp (KDS)</h1>
+                        <p className="text-blue-600 text-[10px] font-bold tracking-widest uppercase">{branchName} • TRỰC TUYẾN</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-6">
                     {/* View Mode Switcher */}
-                    <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-700/30">
+                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
                         <button 
                             onClick={() => setViewMode('board')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'board' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'board' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <LayoutGrid size={14} /> THEO ĐƠN
                         </button>
                         <button 
                             onClick={() => setViewMode('batch')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'batch' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'batch' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <ListFilter size={14} /> GOM MÓN
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-8 border-l border-slate-700/50 pl-6">
+                    <div className="flex items-center gap-8 border-l border-slate-200 pl-6">
                         <div className="text-center">
-                            <p className="text-[10px] font-bold text-slate-500 mb-0.5 uppercase">Đang chờ</p>
-                            <p className="text-xl font-black text-blue-500 leading-none">{stats.pendingCount}</p>
+                            <p className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Đang chờ</p>
+                            <p className="text-xl font-black text-blue-600 leading-none">{stats.pendingCount}</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-[10px] font-bold text-slate-500 mb-0.5 uppercase">Thời gian TB</p>
-                            <p className="text-xl font-black text-yellow-500 leading-none">{stats.avgWait}</p>
+                            <p className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Thời gian TB</p>
+                            <p className="text-xl font-black text-amber-500 leading-none">{stats.avgWait}</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 border-l border-slate-700/50 pl-6">
-                        <button onClick={toggleFullscreen} className="w-9 h-9 rounded-xl bg-slate-800/50 flex items-center justify-center hover:bg-slate-700 transition-all text-slate-400">
+                    <div className="flex items-center gap-2 border-l border-slate-200 pl-6">
+                        <button onClick={toggleFullscreen} className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-all text-slate-500 border border-slate-200">
                             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                         </button>
-                        <button className="w-9 h-9 rounded-xl bg-slate-800/50 flex items-center justify-center hover:bg-slate-700 transition-all text-slate-400">
-                            <Settings size={18} />
-                        </button>
                     </div>
 
-                    <div className="flex items-center gap-3 border-l border-slate-700/50 pl-6">
+                    <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
                         <div className="text-right">
-                            <p className="text-base font-black text-white leading-none">{currentTime}</p>
-                            <p className="text-[9px] text-slate-500 font-bold mt-1 uppercase tracking-tighter">{dayjs().format('DD MMMM, YYYY')}</p>
+                            <p className="text-base font-black text-slate-900 leading-none">{currentTime}</p>
+                            <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">{dayjs().format('DD MMMM, YYYY')}</p>
                         </div>
-                        <div className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                            <User size={20} className="text-blue-400" />
+                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
+                            <User size={20} className="text-blue-600" />
                         </div>
                     </div>
                 </div>
@@ -260,9 +326,9 @@ export default function KitchenDisplaySystem() {
                             renderActions={(item) => !isReadOnly && (
                                 <button
                                     onClick={() => handleStatusUpdate(item.orderDetailID, 'Cooking')}
-                                    className="w-full mt-2 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-[10px] font-black transition-all border border-blue-500/20 flex items-center justify-center gap-1.5 uppercase tracking-tighter"
+                                    className="w-full mt-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-[10px] font-black transition-all border border-blue-200 flex items-center justify-center gap-1.5 uppercase tracking-tighter shadow-sm"
                                 >
-                                    <Play size={10} fill="currentColor" /> Bắt đầu chế biến
+                                    <Play size={10} fill="currentColor" /> Bắt đầu làm
                                 </button>
                             )}
                             batchLabel="Làm tất cả"
@@ -273,42 +339,26 @@ export default function KitchenDisplaySystem() {
                         <KDSLane
                             title="Đang làm"
                             count={getLaneOrders('Cooking').length}
-                            dotColor="bg-yellow-500"
+                            dotColor="bg-amber-500"
                             orders={getLaneOrders('Cooking')}
                             renderActions={(item) => !isReadOnly && (
                                 <button
                                     onClick={() => handleStatusUpdate(item.orderDetailID, 'Ready')}
-                                    className="w-full mt-2 py-1.5 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-400 rounded-lg text-[10px] font-black transition-all border border-yellow-500/20 flex items-center justify-center gap-1.5 uppercase tracking-tighter"
+                                    className="w-full mt-2 py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl text-[10px] font-black transition-all border border-amber-200 flex items-center justify-center gap-1.5 uppercase tracking-tighter shadow-sm"
                                 >
-                                    <CheckCircle2 size={10} /> Xong bài / Chuyển trả
+                                    <CheckCircle2 size={10} /> Xong / Hoàn tất
                                 </button>
                             )}
                             batchLabel="Xong tất cả"
                             onBatchAction={!isReadOnly ? (order) => handleBatchStatusUpdate(order.items.map(i => i.orderDetailID), 'Ready') : null}
                         />
 
-                        {/* Lane: Sẵn sàng */}
-                        <KDSLane
-                            title="Sẵn sàng"
-                            count={getLaneOrders('Ready').length}
-                            dotColor="bg-emerald-500"
-                            orders={getLaneOrders('Ready')}
-                            renderActions={(item) => !isReadOnly && (
-                                <button
-                                    onClick={() => handleStatusUpdate(item.orderDetailID, 'Served')}
-                                    className="w-full mt-2 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 rounded-lg text-[10px] font-black transition-all border border-emerald-500/20 flex items-center justify-center gap-1.5 uppercase tracking-tighter"
-                                >
-                                    <Truck size={10} /> Đã ra món
-                                </button>
-                            )}
-                        />
-
                         {/* Lane: Hoàn tất */}
                         <KDSLane
                             title="Hoàn tất"
-                            count={getLaneOrders('Served').length}
-                            dotColor="bg-slate-500"
-                            orders={getLaneOrders('Served')}
+                            count={getLaneOrders(['Ready', 'Served']).length}
+                            dotColor="bg-emerald-500"
+                            orders={getLaneOrders(['Ready', 'Served'])}
                             isDimmed
                         />
                     </main>
@@ -317,55 +367,55 @@ export default function KitchenDisplaySystem() {
                         <div className="max-w-5xl mx-auto">
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h2 className="text-xl font-black text-white flex items-center gap-3">
-                                        <ListFilter size={24} className="text-blue-500" /> 
+                                    <h2 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                                        <ListFilter size={24} className="text-blue-600" /> 
                                         CHẾ ĐỘ GOM MÓN (BATCH MODE)
                                     </h2>
-                                    <p className="text-slate-500 text-xs mt-1 font-bold uppercase tracking-widest">Tổng hợp số lượng chuẩn bị theo từng món ăn</p>
+                                    <p className="text-slate-400 text-xs mt-1 font-bold uppercase tracking-widest">Tổng hợp số lượng chuẩn bị theo từng món ăn</p>
                                 </div>
-                                <div className="bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700/30">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Tổng món cần làm</p>
-                                    <p className="text-xl font-black text-white">{batchData.reduce((s, i) => s + i.pending + i.cooking, 0)}</p>
+                                <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Tổng món cần làm</p>
+                                    <p className="text-xl font-black text-slate-900">{batchData.reduce((s, i) => s + i.pending + i.cooking, 0)}</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {batchData.map((item, idx) => (
-                                    <div key={idx} className="bg-[#161e2e] rounded-2xl p-5 border border-slate-700/30 shadow-xl group hover:border-blue-500/30 transition-all">
+                                    <div key={idx} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm group hover:border-blue-500/50 transition-all">
                                         <div className="flex justify-between items-start mb-4">
-                                            <h3 className="text-base font-black text-white group-hover:text-blue-400 transition-colors uppercase">{item.name}</h3>
-                                            <span className="text-2xl font-black text-blue-500">{item.pending + item.cooking}</span>
+                                            <h3 className="text-base font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase">{item.name}</h3>
+                                            <span className="text-2xl font-black text-blue-600">{item.pending + item.cooking}</span>
                                         </div>
                                         
                                         <div className="space-y-3">
                                             {item.pending > 0 && (
-                                                <div className="flex items-center justify-between p-3 bg-blue-500/5 rounded-xl border border-blue-500/10">
+                                                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
                                                     <div>
-                                                        <p className="text-[10px] font-bold text-blue-400 uppercase">Chờ làm</p>
-                                                        <p className="text-lg font-black text-blue-500">{item.pending}</p>
+                                                        <p className="text-[10px] font-bold text-blue-500 uppercase">Chờ làm</p>
+                                                        <p className="text-lg font-black text-blue-600">{item.pending}</p>
                                                     </div>
                                                     {!isReadOnly && (
                                                         <button 
                                                             onClick={() => handleBatchStatusUpdate(item.ids, 'Cooking')}
-                                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
+                                                            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all shadow-sm"
                                                         >
-                                                            Làm tất cả
+                                                            Làm ngay
                                                         </button>
                                                     )}
                                                 </div>
                                             )}
                                             {item.cooking > 0 && (
-                                                <div className="flex items-center justify-between p-3 bg-yellow-500/5 rounded-xl border border-yellow-500/10">
+                                                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100">
                                                     <div>
-                                                        <p className="text-[10px] font-bold text-yellow-400 uppercase">Đang nấu</p>
-                                                        <p className="text-lg font-black text-yellow-500">{item.cooking}</p>
+                                                        <p className="text-[10px] font-bold text-amber-500 uppercase">Đang nấu</p>
+                                                        <p className="text-lg font-black text-amber-600">{item.cooking}</p>
                                                     </div>
                                                     {!isReadOnly && (
                                                         <button 
                                                             onClick={() => handleBatchStatusUpdate(item.cookingIds, 'Ready')}
-                                                            className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
+                                                            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all shadow-sm"
                                                         >
-                                                            Xong tất cả
+                                                            Xong hết
                                                         </button>
                                                     )}
                                                 </div>
@@ -386,14 +436,14 @@ export default function KitchenDisplaySystem() {
             </div>
 
             {/* Footer */}
-            <footer className="h-10 bg-[#0f141f] border-t border-slate-700/50 flex items-center justify-between px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">
+            <footer className="h-10 bg-white border-t border-slate-200 flex items-center justify-between px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
                 <div className="flex gap-8">
                     <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Máy in: Sẵn sàng</p>
                     <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Server: Ổn định</p>
                 </div>
                 <div className="flex gap-8 items-center">
-                    <p className="text-blue-500/70 hover:text-blue-400 cursor-pointer transition-colors">Vấn đề kỹ thuật?</p>
-                    <p className="opacity-40">OrderEats KDS v2.5.0</p>
+                    <p className="text-blue-600 hover:text-blue-700 cursor-pointer transition-colors">Trợ giúp kỹ thuật</p>
+                    <p className="opacity-40">OrderEats KDS v3.0 (Light Edition)</p>
                 </div>
             </footer>
         </div>
@@ -402,16 +452,13 @@ export default function KitchenDisplaySystem() {
 
 function KDSLane({ title, count, dotColor, orders, renderActions, isDimmed, batchLabel, onBatchAction }) {
     return (
-        <div className={`w-[340px] h-full flex flex-col shrink-0 ${isDimmed ? 'opacity-40 grayscale' : ''}`}>
+        <div className={`w-[340px] h-full flex flex-col shrink-0 ${isDimmed ? 'opacity-70' : ''}`}>
             <div className="flex items-center justify-between mb-4 px-2">
                 <div className="flex items-center gap-2">
-                    <div className={`w-2.5 h-2.5 rounded-full ${dotColor} shadow-[0_0_10px_rgba(59,130,246,0.5)]`}></div>
-                    <h2 className="text-xs font-black text-white uppercase tracking-widest leading-none">{title}</h2>
-                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg font-black ml-1">{count}</span>
+                    <div className={`w-2.5 h-2.5 rounded-full ${dotColor} shadow-sm`}></div>
+                    <h2 className="text-xs font-black text-slate-800 uppercase tracking-widest leading-none">{title}</h2>
+                    <span className="text-[10px] bg-white text-slate-500 px-2 py-0.5 rounded-lg font-black ml-1 border border-slate-200">{count}</span>
                 </div>
-                <button className="w-7 h-7 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors">
-                    <Settings size={14} />
-                </button>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar">
@@ -469,19 +516,19 @@ function KDSCard({ order, borderColor, renderActions, batchLabel, onBatchAction 
     };
 
     return (
-        <div className={`bg-[#161e2e] rounded-2xl overflow-hidden border-l-[6px] ${borderColor.replace('bg-', 'border-')} shadow-2xl transition-all hover:translate-x-1`}>
+        <div className={`bg-white rounded-2xl overflow-hidden border-l-[6px] ${borderColor.replace('bg-', 'border-')} shadow-sm border border-slate-200 transition-all hover:translate-x-1`}>
             {/* Card Header */}
-            <div className={`p-4 border-b border-slate-700/30 flex items-center justify-between ${isLate ? 'bg-red-500/10' : isWarning ? 'bg-yellow-500/5' : 'bg-slate-800/20'}`}>
+            <div className={`p-4 border-b border-slate-100 flex items-center justify-between ${isLate ? 'bg-red-50' : isWarning ? 'bg-amber-50' : 'bg-slate-50/50'}`}>
                 <div>
-                    <h3 className="text-xl font-black text-white leading-none tracking-tighter">#{order.orderID}</h3>
-                    <p className="text-[10px] text-slate-400 font-bold mt-1.5 uppercase tracking-wide">Bàn {order.tableName} • Tại chỗ</p>
+                    <h3 className="text-xl font-black text-slate-900 leading-none tracking-tighter">#{order.orderID}</h3>
+                    <p className="text-[10px] text-slate-500 font-bold mt-1.5 uppercase tracking-wide">Bàn {order.tableName} • Tại chỗ</p>
                 </div>
-                <div className={`flex flex-col items-end gap-1 ${isLate ? 'text-red-500' : isWarning ? 'text-yellow-500' : 'text-blue-500'}`}>
+                <div className={`flex flex-col items-end gap-1 ${isLate ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-blue-600'}`}>
                     <div className="flex items-center gap-1.5">
                         <Clock size={12} className={isLate ? 'animate-pulse' : ''} />
                         <span className="text-sm font-black tracking-tighter">{timer}</span>
                     </div>
-                    <span className="text-[9px] font-bold uppercase tracking-tighter text-slate-500">{dayjs(order.orderTime).format('HH:mm')}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-tighter text-slate-400">{dayjs(order.orderTime).format('HH:mm')}</span>
                 </div>
             </div>
 
@@ -491,16 +538,16 @@ function KDSCard({ order, borderColor, renderActions, batchLabel, onBatchAction 
                     <div key={item.orderDetailID} className="group/item">
                         <div className="flex justify-between items-start gap-4">
                             <div className="flex-1">
-                                <p className="text-sm font-black text-slate-100 leading-tight uppercase group-hover/item:text-blue-400 transition-colors">
+                                <p className="text-sm font-black text-slate-800 leading-tight uppercase group-hover/item:text-blue-600 transition-colors">
                                     {item.productName}
                                 </p>
                                 {item.note && (
-                                    <p className="text-[10px] text-slate-400 font-bold mt-1.5 pl-3 border-l-2 border-slate-700 italic">
+                                    <p className="text-[10px] text-slate-400 font-bold mt-1.5 pl-3 border-l-2 border-slate-200 italic">
                                         {highlightNote(item.note)}
                                     </p>
                                 )}
                             </div>
-                            <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-black shrink-0 border border-blue-500/10">
+                            <span className="px-2 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-black shrink-0 border border-slate-200">
                                 x{item.quantity}
                             </span>
                         </div>
@@ -510,18 +557,18 @@ function KDSCard({ order, borderColor, renderActions, batchLabel, onBatchAction 
             </div>
 
             {/* Actions Bar & Customer Note */}
-            <div className="bg-[#0f141f]/50 px-4 py-3 border-t border-slate-700/30">
+            <div className="bg-slate-50/50 px-4 py-3 border-t border-slate-100">
                 {order.customerNote && (
-                    <div className="mb-3 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/10 flex items-start gap-2">
-                        <div className="w-1 h-1 rounded-full bg-yellow-500 mt-1 shrink-0"></div>
-                        <p className="text-[10px] text-yellow-500/80 leading-snug font-bold uppercase italic tracking-tight">KHÁCH DẶN: {highlightNote(order.customerNote)}</p>
+                    <div className="mb-3 p-2 bg-amber-50 rounded-lg border border-amber-100 flex items-start gap-2">
+                        <div className="w-1 h-1 rounded-full bg-amber-500 mt-1 shrink-0"></div>
+                        <p className="text-[10px] text-amber-600 leading-snug font-bold uppercase italic tracking-tight">KHÁCH DẶN: {highlightNote(order.customerNote)}</p>
                     </div>
                 )}
                 
                 {onBatchAction && (
                     <button 
                         onClick={() => onBatchAction(order)}
-                        className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-700/50"
+                        className="w-full py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 shadow-sm"
                     >
                         {batchLabel}
                     </button>
