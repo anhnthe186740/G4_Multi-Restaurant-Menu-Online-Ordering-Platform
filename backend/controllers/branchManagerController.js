@@ -1321,9 +1321,10 @@ export const uploadBranchCoverImage = async (req, res) => {
    9. PAYMENT HISTORY
    GET /api/manager/payment-history
    Query: startDate, endDate (ISO strings)
+=============================================================== */
 export const getPaymentHistory = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
+    const branchID = await getManagerBranchId(req.user);
     if (!branchID)
       return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
 
@@ -1395,7 +1396,11 @@ export const getPaymentHistory = async (req, res) => {
   } catch (err) {
     console.error("getPaymentHistory error:", err);
     res.status(500).json({ message: "Lỗi lấy lịch sử thanh toán." });
+  }
+};
+/* ===============================================================
    9. STAFF MANAGEMENT (Branch Manager)
+=============================================================== */
 
 /**
  * GET /api/manager/staff
@@ -1561,7 +1566,7 @@ export const deleteBranchStaff = async (req, res) => {
 
 /* ===============================================================
    GET /api/manager/tables/:id/order-details
-   Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB
+   Lấy chi tiết từng món ăn (không group) kèm itemStatus từ DB */
 export const getTableOrderDetails = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);
@@ -1622,7 +1627,7 @@ export const getTableOrderDetails = async (req, res) => {
 };
 
 /* ===============================================================
-   PATCH /api/manager/order-items/:detailId/cancel
+   PATCH /api/manager/order-items/:detailId/cancel */
 export const cancelOrderItem = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);
@@ -1645,11 +1650,11 @@ export const cancelOrderItem = async (req, res) => {
     });
 
     if (!detail || !detail.order) return res.status(404).json({ message: "Không tìm thấy món ăn." });
-    
+
     // So sánh int vs int
     const orderBranchID = parseInt(detail.order.branchID);
     const userBranchID = parseInt(branchID);
-    
+
     if (orderBranchID !== userBranchID)
       return res.status(403).json({ message: "Bạn không có quyền huỷ món này." });
 
@@ -1665,7 +1670,7 @@ export const cancelOrderItem = async (req, res) => {
     const requestedCancelQty = parseInt(cancelQuantity) || currentQty;
 
     if (requestedCancelQty > currentQty || requestedCancelQty <= 0) {
-        return res.status(400).json({ message: "Số lượng huỷ không hợp lệ." });
+      return res.status(400).json({ message: "Số lượng huỷ không hợp lệ." });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -1733,7 +1738,7 @@ export const cancelOrderItem = async (req, res) => {
 };
 
 /* ===============================================================
-   POST /api/manager/service-requests
+   POST /api/manager/service-requests */
 export const createManagerServiceRequest = async (req, res) => {
   try {
     const branchID = await getManagerBranchId(req.user);

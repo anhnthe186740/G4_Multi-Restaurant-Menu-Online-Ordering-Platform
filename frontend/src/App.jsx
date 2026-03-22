@@ -151,8 +151,8 @@ export default function App() {
             <ProtectedRoute requiredRole="RestaurantOwner">
 
               <SubscriptionGuard>
-                
-              <OwnerOverview />
+
+                <OwnerOverview />
               </SubscriptionGuard>
 
 
@@ -334,7 +334,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-          <Route
+        <Route
           path="/manager/info"
           element={
             <ProtectedRoute requiredRole="BranchManager">
@@ -347,9 +347,11 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <ManagerPaymentHistory />
-       </ProtectedRoute>
-           
-           <Route 
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/manager/staff"
           element={
             <ProtectedRoute requiredRole="BranchManager">
