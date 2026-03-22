@@ -7,7 +7,6 @@ export default function RestaurantOwnerSidebar() {
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Tổng quan', path: '/owner/dashboard' },
-        { icon: BarChart3, label: 'Báo cáo chi tiết', path: '/owner/reports' },
         { icon: GitBranch, label: 'Chi nhánh', path: '/owner/branches' },
         { icon: BookOpen, label: 'Thực đơn', path: '/owner/menu' },
         { icon: UtensilsCrossed, label: 'Theo dõi đơn hàng bếp', path: '/owner/kitchen-tracking' },
