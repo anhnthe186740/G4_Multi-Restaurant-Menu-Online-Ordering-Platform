@@ -841,6 +841,11 @@ export default function TableManagement() {
             loadTables(); // Refresh the list
         });
 
+        // Cảnh báo spam huỷ món
+        socket.on("spamAlert", ({ message }) => {
+            showToast(`🚨 ${message}`);
+        });
+
         return () => {
             socket.disconnect();
         };

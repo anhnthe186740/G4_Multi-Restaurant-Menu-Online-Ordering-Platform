@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { io } from "socket.io-client";
 import {
   Search, ShoppingCart, Plus, Minus, ChefHat, MapPin, AlertCircle,
   ClipboardList, UtensilsCrossed, Bell, RefreshCw, CheckCircle, Loader2, X
 } from "lucide-react";
 import {
   getMenuByTable, createPublicOrder,
-  createPublicServiceRequest, getPublicOrderByTable,
+  createPublicServiceRequest, getPublicOrderByTable, cancelPublicOrderItem,
 } from "../api/publicApi";
 
 /* ────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ function OrderTab({ tableId, tableName }) {
   const [error, setError]               = useState(null);
   const [callingStaff, setCallingStaff] = useState(false);
   const [staffCalled, setStaffCalled]   = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
 
   const loadOrder = useCallback(async () => {
     setLoading(true);
@@ -59,6 +61,28 @@ function OrderTab({ tableId, tableName }) {
 
   useEffect(() => { loadOrder(); }, [loadOrder]);
 
+  // Realtime: lắng nghe bếp cập nhật trạng thái từng món
+  useEffect(() => {
+    const socket = io(`http://${window.location.hostname}:5000`);
+
+    socket.on("orderItemStatusChanged", ({ orderDetailID, itemStatus }) => {
+      setOrder(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map(i =>
+            i.orderDetailID === orderDetailID ? { ...i, itemStatus } : i
+          ),
+        };
+      });
+    });
+
+    // Khi có tableUpdate (thanh toán, thêm món...) thì reload lại toàn bộ
+    socket.on("tableUpdate", () => { loadOrder(); });
+
+    return () => socket.disconnect();
+  }, [loadOrder]);
+
   const handleCallStaff = async () => {
     setCallingStaff(true);
     try {
@@ -69,6 +93,24 @@ function OrderTab({ tableId, tableName }) {
       console.error("Gọi nhân viên lỗi:", err);
     } finally {
       setCallingStaff(false);
+    }
+  };
+
+  const handleCancelItem = async (orderDetailID) => {
+    if (!window.confirm("Huỷ món này?")) return;
+    setCancellingId(orderDetailID);
+    try {
+      await cancelPublicOrderItem({ tableId, orderDetailID });
+      setOrder(prev => ({
+        ...prev,
+        items: prev.items.map(i =>
+          i.orderDetailID === orderDetailID ? { ...i, itemStatus: "Cancelled" } : i
+        ),
+      }));
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể huỷ món này.");
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -159,8 +201,21 @@ function OrderTab({ tableId, tableName }) {
                         {item.note && (
                           <p className="text-xs text-amber-600 mt-0.5 italic">📝 {item.note}</p>
                         )}
-                        <div className="mt-1.5">
+                        <div className="mt-1.5 flex items-center gap-2">
                           <ItemStatusBadge status={item.itemStatus} />
+                          {/* Nút huỷ — chỉ hiện khi Pending */}
+                          {item.itemStatus === "Pending" && (
+                            <button
+                              onClick={() => handleCancelItem(item.orderDetailID)}
+                              disabled={cancellingId === item.orderDetailID}
+                              className="ml-auto flex items-center gap-1 text-xs text-red-500 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg px-2.5 py-1 transition-all disabled:opacity-40 flex-shrink-0"
+                            >
+                              {cancellingId === item.orderDetailID
+                                ? <Loader2 size={11} className="animate-spin" />
+                                : <X size={11} />}
+                              Huỷ
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

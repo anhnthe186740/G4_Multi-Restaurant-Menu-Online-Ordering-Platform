@@ -311,3 +311,72 @@ export const getPublicOrderByTable = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+/* ─────────────────────────────────────────────────────────────
+   PATCH /api/public/cancel-item
+   Khách huỷ từng món từ trang QR — ATOMIC, không cần auth
+   Body: { tableId, orderDetailID }
+   Bảo vệ: verify orderDetailID thuộc đúng đơn của tableId
+───────────────────────────────────────────────────────────── */
+export const cancelPublicOrderItem = async (req, res) => {
+    try {
+        const { tableId, orderDetailID } = req.body;
+        if (!tableId || !orderDetailID) {
+            return res.status(400).json({ message: "Thiếu tableId hoặc orderDetailID." });
+        }
+
+        const tId      = parseInt(tableId);
+        const detailId = parseInt(orderDetailID);
+
+        // Kiểm tra orderDetail này có thuộc đơn đang active của đúng bàn không
+        const link = await prisma.orderTable.findFirst({
+            where: {
+                tableID: tId,
+                order: {
+                    orderStatus: { in: ["Open", "Serving"] },
+                    orderDetails: { some: { orderDetailID: detailId } },
+                },
+            },
+        });
+
+        if (!link) {
+            return res.status(403).json({ message: "Món này không thuộc đơn hàng của bàn bạn." });
+        }
+
+        // ATOMIC: chỉ cancel nếu itemStatus vẫn là "Pending"
+        const result = await prisma.orderDetail.updateMany({
+            where: { orderDetailID: detailId, itemStatus: "Pending" },
+            data:  { itemStatus: "Cancelled" },
+        });
+
+        if (result.count === 0) {
+            return res.status(400).json({
+                message: "Không thể huỷ — bếp đã bắt đầu chuẩn bị món này!",
+            });
+        }
+
+        // Recalculate totalAmount
+        const orderDetail = await prisma.orderDetail.findUnique({
+            where: { orderDetailID: detailId },
+            select: { orderID: true },
+        });
+        const orderID = orderDetail.orderID;
+
+        const remaining = await prisma.orderDetail.findMany({
+            where: { orderID, itemStatus: { not: "Cancelled" } },
+            select: { quantity: true, unitPrice: true },
+        });
+        const newTotal = remaining.reduce((s, d) => s + d.quantity * parseFloat(d.unitPrice), 0);
+        await prisma.order.update({ where: { orderID }, data: { totalAmount: newTotal } });
+
+        // Phát realtime
+        const io = req.app.get("io");
+        io?.emit("orderItemStatusChanged", { orderDetailID: detailId, itemStatus: "Cancelled", tableID: tId });
+        io?.emit("tableUpdate", { tableID: tId, timestamp: Date.now() });
+
+        res.json({ message: "Đã huỷ món thành công.", orderDetailID: detailId, itemStatus: "Cancelled" });
+    } catch (error) {
+        console.error("cancelPublicOrderItem error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
