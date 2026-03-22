@@ -37,6 +37,7 @@ import CustomerMenu from "./pages/CustomerMenu";
 import OrderManagement from "./pages/OrderManagement";
 import ManagerAccountManagement from "./pages/ManagerAccountManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SubscriptionGuard from "./components/SubscriptionGuard";
 import SelfOrderingMenu from "./pages/SelfOrderingMenu";
 
 export default function App() {
@@ -146,7 +147,13 @@ export default function App() {
           path="/owner/dashboard"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
+
+              <SubscriptionGuard>
+                
               <OwnerOverview />
+              </SubscriptionGuard>
+
+
             </ProtectedRoute>
           }
         />
@@ -164,7 +171,9 @@ export default function App() {
           path="/owner/settings"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerSettings />
+              <SubscriptionGuard>
+                <OwnerSettings />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -173,7 +182,9 @@ export default function App() {
           path="/owner/branches"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerBranches />
+              <SubscriptionGuard>
+                <OwnerBranches />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -182,7 +193,9 @@ export default function App() {
           path="/owner/branches/new"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerCreateBranch />
+              <SubscriptionGuard>
+                <OwnerCreateBranch />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -191,7 +204,9 @@ export default function App() {
           path="/owner/branches/:id"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerBranchSettings />
+              <SubscriptionGuard>
+                <OwnerBranchSettings />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -200,7 +215,9 @@ export default function App() {
           path="/owner/payment-history"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerPaymentHistory />
+              <SubscriptionGuard>
+                <OwnerPaymentHistory />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -209,7 +226,9 @@ export default function App() {
           path="/owner/kitchen-tracking"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerKitchenTracking />
+              <SubscriptionGuard>
+                <OwnerKitchenTracking />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -220,7 +239,9 @@ export default function App() {
           path="/owner/kds/:branchID"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <KitchenDisplaySystem />
+              <SubscriptionGuard>
+                <KitchenDisplaySystem />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -229,7 +250,9 @@ export default function App() {
           path="/owner/menu"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerMenu />
+              <SubscriptionGuard>
+                <OwnerMenu />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -238,7 +261,9 @@ export default function App() {
           path="/owner/tickets"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerTickets />
+              <SubscriptionGuard>
+                <OwnerTickets />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -247,7 +272,9 @@ export default function App() {
           path="/owner/staff"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerStaff />
+              <SubscriptionGuard>
+                <OwnerStaff />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -256,7 +283,9 @@ export default function App() {
           path="/owner/staff/new"
           element={
             <ProtectedRoute requiredRole="RestaurantOwner">
-              <OwnerCreateManager />
+              <SubscriptionGuard>
+                <OwnerCreateManager />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         />
@@ -275,14 +304,6 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <TableManagement />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/manager/orders"
-          element={
-            <ProtectedRoute requiredRole="BranchManager">
-              <OrderManagement />
             </ProtectedRoute>
           }
         />
