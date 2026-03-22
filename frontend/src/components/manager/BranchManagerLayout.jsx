@@ -9,6 +9,7 @@ export default function BranchManagerLayout({ children }) {
         if (p.includes('/manager/dashboard')) return 'Tổng quan';
         if (p.includes('/manager/tables'))    return 'Sơ đồ bàn';
         if (p.includes('/manager/orders')) return 'Đơn hàng';
+        if (p.includes('/manager/payment-history')) return 'Lịch sử thanh toán';
         if (p.includes('/manager/service-requests')) return 'Yêu cầu phục vụ';
         if (p.includes('/manager/settings')) return 'Cài đặt';
         return 'Trang chủ';

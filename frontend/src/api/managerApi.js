@@ -35,6 +35,7 @@ export const checkTablePaymentStatus   = (id, orderCode) => managerAxios.get(`ma
 // Orders
 export const getManagerOrders          = (status)   => managerAxios.get("manager/orders", { params: status ? { status } : {} });
 export const updateManagerOrderStatus  = (id, orderStatus) => managerAxios.patch(`manager/orders/${id}/status`, { orderStatus });
+export const getManagerPaymentHistory  = (params)   => managerAxios.get("manager/payment-history", { params });
 
 
 // Branch Info

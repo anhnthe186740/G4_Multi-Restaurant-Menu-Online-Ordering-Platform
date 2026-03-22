@@ -22,6 +22,7 @@ import {
   updateServiceRequestStatus,
   getBranchInfo,
   uploadBranchCoverImage,
+  getPaymentHistory,
   getBranchStaff,
   createBranchStaff,
   updateStaffStatus,
@@ -65,6 +66,12 @@ router.get("/orders",              requireRole("BranchManager", "Staff"), getOrd
 router.patch("/orders/:id/status", requireRole("BranchManager", "Staff"), updateOrderStatus);
 // Order items
 router.patch("/order-items/:detailId/cancel", requireRole("BranchManager", "Staff"), cancelOrderItem);
+
+// Orders
+router.get("/orders",              getOrders);
+router.patch("/orders/:id/status", updateOrderStatus);
+router.get("/payment-history",    getPaymentHistory);
+// Service Requests
 
 // Service Requests (Manager + Staff)
 router.get("/service-requests",       requireRole("BranchManager", "Staff"), getServiceRequests);

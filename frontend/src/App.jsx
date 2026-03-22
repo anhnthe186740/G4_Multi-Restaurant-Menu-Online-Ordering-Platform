@@ -35,6 +35,7 @@ import ManagerServiceRequests from "./pages/ManagerServiceRequests";
 import ManagerBranchInfo from "./pages/ManagerBranchInfo";
 import CustomerMenu from "./pages/CustomerMenu";
 import OrderManagement from "./pages/OrderManagement";
+import ManagerPaymentHistory from "./pages/ManagerPaymentHistory";
 import ManagerStaff from "./pages/ManagerStaff";
 import ManagerCreateStaff from "./pages/ManagerCreateStaff";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -342,6 +343,13 @@ export default function App() {
           }
         />
         <Route
+          path="/manager/payment-history"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerPaymentHistory />
+       </ProtectedRoute>
+           
+           <Route 
           path="/manager/staff"
           element={
             <ProtectedRoute requiredRole="BranchManager">
