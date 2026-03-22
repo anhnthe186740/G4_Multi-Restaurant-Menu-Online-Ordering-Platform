@@ -682,14 +682,30 @@ export const confirmManagerOrder = async (req, res) => {
 
       const table = await tx.table.findUnique({ where: { tableID: tId } });
       if (table.mergedGroupId) {
+        // Lấy tất cả bàn trong nhóm gộp
+        const groupTables = await tx.table.findMany({
+          where: { mergedGroupId: table.mergedGroupId, branchID },
+          select: { tableID: true },
+        });
+
+        // Link tất cả bàn trong nhóm vào cùng 1 order (upsert để tránh duplicate)
+        for (const t of groupTables) {
+          await tx.orderTable.upsert({
+            where: { orderID_tableID: { orderID, tableID: t.tableID } },
+            create: { orderID, tableID: t.tableID },
+            update: {},
+          });
+        }
+
+        // Đánh dấu tất cả bàn trong nhóm là Occupied
         await tx.table.updateMany({
           where: { mergedGroupId: table.mergedGroupId, branchID },
-          data: { status: "Occupied" }
+          data: { status: "Occupied" },
         });
       } else {
         await tx.table.update({
           where: { tableID: tId },
-          data: { status: "Occupied" }
+          data: { status: "Occupied" },
         });
       }
 
