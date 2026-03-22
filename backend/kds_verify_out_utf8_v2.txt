@@ -1,5 +1,0 @@
-﻿--- KDS Authorization Logic Verification ---
-Testing Manager ID: 76 for Branch ID: 73
-Γ£à SUCCESS: Manager correctly authorized for their own branch.
-Testing Owner ID: 74 for Branch ID: 78
-Γ£à SUCCESS: Owner correctly authorized for their branch.

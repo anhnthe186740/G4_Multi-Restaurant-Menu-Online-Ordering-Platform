@@ -1214,8 +1214,13 @@ export const getBranchStaff = async (req, res) => {
  */
 export const createBranchStaff = async (req, res) => {
   try {
-    const branchID = await getManagerBranchId(req.user.userId);
-    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+    const branch = await prisma.branch.findUnique({
+      where: { branchID: await getManagerBranchId(req.user.userId) },
+      select: { branchID: true, restaurantID: true }
+    });
+    if (!branch) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+    const branchID = branch.branchID;
+    const restaurantID = branch.restaurantID;
 
     const { username, password, fullName, email, phone, role } = req.body;
 
@@ -1247,13 +1252,18 @@ export const createBranchStaff = async (req, res) => {
         phone,
         role,
         branchID,
+        restaurantID,
         status: "Active"
       }
     });
 
     // Gửi email nếu có
     if (newUser.email) {
-      await sendNewAccountEmail(newUser.email, newUser.fullName, newUser.username, password, role);
+      try {
+        await sendNewAccountEmail(newUser.email, newUser.fullName, newUser.username, password, role);
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
+      }
     }
 
     res.status(201).json({

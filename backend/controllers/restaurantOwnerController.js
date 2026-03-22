@@ -1841,6 +1841,9 @@ export const getOwnerManagers = async (req, res) => {
       .map(b => b.managerUserID)
       .filter(id => id !== null && id !== undefined);
 
+    console.log(`[DEBUG] Owner ${userID} - Restaurant ${restaurant.restaurantID}`);
+    console.log(`[DEBUG] Found ${branches.length} branches, managerUserIDs:`, managerUserIDs);
+
     // Lấy tất cả user có role BranchManager thuộc nhà hàng này
     const managers = await prisma.user.findMany({
       where: {
