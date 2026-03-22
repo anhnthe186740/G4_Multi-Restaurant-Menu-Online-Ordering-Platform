@@ -817,8 +817,8 @@ function TableDrawerTabs({ tableId, tableName, onClose, onCheckoutSuccess, refre
                     <div className="flex-1 overflow-y-auto">
                         <CustomerMenu
                             tableIdProp={tableId}
-                            onCheckoutSuccess={(msg) => {
-                                onCheckoutSuccess && onCheckoutSuccess(msg || "Đã xác nhận order thành công!");
+                            onCheckoutSuccess={(msg, payload) => {
+                                onCheckoutSuccess && onCheckoutSuccess(msg || "Đã xác nhận order thành công!", payload);
                                 refreshTables && refreshTables();
                             }}
                         />
@@ -1171,31 +1171,11 @@ export default function TableManagement() {
                 }`}
             >
                 {menuDrawerTableId && (
-                    <div className="relative flex-1 flex flex-col overflow-hidden">
-                        {/* Nút đóng Drawer định vị tuyệt đối bên trên nội dung */}
-                        <button 
-                            onClick={() => setMenuDrawerTableId(null)}
-                            className="absolute top-4 right-4 z-[70] p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-md focus:outline-none"
-                        >
-                            <X size={20} />
-                        </button>
-                        {/* Box bọc CustomerMenu */}
-                        <div className="flex-1 overflow-y-auto">
-                            <CustomerMenu 
-                                tableIdProp={menuDrawerTableId} 
-                                onCheckoutSuccess={handleDrawerCheckoutSuccess}
-                            />
-                        </div>
-                    </div>
                     <TableDrawerTabs
                         tableId={menuDrawerTableId}
                         tableName={tables.find(t => t.id === menuDrawerTableId)?.name ?? 'Bàn'}
                         onClose={() => setMenuDrawerTableId(null)}
-                        onCheckoutSuccess={(msg) => {
-                            showToast(msg || 'Thanh toán thành công!');
-                            setMenuDrawerTableId(null);
-                            loadTables();
-                        }}
+                        onCheckoutSuccess={handleDrawerCheckoutSuccess}
                         refreshTables={loadTables}
                     />
                 )}
