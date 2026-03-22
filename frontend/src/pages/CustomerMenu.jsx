@@ -111,7 +111,8 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
             setIsProcessing(true);
             await processManagerCheckout(tableId, { paymentMethod: method });
             if (onCheckoutSuccess) {
-                onCheckoutSuccess(`Bàn ${tableId} đã thanh toán thành công!`);
+                const allNames = billData?.tables?.map(t => t.name).join(' + ') || `Bàn ${tableId}`;
+                onCheckoutSuccess(`Thanh toán ${allNames} thành công!`);
             }
         } catch (err) {
             console.error("Checkout error", err);
@@ -209,27 +210,29 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                 </div>
             )}
 
-            {/* Thanh Danh mục (Sticky) */}
-            <div className="sticky top-0 z-30 bg-white shadow-sm mt-4 border-b border-gray-100">
-                <div className="flex overflow-x-auto hide-scrollbar px-4 py-3 gap-2">
-                    {categories.map((cat) => (
-                        <button
-                            key={cat.categoryID}
-                            onClick={() => {
-                                setActiveCategory(cat.categoryID);
-                                document.getElementById(`cat-${cat.categoryID}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }}
-                            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all ${
-                                activeCategory === cat.categoryID
-                                    ? 'bg-emerald-600 text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                        >
-                            {cat.name}
-                        </button>
-                    ))}
+            {/* Thanh Danh mục (Sticky) - Chỉ hiện ở Tab Menu */}
+            {activeTab === 'menu' && (
+                <div className="sticky top-0 z-30 bg-white shadow-sm mt-4 border-b border-gray-100">
+                    <div className="flex overflow-x-auto hide-scrollbar px-4 py-3 gap-2">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat.categoryID}
+                                onClick={() => {
+                                    setActiveCategory(cat.categoryID);
+                                    document.getElementById(`cat-${cat.categoryID}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }}
+                                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all ${
+                                    activeCategory === cat.categoryID
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                {cat.name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Danh sách món ăn OR Hóa đơn */}
             <div className="p-4 space-y-8 max-w-3xl mx-auto">

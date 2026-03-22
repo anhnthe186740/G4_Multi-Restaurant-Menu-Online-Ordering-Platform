@@ -574,6 +574,25 @@ export default function SelfOrderingMenu() {
 
   const { restaurant, branch, table } = data;
 
+  if (table.isActive === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-lg border border-amber-100 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
+            <X size={32} className="text-amber-500" />
+          </div>
+          <h2 className="text-xl font-black text-gray-900 mb-2">Bàn tạm ngừng phục vụ</h2>
+          <p className="text-gray-500 mb-6 text-sm leading-relaxed">
+            Rất tiếc, bàn <strong>{table.name}</strong> hiện đang tạm ngừng hoạt động hoặc đang được bảo trì.
+          </p>
+          <div className="p-3 bg-amber-50 rounded-xl text-xs text-amber-700 border border-amber-100 italic">
+            Vui lòng liên hệ nhân viên để được hỗ trợ đổi bàn khác.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[480px] bg-gray-50 min-h-screen flex flex-col shadow-2xl">

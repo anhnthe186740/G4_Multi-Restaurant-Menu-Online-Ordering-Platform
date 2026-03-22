@@ -59,7 +59,8 @@ export const getMenuByTable = async (req, res) => {
                 id: table.tableID,
                 name: table.tableName || `Bàn ${table.tableID}`,
                 capacity: table.capacity,
-                mergedGroupId: table.mergedGroupId
+                mergedGroupId: table.mergedGroupId,
+                isActive: table.isActive
             },
             categories: categories
         });
@@ -103,6 +104,7 @@ export const createPublicOrder = async (req, res) => {
         });
 
         if (!table) return res.status(404).json({ message: "Không tìm thấy bàn" });
+        if (!table.isActive) return res.status(403).json({ message: "Bàn này hiện đang ngừng hoạt động, không thể đặt món." });
         const branchID = table.branchID;
 
         let totalAddition = 0;
@@ -191,10 +193,13 @@ export const createServiceRequest = async (req, res) => {
         // Tìm bàn để lấy branchID
         const table = await prisma.table.findUnique({
             where: { tableID: tId },
-            select: { tableID: true, branchID: true },
+            select: { tableID: true, branchID: true, isActive: true },
         });
         if (!table) {
             return res.status(404).json({ message: "Không tìm thấy bàn." });
+        }
+        if (!table.isActive) {
+            return res.status(403).json({ message: "Bàn này hiện đang ngừng hoạt động, không thể gửi yêu cầu." });
         }
 
         // Tìm yêu cầu đang chờ xử lý cùng loại của bàn này
