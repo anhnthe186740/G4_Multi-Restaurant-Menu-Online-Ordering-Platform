@@ -517,25 +517,30 @@ export const updateTableStatus = async (req, res) => {
 
     const tableID = parseInt(req.params.id);
     const { status } = req.body; // "Trống" | "Đang ngồi"
+    console.log(`[updateTableStatus] TableID: ${tableID}, NewStatus: ${status}`);
 
     const existing = await prisma.table.findFirst({ where: { tableID, branchID } });
     if (!existing) return res.status(404).json({ message: "Không tìm thấy bàn." });
 
     const dbStatus = mapStatusToDB(status);
+    console.log(`[updateTableStatus] DBStatus mapping: ${dbStatus}`);
 
     // Khi thanh toán (về Trống): xóa mergedGroupId của toàn bộ nhóm
     if (dbStatus === "Available" && existing.mergedGroupId) {
+      console.log(`[updateTableStatus] Resetting merged group: ${existing.mergedGroupId}`);
       await prisma.table.updateMany({
         where: { mergedGroupId: existing.mergedGroupId, branchID },
         data: { status: "Available", mergedGroupId: null },
       });
-      return res.json({ id: tableID, status: "Trống", mergedGroupId: null });
+      res.json({ id: tableID, status: "Trống", mergedGroupId: null });
+      return emitTableUpdate(req);
     }
 
     const updated = await prisma.table.update({
       where: { tableID },
       data: { status: dbStatus },
     });
+    console.log(`[updateTableStatus] Single table update success. New DB status: ${updated.status}`);
 
     res.json({ id: updated.tableID, status: mapStatus(updated.status), mergedGroupId: updated.mergedGroupId ?? null });
 
