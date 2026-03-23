@@ -35,7 +35,7 @@ function StatusBadge({ status }) {
 }
 
 /* ─── Menu 3 chấm ──────────────────────────────────────────────────────────── */
-function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint }) {
+function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint, onClear, isOccupied }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -77,6 +77,15 @@ function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint }) {
                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-red-50 text-red-500">
                         <Trash2 size={13} /> Xoá bàn
                     </button>
+                    {isOccupied && (
+                        <>
+                            <div className="border-t border-gray-100 my-1" />
+                            <button onClick={() => { setOpen(false); onClear(); }}
+                                className="flex items-center gap-2 w-full px-3 py-2 hover:bg-amber-50 text-amber-600">
+                                <RefreshCw size={13} /> Trả bàn trống
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -102,7 +111,7 @@ function Switch({ checked, onChange, disabled }) {
 }
 
 /* ─── Card bàn ────────────────────────────────────────────────────── */
-function TableCard({ table, allTables, onMerge, onSwitch, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer, onPrintQR, onToggleActive }) {
+function TableCard({ table, allTables, onMerge, onSwitch, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer, onPrintQR, onToggleActive, onClear }) {
     const occupied = table.status === 'Đang ngồi';
     const active = table.isActive !== false; // Mặc định là true
     // mergedWith giờ là mảng các ID
@@ -151,6 +160,8 @@ function TableCard({ table, allTables, onMerge, onSwitch, onEdit, onDelete, onSe
                             onEdit={onEdit} 
                             onDelete={onDelete} 
                             onPrint={onPrintQR} 
+                            onClear={onClear}
+                            isOccupied={occupied}
                         />
                     </div>
                 </div>
@@ -741,10 +752,12 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                         <AlertCircle size={36} className="text-gray-300 mb-3" />
                         <p className="text-gray-500 text-sm">{error}</p>
-                        <button onClick={loadOrder}
-                            className="mt-4 px-4 py-2 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition">
-                            Thử lại
-                        </button>
+                        <div className="flex flex-col gap-2 mt-4 w-full px-10">
+                            <button onClick={loadOrder}
+                                className="w-full py-2.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition flex items-center justify-center gap-2">
+                                <RefreshCw size={14} /> Thử tải lại
+                            </button>
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -1125,6 +1138,17 @@ export default function TableManagement() {
             showToast('Lỗi thay đổi trạng thái: ' + (err.response?.data?.message || err.message));
         }
     };
+    
+    const handleClearTableStatus = async (tableID) => {
+        try {
+            await updateManagerTableStatus(tableID, 'Trống');
+            setTables(prev => prev.map(t => t.id === tableID ? { ...t, status: 'Trống', mergedGroupId: null, mergedWith: [] } : t));
+            showToast(`Bàn đã được đưa về trạng thái Trống.`);
+            setMenuDrawerTableId(null);
+        } catch (err) {
+            showToast('Lỗi: ' + (err.response?.data?.message || err.message));
+        }
+    };
 
     /* ── Thanh toán → Trống (backend tự xóa toàn bộ nhóm gộp) ── */
     const handleCheckout = async (table) => {
@@ -1266,6 +1290,7 @@ export default function TableManagement() {
                                         onPrintQR={() => setPrintTables([table])}
                                         onToggleActive={handleToggleActive}
                                         onSwitch={() => setSwitchSource(table)}
+                                        onClear={() => handleClearTableStatus(table.id)}
                                     />
                                 ))}
                                 {/* Card thêm nhanh */}
