@@ -31,6 +31,21 @@ export const getMenuByTable = async (req, res) => {
         const restaurantId = table.branch.restaurant.restaurantID;
         const branchId = table.branch.branchID;
 
+        // ✅ AUTO-ACTIVATION: Nếu bàn đang TRỐNG, chuyển sang ĐANG NGỒI khi khách quét mã
+        if (table.status === "Available") {
+            await prisma.table.update({
+                where: { tableID: tableId },
+                data: { status: "Occupied" }
+            });
+
+            // Phát tín hiệu realtime cho Manager Dashboard
+            const io = req.app.get("io");
+            if (io) {
+                io.emit("tableUpdate", { branchID: branchId, timestamp: new Date() });
+                console.log(`📢 Auto-activated table ${tableId} on QR scan`);
+            }
+        }
+
         // 2. Find categories and available products for this branch
         const categoriesRaw = await prisma.category.findMany({
             where: { restaurantID: restaurantId },
