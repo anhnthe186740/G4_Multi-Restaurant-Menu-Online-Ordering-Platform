@@ -14,3 +14,16 @@ export const loginApi = (data) => {
 export const loginWithGoogleApi = (token) => {
   return axios.post(`${API_URL}/google`, { token });
 }
+
+export const sendChangePasswordOtpApi = (data) => {
+  return axios.post(`${API_URL}/send-change-password-otp`, data, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  });
+};
+
+export const changePasswordApi = (data) => {
+  return axios.post(`${API_URL}/change-password`, data, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  });
+};
+

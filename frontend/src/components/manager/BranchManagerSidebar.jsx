@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, ClipboardList, Bell, Info, UtensilsCrossed, LayoutGrid, LogOut, History,
-    Users
+    Users, BookOpen, Lock
 } from 'lucide-react';
+import ChangePasswordModal from '../ChangePasswordModal';
 
 export default function BranchManagerSidebar() {
     const location = useLocation();
     const navigate = useNavigate();
+    const [pwdModalOpen, setPwdModalOpen] = useState(false);
 
     const userData = (() => {
         try { return JSON.parse(localStorage.getItem('user') || '{}'); }
@@ -14,12 +17,13 @@ export default function BranchManagerSidebar() {
     })();
 
     const menuItems = [
-        { icon: LayoutDashboard, label: 'Tổng quan',         path: '/manager/dashboard', roles: ['BranchManager'] },
-        { icon: LayoutGrid,      label: 'Sơ đồ bàn',        path: '/manager/tables',   roles: ['BranchManager', 'Staff'] },
-        { icon: UtensilsCrossed, label: 'Theo dõi bếp',     path: '/manager/kds',      roles: ['BranchManager'] },
+        { icon: LayoutDashboard, label: 'Tổng quan',         path: '/manager/dashboard',       roles: ['BranchManager'] },
+        { icon: BookOpen,        label: 'Menu',               path: '/manager/menu',             roles: ['BranchManager'] },
+        { icon: LayoutGrid,      label: 'Sơ đồ bàn',        path: '/manager/tables',           roles: ['BranchManager', 'Staff'] },
+        { icon: UtensilsCrossed, label: 'Theo dõi bếp',     path: '/manager/kds',             roles: ['BranchManager'] },
         { icon: Bell,            label: 'Yêu cầu phục vụ',  path: '/manager/service-requests', roles: ['BranchManager', 'Staff'] },
-        { icon: Users,           label: 'Quản lý nhân viên',path: '/manager/staff',    roles: ['BranchManager'] },
-        { icon: Info,            label: 'Thông tin nhà hàng',path: '/manager/info',     roles: ['BranchManager'] },
+        { icon: Users,           label: 'Quản lý nhân viên',path: '/manager/staff',            roles: ['BranchManager'] },
+        { icon: Info,            label: 'Thông tin nhà hàng',path: '/manager/info',            roles: ['BranchManager'] },
         { icon: History,         label: 'Lịch sử thanh toán',path: '/manager/payment-history', roles: ['BranchManager'] },
     ];
 
@@ -89,7 +93,7 @@ export default function BranchManagerSidebar() {
 
             {/* User Footer */}
             <div className="p-3 border-t border-slate-700/40">
-                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800/60 cursor-pointer transition-colors group" onClick={handleLogout}>
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-slate-800/60 transition-colors group">
                     <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm border border-emerald-500/30 shrink-0">
                         {userData.fullName?.[0]?.toUpperCase() || 'M'}
                     </div>
@@ -97,9 +101,28 @@ export default function BranchManagerSidebar() {
                         <p className="text-white text-sm font-medium truncate">{userData.fullName || 'Người dùng'}</p>
                         <p className="text-slate-500 text-xs">{getRoleDisplay(userData.role)}</p>
                     </div>
-                    <LogOut size={15} className="text-slate-500 group-hover:text-red-400 transition-colors shrink-0" />
+                    
+                    {['Staff', 'Kitchen'].includes(userData.role) && (
+                        <button 
+                            onClick={() => setPwdModalOpen(true)} 
+                            className="p-1.5 hover:bg-slate-700 rounded-md transition-colors text-slate-400 hover:text-white" 
+                            title="Đổi mật khẩu"
+                        >
+                            <Lock size={14} />
+                        </button>
+                    )}
+                    
+                    <button 
+                        onClick={handleLogout} 
+                        className="p-1.5 hover:bg-red-500/20 rounded-md transition-colors text-slate-500 hover:text-red-400 shrink-0" 
+                        title="Đăng xuất"
+                    >
+                        <LogOut size={15} />
+                    </button>
                 </div>
             </div>
+
+            <ChangePasswordModal isOpen={pwdModalOpen} onClose={() => setPwdModalOpen(false)} />
         </aside>
     );
 }
