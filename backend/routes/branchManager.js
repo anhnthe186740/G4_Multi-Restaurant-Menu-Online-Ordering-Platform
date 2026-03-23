@@ -32,6 +32,8 @@ import {
   getTableOrderDetails,
   cancelOrderItem,
   createManagerServiceRequest,
+  getBranchMenu,
+  saveBranchMenu,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -90,6 +92,10 @@ router.post("/staff",             requireRole("BranchManager"), createBranchStaf
 router.put("/staff/:id", requireRole("BranchManager"), updateBranchStaff);
 router.patch("/staff/:id/status", requireRole("BranchManager"), updateStaffStatus);
 router.delete("/staff/:id",       requireRole("BranchManager"), deleteBranchStaff);
+
+// Branch Menu (Manager only)
+router.get("/menu",  requireRole("BranchManager"), getBranchMenu);
+router.post("/menu", requireRole("BranchManager"), saveBranchMenu);
 
 export default router;
 

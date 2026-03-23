@@ -56,7 +56,7 @@ export const register = async (req, res) => {
         email,
         passwordHash,
         phone: phone || null,
-        role: "Staff", // Mặc định role là Staff
+        role: "Customer", // Mặc định role là Customer
       },
     });
 
@@ -273,7 +273,7 @@ export const googleLogin = async (req, res) => {
       },
     });
 
-    // Nếu không tồn tại, tự động tạo tài khoản (mặc định lấy role Staff)
+    // Nếu không tồn tại, tự động tạo tài khoản (mặc định lấy role Customer)
     if (!user) {
       const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       const passwordHash = await bcrypt.hash(randomPassword, 10);
@@ -284,7 +284,7 @@ export const googleLogin = async (req, res) => {
           fullName: name || null,
           email,
           passwordHash,
-          role: "Staff",
+          role: "Customer",
         },
       });
 

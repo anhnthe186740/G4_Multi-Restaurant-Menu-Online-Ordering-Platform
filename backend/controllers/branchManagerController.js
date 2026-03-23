@@ -1946,3 +1946,123 @@ export const createManagerServiceRequest = async (req, res) => {
     res.status(500).json({ message: err.message || "Server error" });
   }
 };
+
+/* ===============================================================
+   BRANCH MENU MANAGEMENT
+   GET  /api/manager/menu  – all restaurant products + branch selection
+   POST /api/manager/menu  – save branch food availability + quantity
+=============================================================== */
+
+/**
+ * GET /api/manager/menu
+ * Returns every product in the restaurant, merged with this branch's menu settings.
+ * Each product gets: { productID, name, description, price, imageURL, categoryName,
+ *                      isAvailable, quantity }
+ */
+export const getBranchMenu = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh được gán cho tài khoản này." });
+
+    // Find restaurantID for this branch
+    const branch = await prisma.branch.findUnique({
+      where: { branchID },
+      select: { restaurantID: true },
+    });
+    if (!branch)
+      return res.status(404).json({ message: "Chi nhánh không tồn tại." });
+
+    // Fetch all products in the restaurant (via category)
+    const categories = await prisma.category.findMany({
+      where: { restaurantID: branch.restaurantID },
+      include: {
+        products: {
+          select: {
+            productID: true,
+            name: true,
+            description: true,
+            price: true,
+            imageURL: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    // Fetch existing branch menu entries for this branch
+    const branchMenuEntries = await prisma.branchMenu.findMany({
+      where: { branchID },
+      select: { productID: true, isAvailable: true, quantity: true },
+    });
+
+    // Build a lookup map  { productID -> { isAvailable, quantity } }
+    const menuMap = {};
+    branchMenuEntries.forEach((e) => {
+      menuMap[e.productID] = { isAvailable: e.isAvailable, quantity: e.quantity };
+    });
+
+    // Flatten categories into a product list, merging menu settings
+    const products = [];
+    categories.forEach((cat) => {
+      cat.products.forEach((p) => {
+        const entry = menuMap[p.productID];
+        products.push({
+          productID: p.productID,
+          name: p.name,
+          description: p.description || "",
+          price: parseFloat(p.price),
+          imageURL: p.imageURL || "",
+          categoryName: cat.name,
+          categoryID: cat.categoryID,
+          globalStatus: p.status,
+          // Branch-level settings (defaults if not yet configured)
+          isAvailable: entry ? entry.isAvailable : false,
+          quantity: entry ? entry.quantity : 0,
+        });
+      });
+    });
+
+    res.json(products);
+  } catch (err) {
+    console.error("getBranchMenu error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/**
+ * POST /api/manager/menu
+ * Body: { items: [{ foodId, isAvailable, quantity }] }
+ * Upserts a BranchMenu row for each item.
+ */
+export const saveBranchMenu = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID)
+      return res.status(404).json({ message: "Không tìm thấy chi nhánh được gán cho tài khoản này." });
+
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0)
+      return res.status(400).json({ message: "Danh sách items không hợp lệ." });
+
+    // Upsert each item
+    const upsertOps = items.map((item) => {
+      const productID = parseInt(item.foodId);
+      const isAvailable = Boolean(item.isAvailable);
+      const quantity = Math.max(0, parseInt(item.quantity) || 0);
+
+      return prisma.branchMenu.upsert({
+        where: { branchID_productID: { branchID, productID } },
+        create: { branchID, productID, isAvailable, quantity },
+        update: { isAvailable, quantity },
+      });
+    });
+
+    await Promise.all(upsertOps);
+
+    res.json({ message: "Menu chi nhánh đã được cập nhật thành công." });
+  } catch (err) {
+    console.error("saveBranchMenu error:", err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};

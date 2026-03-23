@@ -60,4 +60,8 @@ export const updateStaffStatus = (id, status) => managerAxios.patch(`manager/sta
 export const updateBranchStaff = (id, data) => managerAxios.put(`manager/staff/${id}`, data);
 export const deleteBranchStaff = (id) => managerAxios.delete(`manager/staff/${id}`);
 
+// Branch Menu
+export const getManagerBranchMenu = () => managerAxios.get("manager/menu");
+export const saveManagerBranchMenu = (items) => managerAxios.post("manager/menu", { items });
+
 export default managerAxios;
