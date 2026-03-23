@@ -18,6 +18,7 @@ import {
     updateManagerTable,
     updateManagerTableStatus,
     deleteManagerTable,
+    switchManagerTable,
     getManagerTableOrderDetails,
     cancelManagerOrderItem,
     createManagerServiceRequest,
@@ -34,7 +35,7 @@ function StatusBadge({ status }) {
 }
 
 /* ─── Menu 3 chấm ──────────────────────────────────────────────────────────── */
-function ThreeDotMenu({ onMerge, onEdit, onDelete, onPrint }) {
+function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -57,6 +58,10 @@ function ThreeDotMenu({ onMerge, onEdit, onDelete, onPrint }) {
                     <button onClick={() => { setOpen(false); onMerge(); }}
                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-blue-50 text-gray-700 hover:text-blue-700">
                         <Merge size={13} /> Gộp bill
+                    </button>
+                     <button onClick={() => { setOpen(false); onSwitch(); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 hover:bg-orange-50 text-gray-700 hover:text-orange-700">
+                        <RefreshCw size={13} /> Đổi bàn
                     </button>
                     <button onClick={() => { setOpen(false); onEdit(); }}
                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-50 text-gray-700">
@@ -97,7 +102,7 @@ function Switch({ checked, onChange, disabled }) {
 }
 
 /* ─── Card bàn ────────────────────────────────────────────────────── */
-function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer, onPrintQR, onToggleActive }) {
+function TableCard({ table, allTables, onMerge, onSwitch, onEdit, onDelete, onSelect, onCheckout, onOpenMenuDrawer, onPrintQR, onToggleActive }) {
     const occupied = table.status === 'Đang ngồi';
     const active = table.isActive !== false; // Mặc định là true
     // mergedWith giờ là mảng các ID
@@ -140,8 +145,9 @@ function TableCard({ table, allTables, onMerge, onEdit, onDelete, onSelect, onCh
                     </div>
                     <div className="flex items-center gap-1">
                         <StatusBadge status={table.status} />
-                        <ThreeDotMenu 
+                         <ThreeDotMenu 
                             onMerge={onMerge} 
+                             onSwitch={onSwitch}
                             onEdit={onEdit} 
                             onDelete={onDelete} 
                             onPrint={onPrintQR} 
@@ -271,6 +277,76 @@ function MergeBillModal({ sourceTable, occupiedTables, onClose, onConfirm }) {
                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 }`}>
                             <Merge size={14} /> Xác nhận gộp ({selectedIds.length})
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+     );
+}
+
+/* ─── Modal Đổi bàn — chọn 1 bàn trống ──────────────────────────── */
+function SwitchTableModal({ sourceTable, availableTables, onClose, onConfirm }) {
+    const [selectedId, setSelectedId] = useState(null);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-orange-600 to-orange-500">
+                    <div>
+                        <h2 className="font-bold text-white">Đổi bàn cho {sourceTable.name}</h2>
+                        <p className="text-orange-100 text-xs mt-0.5">Chọn một bàn trống để chuyển sang</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-orange-700 rounded-lg transition">
+                        <X size={18} className="text-white" />
+                    </button>
+                </div>
+                <div className="px-6 py-5">
+                    {availableTables.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400">
+                            <RefreshCw size={30} className="mx-auto mb-2 opacity-30" />
+                            <p className="text-sm">Không còn bàn trống nào khác</p>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-sm text-gray-500 mb-3">
+                                Chuyển khách từ <strong className="text-gray-800">{sourceTable.name}</strong> sang:
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                                {availableTables.map(t => {
+                                    const selected = selectedId === t.id;
+                                    return (
+                                        <div key={t.id}
+                                            onClick={() => setSelectedId(t.id)}
+                                            className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selected
+                                                ? 'border-orange-500 bg-orange-50'
+                                                : 'border-gray-100 hover:border-gray-200 bg-gray-50'
+                                                }`}
+                                        >
+                                            <span className="text-lg">{selected ? '✅' : '🍽️'}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-gray-800 text-sm">{t.name}</p>
+                                                <p className="text-[10px] text-gray-400">Sức chứa: {t.capacity}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+                    <div className="flex gap-3 mt-6">
+                        <button onClick={onClose}
+                            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+                            Huỷ
+                        </button>
+                        <button
+                            disabled={!selectedId}
+                            onClick={() => selectedId && onConfirm(selectedId)}
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 ${selectedId
+                                ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-md shadow-orange-200'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}>
+                            <RefreshCw size={14} /> Xác nhận đổi bàn
                         </button>
                     </div>
                 </div>
@@ -880,6 +956,7 @@ export default function TableManagement() {
     const [editTable, setEditTable] = useState(null);
     const [deleteTable, setDeleteTable] = useState(null);
     const [mergeSource, setMergeSource] = useState(null);
+    const [switchSource, setSwitchSource] = useState(null);
     const [printTables, setPrintTables] = useState(null); // null hoặc [table1, table2...]
     const [toast, setToast] = useState(null);
     const [menuDrawerTableId, setMenuDrawerTableId] = useState(null);
@@ -1022,6 +1099,20 @@ export default function TableManagement() {
             showToast(`${table.name} đang được phục vụ!`);
         } catch (err) {
             showToast('Lỗi cập nhật trạng thái: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    /* ── Đổi bàn ── */
+    const handleSwitch = async (targetId) => {
+        const source = switchSource;
+        setSwitchSource(null);
+        try {
+            await switchManagerTable(source.id, targetId);
+            await loadTables();
+            const targetTableArr = tables.find(t => t.id === targetId);
+            showToast(`🔄 Đã đổi từ ${source.name} sang ${targetTableArr?.name || 'bàn mới'}!`);
+        } catch (err) {
+            showToast('Lỗi đổi bàn: ' + (err.response?.data?.message || err.message));
         }
     };
 
@@ -1174,6 +1265,7 @@ export default function TableManagement() {
                                         onOpenMenuDrawer={(id) => setMenuDrawerTableId(id)}
                                         onPrintQR={() => setPrintTables([table])}
                                         onToggleActive={handleToggleActive}
+                                        onSwitch={() => setSwitchSource(table)}
                                     />
                                 ))}
                                 {/* Card thêm nhanh */}
@@ -1197,6 +1289,14 @@ export default function TableManagement() {
             {editTable && <TableFormModal table={editTable} onClose={() => setEditTable(null)} onSave={handleEdit} />}
             {deleteTable && <DeleteModal table={deleteTable} onClose={() => setDeleteTable(null)} onConfirm={handleDelete} />}
             {mergeSource && <MergeBillModal sourceTable={mergeSource} occupiedTables={occupiedTables} onClose={() => setMergeSource(null)} onConfirm={handleMerge} />}
+            {switchSource && (
+                <SwitchTableModal
+                    sourceTable={switchSource}
+                    availableTables={tables.filter(t => t.status === 'Trống' && t.isActive !== false)}
+                    onClose={() => setSwitchSource(null)}
+                    onConfirm={handleSwitch}
+                />
+            )}
             {printTables && <PrintQRModal tables={printTables} onClose={() => setPrintTables(null)} />}
             {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 

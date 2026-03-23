@@ -12,6 +12,7 @@ import {
   updateTableStatus,
   deleteTable,
   mergeTables,
+  switchTable,
   confirmManagerOrder,
   getBillByTable,
   processManagerCheckout,
@@ -54,6 +55,7 @@ router.get("/dashboard/orders-heatmap", requireRole("BranchManager"), getManager
 router.get("/tables",              requireRole("BranchManager", "Staff"), getTables);
 router.post("/tables",             requireRole("BranchManager", "Staff"), createTable);
 router.post("/tables/merge",       requireRole("BranchManager", "Staff"), mergeTables);
+router.post("/tables/switch",      requireRole("BranchManager", "Staff"), switchTable);
 router.put("/tables/:id",          requireRole("BranchManager", "Staff"), updateTable);
 router.patch("/tables/:id/status", requireRole("BranchManager", "Staff"), updateTableStatus);
 router.delete("/tables/:id",       requireRole("BranchManager"), deleteTable);
