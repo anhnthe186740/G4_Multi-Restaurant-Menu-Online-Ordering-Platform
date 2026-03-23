@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { getOwnerKitchenOrders, updateOwnerItemStatus, updateOwnerMultipleItemStatus, getOwnerBranches } from '../api/ownerApi';
 import { getManagerBranchInfo } from '../api/managerApi';
+import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Clock,
     ChevronLeft,
@@ -30,7 +31,7 @@ export default function KitchenDisplaySystem() {
         catch { return {}; }
     }, []);
 
-    const branchID = (userData.role === 'BranchManager' || userData.role === 'Staff' || userData.role === 'Kitchen')
+    const branchID = (userData.role === 'BranchManager' || userData.role === 'Kitchen')
         ? userData.branchID
         : paramBranchID;
     const isReadOnly = userData.role === 'RestaurantOwner';
@@ -55,7 +56,7 @@ export default function KitchenDisplaySystem() {
         const fetchBranchInfo = async () => {
             if (!branchID) return;
             try {
-                if (userData.role === 'BranchManager' || userData.role === 'Staff' || userData.role === 'Kitchen') {
+                if (userData.role === 'BranchManager' || userData.role === 'Kitchen') {
                     const response = await getManagerBranchInfo();
                     setBranchName(response.data.branch?.name || response.data.name || `Chi nhánh ${branchID}`);
                 } else if (userData.role === 'RestaurantOwner') {
@@ -82,8 +83,8 @@ export default function KitchenDisplaySystem() {
         }
         try {
             const response = await getOwnerKitchenOrders(branchID, categoryID);
-            const newOrders = response.data;
-            
+            const newOrders = response.data.sort((a, b) => dayjs(a.orderTime).unix() - dayjs(b.orderTime).unix());
+
             // Phát âm thanh nếu có đơn mới
             if (newOrders.length > lastOrderCount.current) {
                 audioRef.current.play().catch(e => console.log("Audio play failed:", e));
@@ -93,13 +94,13 @@ export default function KitchenDisplaySystem() {
                         borderRadius: '12px',
                         background: '#1e293b',
                         color: '#fff',
-                        border: '1px solid #3b82f6',
+                        border: '1px solid #10b981',
                     },
                     duration: 4000
                 });
             }
             lastOrderCount.current = newOrders.length;
-            
+
             setOrders(newOrders);
         } catch (error) {
             console.error("Error fetching kitchen orders:", error);
@@ -162,7 +163,7 @@ export default function KitchenDisplaySystem() {
     const stats = useMemo(() => {
         const servedItems = orders.flatMap(o => o.items).filter(i => i.itemStatus === 'Served');
         const pendingItems = orders.flatMap(o => o.items).filter(i => i.itemStatus === 'Pending');
-        
+
         // Giả lập thời gian trung bình từ 5-10p (thực tế sẽ tính từ lịch sử hoàn thành)
         const avgWait = orders.length > 0 ? "06:45" : "00:00";
 
@@ -180,10 +181,10 @@ export default function KitchenDisplaySystem() {
             order.items.forEach(item => {
                 if (item.itemStatus === 'Pending' || item.itemStatus === 'Cooking') {
                     if (!map[item.productName]) {
-                        map[item.productName] = { 
-                            name: item.productName, 
-                            pending: 0, 
-                            cooking: 0, 
+                        map[item.productName] = {
+                            name: item.productName,
+                            pending: 0,
+                            cooking: 0,
                             ids: [],
                             cookingIds: []
                         };
@@ -212,8 +213,8 @@ export default function KitchenDisplaySystem() {
     };
 
     if (!branchID) {
-        return (
-            <div className="fixed inset-0 bg-[#0a0f18] flex flex-col items-center justify-center text-white">
+        const errorContent = (
+            <div className={`${isFullscreen ? 'fixed inset-0' : 'h-[calc(100vh-64px)]'} bg-slate-50 flex flex-col items-center justify-center text-slate-600`}>
                 <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
                     <User size={32} className="text-red-400" />
                 </div>
@@ -224,7 +225,7 @@ export default function KitchenDisplaySystem() {
                 <div className="flex gap-4 mt-8">
                     <button 
                         onClick={() => navigate(-1)} 
-                        className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all font-bold text-sm"
+                        className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition-all font-bold text-sm"
                     >
                         Quay lại
                     </button>
@@ -234,53 +235,53 @@ export default function KitchenDisplaySystem() {
                             localStorage.removeItem('user');
                             navigate('/login');
                         }} 
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl transition-all font-bold text-sm shadow-lg shadow-blue-600/20"
+                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all font-bold text-sm shadow-lg shadow-emerald-600/20"
                     >
                         Đăng nhập lại
                     </button>
                 </div>
             </div>
         );
+
+        if (userData.role === 'RestaurantOwner' || isFullscreen) return errorContent;
+        return <BranchManagerLayout>{errorContent}</BranchManagerLayout>;
     }
 
     if (loading && orders.length === 0) {
-        return (
-            <div className="fixed inset-0 bg-[#0a0f18] flex flex-col items-center justify-center text-white gap-4">
-                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+        const loadingContent = (
+            <div className={`${isFullscreen ? 'fixed inset-0' : 'h-[calc(100vh-64px)]'} bg-slate-50 flex flex-col items-center justify-center text-slate-600 gap-4`}>
+                <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
                 <p className="text-slate-400 font-medium animate-pulse">Đang tải dữ liệu bếp...</p>
             </div>
         );
+
+        if (userData.role === 'RestaurantOwner' || isFullscreen) return loadingContent;
+        return <BranchManagerLayout>{loadingContent}</BranchManagerLayout>;
     }
 
-    return (
-        <div className="fixed inset-0 bg-slate-50 text-slate-600 flex flex-col font-sans select-none overflow-hidden text-sm">
+    const kdsContent = (
+        <div className={`${isFullscreen ? 'fixed inset-0' : 'h-[calc(100vh-64px)]'} bg-slate-50 text-slate-600 flex flex-col font-sans select-none overflow-hidden text-sm`}>
             {/* Header */}
             <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-10">
                 <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => navigate(userData.role === 'RestaurantOwner' ? '/owner/kitchen-tracking' : '/manager/dashboard')} 
-                        className="text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <ChevronLeft size={24} />
-                    </button>
                     <div>
                         <h1 className="text-lg font-bold text-slate-900 leading-tight">Màn Hình Bếp (KDS)</h1>
-                        <p className="text-blue-600 text-[10px] font-bold tracking-widest uppercase">{branchName} • TRỰC TUYẾN</p>
+                        <p className="text-emerald-600 text-[10px] font-bold tracking-widest uppercase">{branchName} • TRỰC TUYẾN</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-6">
                     {/* View Mode Switcher */}
                     <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                        <button 
+                        <button
                             onClick={() => setViewMode('board')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'board' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'board' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <LayoutGrid size={14} /> THEO ĐƠN
                         </button>
-                        <button 
+                        <button
                             onClick={() => setViewMode('batch')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'batch' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'batch' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <ListFilter size={14} /> GOM MÓN
                         </button>
@@ -289,27 +290,18 @@ export default function KitchenDisplaySystem() {
                     <div className="flex items-center gap-8 border-l border-slate-200 pl-6">
                         <div className="text-center">
                             <p className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Đang chờ</p>
-                            <p className="text-xl font-black text-blue-600 leading-none">{stats.pendingCount}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Thời gian TB</p>
-                            <p className="text-xl font-black text-amber-500 leading-none">{stats.avgWait}</p>
+                            <p className="text-xl font-black text-emerald-600 leading-none">{stats.pendingCount}</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 border-l border-slate-200 pl-6">
-                        <button onClick={toggleFullscreen} className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-all text-slate-500 border border-slate-200">
-                            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                        </button>
-                    </div>
 
                     <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
                         <div className="text-right">
                             <p className="text-base font-black text-slate-900 leading-none">{currentTime}</p>
                             <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">{dayjs().format('DD MMMM, YYYY')}</p>
                         </div>
-                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-                            <User size={20} className="text-blue-600" />
+                        <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100">
+                            <User size={20} className="text-emerald-600" />
                         </div>
                     </div>
                 </div>
@@ -323,12 +315,13 @@ export default function KitchenDisplaySystem() {
                         <KDSLane
                             title="Đơn mới"
                             count={getLaneOrders('Pending').length}
-                            dotColor="bg-blue-500"
+                            dotColor="bg-emerald-500"
                             orders={getLaneOrders('Pending')}
+                            isGrid={true}
                             renderActions={(item) => !isReadOnly && (
                                 <button
                                     onClick={() => handleStatusUpdate(item.orderDetailID, 'Cooking')}
-                                    className="w-full mt-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-[10px] font-black transition-all border border-blue-200 flex items-center justify-center gap-1.5 uppercase tracking-tighter shadow-sm"
+                                    className="w-full mt-2 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl text-[10px] font-black transition-all border border-emerald-200 flex items-center justify-center gap-1.5 uppercase tracking-tighter shadow-sm"
                                 >
                                     <Play size={10} fill="currentColor" /> Bắt đầu làm
                                 </button>
@@ -343,6 +336,7 @@ export default function KitchenDisplaySystem() {
                             count={getLaneOrders('Cooking').length}
                             dotColor="bg-amber-500"
                             orders={getLaneOrders('Cooking')}
+                            isGrid={true}
                             renderActions={(item) => !isReadOnly && (
                                 <button
                                     onClick={() => handleStatusUpdate(item.orderDetailID, 'Ready')}
@@ -370,7 +364,7 @@ export default function KitchenDisplaySystem() {
                             <div className="flex items-center justify-between mb-8">
                                 <div>
                                     <h2 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                                        <ListFilter size={24} className="text-blue-600" /> 
+                                        <ListFilter size={24} className="text-emerald-600" />
                                         CHẾ ĐỘ GOM MÓN (BATCH MODE)
                                     </h2>
                                     <p className="text-slate-400 text-xs mt-1 font-bold uppercase tracking-widest">Tổng hợp số lượng chuẩn bị theo từng món ăn</p>
@@ -383,23 +377,23 @@ export default function KitchenDisplaySystem() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {batchData.map((item, idx) => (
-                                    <div key={idx} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm group hover:border-blue-500/50 transition-all">
+                                    <div key={idx} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm group hover:border-emerald-500/50 transition-all">
                                         <div className="flex justify-between items-start mb-4">
-                                            <h3 className="text-base font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase">{item.name}</h3>
-                                            <span className="text-2xl font-black text-blue-600">{item.pending + item.cooking}</span>
+                                            <h3 className="text-base font-black text-slate-800 group-hover:text-emerald-600 transition-colors uppercase">{item.name}</h3>
+                                            <span className="text-2xl font-black text-emerald-600">{item.pending + item.cooking}</span>
                                         </div>
-                                        
+
                                         <div className="space-y-3">
                                             {item.pending > 0 && (
-                                                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-100">
                                                     <div>
-                                                        <p className="text-[10px] font-bold text-blue-500 uppercase">Chờ làm</p>
-                                                        <p className="text-lg font-black text-blue-600">{item.pending}</p>
+                                                        <p className="text-[10px] font-bold text-emerald-500 uppercase">Chờ làm</p>
+                                                        <p className="text-lg font-black text-emerald-600">{item.pending}</p>
                                                     </div>
                                                     {!isReadOnly && (
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleBatchStatusUpdate(item.ids, 'Cooking')}
-                                                            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all shadow-sm"
+                                                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all shadow-sm"
                                                         >
                                                             Làm ngay
                                                         </button>
@@ -413,7 +407,7 @@ export default function KitchenDisplaySystem() {
                                                         <p className="text-lg font-black text-amber-600">{item.cooking}</p>
                                                     </div>
                                                     {!isReadOnly && (
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleBatchStatusUpdate(item.cookingIds, 'Ready')}
                                                             className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all shadow-sm"
                                                         >
@@ -444,17 +438,27 @@ export default function KitchenDisplaySystem() {
                     <p className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Server: Ổn định</p>
                 </div>
                 <div className="flex gap-8 items-center">
-                    <p className="text-blue-600 hover:text-blue-700 cursor-pointer transition-colors">Trợ giúp kỹ thuật</p>
+                    <p className="text-emerald-600 hover:text-emerald-700 cursor-pointer transition-colors">Trợ giúp kỹ thuật</p>
                     <p className="opacity-40">OrderEats KDS v3.0 (Light Edition)</p>
                 </div>
             </footer>
         </div>
     );
+
+    if (userData.role === 'RestaurantOwner' || isFullscreen) {
+        return kdsContent;
+    }
+
+    return (
+        <BranchManagerLayout noPadding={true}>
+            {kdsContent}
+        </BranchManagerLayout>
+    );
 }
 
-function KDSLane({ title, count, dotColor, orders, renderActions, isDimmed, batchLabel, onBatchAction }) {
+function KDSLane({ title, count, dotColor, orders, renderActions, isDimmed, batchLabel, onBatchAction, isGrid = false }) {
     return (
-        <div className={`w-[340px] h-full flex flex-col shrink-0 ${isDimmed ? 'opacity-70' : ''}`}>
+        <div className={`${isGrid ? 'flex-1 min-w-[600px]' : 'w-[340px]'} h-full flex flex-col shrink-0 ${isDimmed ? 'opacity-70' : ''}`}>
             <div className="flex items-center justify-between mb-4 px-2">
                 <div className="flex items-center gap-2">
                     <div className={`w-2.5 h-2.5 rounded-full ${dotColor} shadow-sm`}></div>
@@ -463,7 +467,7 @@ function KDSLane({ title, count, dotColor, orders, renderActions, isDimmed, batc
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-3 custom-scrollbar">
+            <div className={`flex-1 overflow-y-auto pr-3 custom-scrollbar ${isGrid ? 'grid grid-cols-2 gap-4 auto-rows-min' : 'space-y-4'}`}>
                 {orders.map((order) => (
                     <KDSCard
                         key={`${order.orderID}-${title}`}
@@ -492,6 +496,7 @@ function KDSCard({ order, borderColor, renderActions, batchLabel, onBatchAction 
 
     const formatWaitTime = (orderTime) => {
         const diff = dayjs().diff(dayjs(orderTime), 'minute');
+        if (diff >= 30) return "30:00";
         const seconds = dayjs().diff(dayjs(orderTime), 'second') % 60;
         return `${String(diff).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
@@ -517,21 +522,24 @@ function KDSCard({ order, borderColor, renderActions, batchLabel, onBatchAction 
         return <span dangerouslySetInnerHTML={{ __html: highlighed }} />;
     };
 
+    const showTimer = order.items.some(i => i.itemStatus === 'Pending');
+
     return (
-        <div className={`bg-white rounded-2xl overflow-hidden border-l-[6px] ${borderColor.replace('bg-', 'border-')} shadow-sm border border-slate-200 transition-all hover:translate-x-1`}>
+        <div className={`bg-white rounded-2xl overflow-hidden border-l-[6px] ${borderColor.replace('bg-', 'border-')} shadow-sm border border-slate-200 transition-all hover:translate-x-1 h-fit`}>
             {/* Card Header */}
             <div className={`p-4 border-b border-slate-100 flex items-center justify-between ${isLate ? 'bg-red-50' : isWarning ? 'bg-amber-50' : 'bg-slate-50/50'}`}>
                 <div>
-                    <h3 className="text-xl font-black text-slate-900 leading-none tracking-tighter">#{order.orderID}</h3>
-                    <p className="text-[10px] text-slate-500 font-bold mt-1.5 uppercase tracking-wide">Bàn {order.tableName} • Tại chỗ</p>
+                    <h3 className="text-xl font-black text-slate-900 leading-none tracking-tighter lowercase first-letter:uppercase"> {order.tableName}</h3>
                 </div>
-                <div className={`flex flex-col items-end gap-1 ${isLate ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-blue-600'}`}>
-                    <div className="flex items-center gap-1.5">
-                        <Clock size={12} className={isLate ? 'animate-pulse' : ''} />
-                        <span className="text-sm font-black tracking-tighter">{timer}</span>
+                {showTimer && (
+                    <div className={`flex flex-col items-end gap-1 ${isLate ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-emerald-600'}`}>
+                        <div className="flex items-center gap-1.5">
+                            <Clock size={12} className={isLate ? 'animate-pulse' : ''} />
+                            <span className="text-sm font-black tracking-tighter">{timer}</span>
+                        </div>
+                        <span className="text-[9px] font-bold uppercase tracking-tighter text-slate-400">{dayjs(order.orderTime).format('HH:mm')}</span>
                     </div>
-                    <span className="text-[9px] font-bold uppercase tracking-tighter text-slate-400">{dayjs(order.orderTime).format('HH:mm')}</span>
-                </div>
+                )}
             </div>
 
             {/* Items List */}
@@ -540,7 +548,7 @@ function KDSCard({ order, borderColor, renderActions, batchLabel, onBatchAction 
                     <div key={item.orderDetailID} className="group/item">
                         <div className="flex justify-between items-start gap-4">
                             <div className="flex-1">
-                                <p className="text-sm font-black text-slate-800 leading-tight uppercase group-hover/item:text-blue-600 transition-colors">
+                                <p className="text-sm font-black text-slate-800 leading-tight uppercase group-hover/item:text-emerald-600 transition-colors">
                                     {item.productName}
                                 </p>
                                 {item.note && (
@@ -566,9 +574,9 @@ function KDSCard({ order, borderColor, renderActions, batchLabel, onBatchAction 
                         <p className="text-[10px] text-amber-600 leading-snug font-bold uppercase italic tracking-tight">KHÁCH DẶN: {highlightNote(order.customerNote)}</p>
                     </div>
                 )}
-                
+
                 {onBatchAction && (
-                    <button 
+                    <button
                         onClick={() => onBatchAction(order)}
                         className="w-full py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 shadow-sm"
                     >

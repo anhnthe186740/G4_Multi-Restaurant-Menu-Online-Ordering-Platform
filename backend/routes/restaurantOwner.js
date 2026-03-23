@@ -77,10 +77,10 @@ router.delete("/branches/:id", requireRole("RestaurantOwner"), deleteOwnerBranch
 // Payment History (Owner only)
 router.get("/payment-history", requireRole("RestaurantOwner"), getPaymentHistory);
 
-// Kitchen Display System (KDS) - Shared between Owner, Manager, Kitchen, and Staff
-router.get("/branches/:branchID/kitchen-orders", requireRole("RestaurantOwner", "BranchManager", "Kitchen", "Staff"), getKitchenOrders);
-router.patch("/kitchen-orders/update-status", requireRole("RestaurantOwner", "BranchManager", "Kitchen", "Staff"), updateItemStatus);
-router.patch("/kitchen-orders/update-multiple-status", requireRole("RestaurantOwner", "BranchManager", "Kitchen", "Staff"), updateMultipleItemStatus);
+// Kitchen Display System (KDS) - Shared between Manager and Kitchen
+router.get("/branches/:branchID/kitchen-orders", requireRole("BranchManager", "Kitchen"), getKitchenOrders);
+router.patch("/kitchen-orders/update-status", requireRole("BranchManager", "Kitchen"), updateItemStatus);
+router.patch("/kitchen-orders/update-multiple-status", requireRole("BranchManager", "Kitchen"), updateMultipleItemStatus);
 
 // Reports (Owner only)
 router.get("/reports/revenue-trend", requireRole("RestaurantOwner"), getRevenueByPeriod);

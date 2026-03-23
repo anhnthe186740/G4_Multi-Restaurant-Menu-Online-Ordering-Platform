@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import BranchManagerSidebar from './BranchManagerSidebar';
 
-export default function BranchManagerLayout({ children }) {
+export default function BranchManagerLayout({ children, noPadding = false }) {
     const location = useLocation();
 
     const getPageTitle = () => {
@@ -11,6 +11,7 @@ export default function BranchManagerLayout({ children }) {
         if (p.includes('/manager/orders')) return 'Đơn hàng';
         if (p.includes('/manager/payment-history')) return 'Lịch sử thanh toán';
         if (p.includes('/manager/service-requests')) return 'Yêu cầu phục vụ';
+        if (p.includes('/manager/kds') || p.includes('/kitchen/kds')) return 'Theo dõi bếp';
         if (p.includes('/manager/settings')) return 'Cài đặt';
         return 'Trang chủ';
     };
@@ -28,7 +29,7 @@ export default function BranchManagerLayout({ children }) {
                     </div>
                 </div>
                 {/* Page Content */}
-                <div className="p-8 print:p-0">
+                <div className={`${noPadding ? '' : 'p-8'} print:p-0`}>
                     {children}
                 </div>
             </main>
