@@ -19,7 +19,6 @@ import OwnerBranches from "./pages/OwnerBranches";
 import OwnerBranchSettings from "./pages/OwnerBranchSettings";
 import OwnerCreateBranch from "./pages/OwnerCreateBranch";
 import OwnerPaymentHistory from "./pages/OwnerPaymentHistory";
-import OwnerKitchenTracking from "./pages/OwnerKitchenTracking";
 import KitchenDisplaySystem from "./pages/KitchenDisplaySystem";
 import OwnerOverview from "./pages/OwnerOverview";
 import OwnerMenu from "./pages/OwnerMenu";
@@ -225,29 +224,9 @@ export default function App() {
           }
         />
 
-        <Route
-          path="/owner/kitchen-tracking"
-          element={
-            <ProtectedRoute requiredRole="RestaurantOwner">
-              <SubscriptionGuard>
-                <OwnerKitchenTracking />
-              </SubscriptionGuard>
-            </ProtectedRoute>
-          }
-        />
 
 
 
-        <Route
-          path="/owner/kds/:branchID"
-          element={
-            <ProtectedRoute requiredRole="RestaurantOwner">
-              <SubscriptionGuard>
-                <KitchenDisplaySystem />
-              </SubscriptionGuard>
-            </ProtectedRoute>
-          }
-        />
 
         <Route
           path="/owner/menu"
@@ -313,7 +292,7 @@ export default function App() {
         <Route
           path="/manager/kds"
           element={
-            <ProtectedRoute requiredRole={["BranchManager", "Staff", "Kitchen"]}>
+            <ProtectedRoute requiredRole={["BranchManager", "Kitchen"]}>
               <KitchenDisplaySystem />
             </ProtectedRoute>
           }
@@ -330,7 +309,7 @@ export default function App() {
         <Route
           path="/kitchen/kds"
           element={
-            <ProtectedRoute requiredRole={["BranchManager", "Kitchen", "Staff"]}>
+            <ProtectedRoute requiredRole={["BranchManager", "Kitchen"]}>
               <KitchenDisplaySystem />
             </ProtectedRoute>
           }

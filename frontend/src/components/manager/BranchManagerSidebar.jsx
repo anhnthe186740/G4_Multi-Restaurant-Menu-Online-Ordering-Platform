@@ -20,7 +20,7 @@ export default function BranchManagerSidebar() {
         { icon: LayoutDashboard, label: 'Tổng quan',         path: '/manager/dashboard',       roles: ['BranchManager'] },
         { icon: BookOpen,        label: 'Menu',               path: '/manager/menu',             roles: ['BranchManager'] },
         { icon: LayoutGrid,      label: 'Sơ đồ bàn',        path: '/manager/tables',           roles: ['BranchManager', 'Staff'] },
-        { icon: UtensilsCrossed, label: 'Theo dõi bếp',     path: '/manager/kds',             roles: ['BranchManager'] },
+        { icon: UtensilsCrossed, label: 'Theo dõi bếp',     path: '/manager/kds',             roles: ['BranchManager', 'Kitchen'] },
         { icon: Bell,            label: 'Yêu cầu phục vụ',  path: '/manager/service-requests', roles: ['BranchManager', 'Staff'] },
         { icon: Users,           label: 'Quản lý nhân viên',path: '/manager/staff',            roles: ['BranchManager'] },
         { icon: Info,            label: 'Thông tin nhà hàng',path: '/manager/info',            roles: ['BranchManager'] },
