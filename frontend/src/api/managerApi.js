@@ -21,6 +21,7 @@ export const getManagerOrdersHeatmap    = ()                  => managerAxios.ge
 export const getManagerTables          = ()         => managerAxios.get("manager/tables");
 export const createManagerTable        = (data)     => managerAxios.post("manager/tables", data);
 export const mergeManagerTables        = (sourceTableId, targetTableId) => managerAxios.post("manager/tables/merge", { sourceTableId, targetTableId });
+export const switchManagerTable        = (sourceTableId, targetTableId) => managerAxios.post("manager/tables/switch", { sourceTableId, targetTableId });
 export const updateManagerTable        = (id, data) => managerAxios.put(`manager/tables/${id}`, data);
 export const updateManagerTableStatus  = (id, status) => managerAxios.patch(`manager/tables/${id}/status`, { status });
 export const deleteManagerTable        = (id)       => managerAxios.delete(`manager/tables/${id}`);

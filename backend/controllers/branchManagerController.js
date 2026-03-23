@@ -701,6 +701,91 @@ export const mergeTables = async (req, res) => {
   }
 };
 
+/* ── POST /api/manager/tables/switch ── */
+export const switchTable = async (req, res) => {
+  try {
+    const branchID = await getManagerBranchId(req.user);
+    if (!branchID) return res.status(404).json({ message: "Không tìm thấy chi nhánh." });
+
+    const { sourceTableId, targetTableId } = req.body;
+    if (!sourceTableId || !targetTableId)
+      return res.status(400).json({ message: "Thiếu sourceTableId hoặc targetTableId." });
+    if (sourceTableId === targetTableId)
+      return res.status(400).json({ message: "Bàn nguồn và bàn đích không được trùng nhau." });
+
+    const srcId = parseInt(sourceTableId);
+    const tgtId = parseInt(targetTableId);
+
+    // 1. Kiểm tra tồn tại và cùng chi nhánh
+    const [srcTable, tgtTable] = await Promise.all([
+      prisma.table.findFirst({ where: { tableID: srcId, branchID } }),
+      prisma.table.findFirst({ where: { tableID: tgtId, branchID } }),
+    ]);
+
+    if (!srcTable) return res.status(404).json({ message: "Không tìm thấy bàn nguồn." });
+    if (!tgtTable) return res.status(404).json({ message: "Không tìm thấy bàn đích." });
+
+    // 2. Kiểm tra trạng thái
+    if (srcTable.status !== "Occupied") {
+      return res.status(400).json({ message: "Bàn nguồn phải ở trạng thái 'Đang ngồi'." });
+    }
+    if (tgtTable.status !== "Available") {
+      return res.status(400).json({ message: "Bàn đích phải ở trạng thái 'Trống'." });
+    }
+
+    // 3. Thực hiện chuyển đổi trong transaction
+    await prisma.$transaction(async (tx) => {
+      // Tìm đơn hàng đang hoạt động của bàn nguồn
+      const activeOrderTable = await tx.orderTable.findFirst({
+        where: {
+          tableID: srcId,
+          order: { orderStatus: { in: ["Open", "Serving"] } }
+        }
+      });
+
+      if (activeOrderTable) {
+        // Nếu bàn nguồn đang có đơn hàng, chuyển đơn hàng sang bàn đích
+        // Xóa liên kết cũ và tạo liên kết mới
+        await tx.orderTable.delete({
+          where: { orderID_tableID: { orderID: activeOrderTable.orderID, tableID: srcId } }
+        });
+        await tx.orderTable.create({
+          data: { orderID: activeOrderTable.orderID, tableID: tgtId }
+        });
+
+        // Nếu bàn nguồn có mergedGroupId, chuyển sang bàn đích
+        if (srcTable.mergedGroupId) {
+          await tx.table.update({
+            where: { tableID: tgtId },
+            data: { mergedGroupId: srcTable.mergedGroupId }
+          });
+        }
+      }
+
+      // 4. Cập nhật trạng thái 2 bàn
+      await tx.table.update({
+        where: { tableID: srcId },
+        data: { status: "Available", mergedGroupId: null }
+      });
+      await tx.table.update({
+        where: { tableID: tgtId },
+        data: { status: "Occupied" }
+      });
+    });
+
+    res.json({
+      message: `Đã đổi từ ${srcTable.tableName} sang ${tgtTable.tableName} thành công.`,
+      sourceTableId: srcId,
+      targetTableId: tgtId
+    });
+
+    emitTableUpdate(req);
+  } catch (err) {
+    console.error("switchTable error:", err);
+    res.status(500).json({ message: err.message || "Lỗi khi đổi bàn" });
+  }
+};
+
 /* ── POST /api/manager/confirm-order ── */
 export const confirmManagerOrder = async (req, res) => {
   try {
