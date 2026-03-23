@@ -29,17 +29,50 @@ export const getMenuByTable = async (req, res) => {
         }
 
         const restaurantId = table.branch.restaurant.restaurantID;
+        const branchId = table.branch.branchID;
 
-        // 2. Find categories and available products for this restaurant
-        const categories = await prisma.category.findMany({
+        // 2. Find categories and available products for this branch
+        const categoriesRaw = await prisma.category.findMany({
             where: { restaurantID: restaurantId },
             orderBy: { displayOrder: 'asc' }, // Sorting by order if available
             include: {
                 products: {
-                    where: { status: 'Available' }
+                    where: { 
+                        status: 'Available',
+                        branchMenuEntries: {
+                            some: {
+                                branchID: branchId,
+                                isAvailable: true
+                            }
+                        }
+                    },
+                    include: {
+                        branchMenuEntries: {
+                            where: { branchID: branchId }
+                        }
+                    }
                 }
             }
         });
+
+        // Filter out categories with 0 products and format product data
+        const categories = categoriesRaw
+            .filter(category => category.products.length > 0)
+            .map(category => ({
+                ...category,
+                products: category.products.map(product => {
+                    const branchEntry = product.branchMenuEntries[0];
+                    return {
+                        productID: product.productID,
+                        name: product.name,
+                        description: product.description,
+                        price: product.price,
+                        imageURL: product.imageURL,
+                        status: product.status,
+                        branchQuantity: branchEntry?.quantity || 0
+                    };
+                })
+            }));
 
         res.json({
             restaurant: {
