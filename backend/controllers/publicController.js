@@ -162,6 +162,7 @@ export const createPublicOrder = async (req, res) => {
             totalAddition += p * q;
             return {
                 productID: item.productID,
+                tableID: tId, // Mới: Lưu vết bàn nào đặt món này
                 quantity: q,
                 unitPrice: p
             };

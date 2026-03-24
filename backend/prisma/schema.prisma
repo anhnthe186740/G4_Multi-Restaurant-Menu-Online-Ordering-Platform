@@ -262,6 +262,7 @@ model Table {
   // Relations
   branch          Branch           @relation(fields: [branchID], references: [branchID], onDelete: Cascade)
   orderTables     OrderTable[]
+  orderDetails    OrderDetail[]    // Mới: liên kết ngược từ OrderDetail
   serviceRequests ServiceRequest[]
 
   @@map("Tables")
@@ -355,6 +356,7 @@ model OrderDetail {
   orderDetailID Int        @id @default(autoincrement()) @map("OrderDetailID")
   orderID       Int?       @map("OrderID")
   productID     Int?       @map("ProductID")
+  tableID       Int?       @map("TableID") // Mới: theo dõi món này của bàn nào (đặc biệt hữu ích khi gộp bill)
   quantity      Int        @map("Quantity")
   unitPrice     Decimal    @map("UnitPrice") @db.Decimal(15, 2)
   note          String?    @map("Note") @db.Text
@@ -363,6 +365,7 @@ model OrderDetail {
   // Relations
   order          Order?          @relation(fields: [orderID], references: [orderID], onDelete: Cascade)
   product        Product?        @relation(fields: [productID], references: [productID])
+  table          Table?          @relation(fields: [tableID], references: [tableID], onDelete: SetNull)
   invoiceDetails InvoiceDetail[]
 
   @@map("OrderDetails")
