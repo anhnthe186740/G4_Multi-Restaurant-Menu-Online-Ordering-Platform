@@ -2,6 +2,7 @@ import prisma from "../config/prismaClient.js";
 import { Parser } from "json2csv";
 import { sendNewAccountEmail } from "../config/emailService.js";
 import fs from "fs/promises";
+import { ExcelExportStrategy, PdfExportStrategy, OwnerExcelExportStrategy, OwnerPdfExportStrategy } from "../config/ExportStrategy.js";
 
 /*
   restaurantOwnerController.js
@@ -2303,5 +2304,97 @@ export const updateOwnerManager = async (req, res) => {
   } catch (error) {
     console.error('updateOwnerManager error:', error);
     res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+/* =================== EXPORT OWNER REVENUE REPORT =================== */
+/**
+ * GET /owner/reports/export?startDate=...&endDate=...&type=excel|pdf&branchID=...
+ * Xuất báo cáo doanh thu của toàn bộ nhà hàng (hoặc một chi nhánh cụ thể) ra file Excel/PDF.
+ */
+export const exportOwnerReport = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const { startDate, endDate, type = 'excel', branchID } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Vui lòng truyền startDate và endDate.' });
+    }
+
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    // Lấy danh sách chi nhánh hợp lệ của owner
+    const ownerBranches = await prisma.branch.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      select: { branchID: true, name: true, address: true },
+    });
+    const validBranchIDs = ownerBranches.map((b) => b.branchID);
+
+    let filterBranchIDs = validBranchIDs;
+    let branchInfo = { name: restaurant.name, address: 'Toàn bộ chi nhánh' };
+
+    if (branchID && branchID !== 'all') {
+      const bID = parseInt(branchID);
+      if (!validBranchIDs.includes(bID)) {
+        return res.status(403).json({ message: 'Không có quyền truy cập chi nhánh này.' });
+      }
+      filterBranchIDs = [bID];
+      const selectedBranch = ownerBranches.find((b) => b.branchID === bID);
+      if (selectedBranch) {
+        branchInfo = { name: selectedBranch.name, address: selectedBranch.address || '' };
+      }
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        branchID: { in: filterBranchIDs },
+        orderStatus: 'Completed',
+        orderTime: { gte: start, lte: end },
+      },
+      select: {
+        orderID: true,
+        orderTime: true,
+        totalAmount: true,
+        paymentStatus: true,
+        creator: { select: { fullName: true, username: true } },
+        branch: { select: { name: true } },
+        orderTables: {
+          select: { table: { select: { tableName: true } } },
+        },
+      },
+      orderBy: { orderTime: 'asc' },
+    });
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: 'Không có dữ liệu trong thời gian này.' });
+    }
+
+    // Bổ sung thông tin tên chi nhánh vào mỗi order để ExportStrategy hiểu
+    const enrichedOrders = orders.map((o) => ({
+      ...o,
+      // ghi đè branch.name để tên chi nhánh luôn có mặt
+    }));
+
+    const reportData = {
+      branch: branchInfo,
+      orders: enrichedOrders,
+      startDate: start,
+      endDate: end,
+    };
+
+    const exportStrategy = type === 'pdf' ? new OwnerPdfExportStrategy() : new OwnerExcelExportStrategy();
+    await exportStrategy.exportData(reportData, res);
+
+  } catch (err) {
+    console.error('exportOwnerReport error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Lỗi máy chủ khi xuất báo cáo.' });
+    }
   }
 };
