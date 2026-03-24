@@ -1016,7 +1016,8 @@ export default function TableManagement() {
 
     // Socket.io for Real-time
     useEffect(() => {
-        const socket = io(`http://${window.location.hostname}:5000`);
+        const socket = io(SOCKET_URL);
+
         
         socket.on("connect", () => {
             console.log("🟢 Connected to Real-time Server");
