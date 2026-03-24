@@ -35,7 +35,7 @@ function StatusBadge({ status }) {
 }
 
 /* ─── Menu 3 chấm ──────────────────────────────────────────────────────────── */
-function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint, onClear, isOccupied }) {
+function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint, onClear, isOccupied, hasOrder }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -77,7 +77,7 @@ function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint, onClear, i
                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-red-50 text-red-500">
                         <Trash2 size={13} /> Xoá bàn
                     </button>
-                    {isOccupied && (
+                    {isOccupied && !hasOrder && (
                         <>
                             <div className="border-t border-gray-100 my-1" />
                             <button onClick={() => { setOpen(false); onClear(); }}
