@@ -85,6 +85,48 @@ function CancelQuantityModal({ item, onClose, onConfirm, isCancelling }) {
 }
 
 /* ────────────────────────────────────────────────────────────
+   Modal nhập ghi chú khi gọi nhân viên
+──────────────────────────────────────────────────────────── */
+function StaffNoteModal({ onClose, onConfirm, isSending }) {
+  const [note, setNote] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-scale-in">
+        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4 mx-auto border border-amber-200">
+          <Bell size={24} className="text-amber-600" />
+        </div>
+        <h2 className="text-lg font-black text-center text-gray-900 mb-1">Gọi nhân viên hỗ trợ</h2>
+        <p className="text-sm text-center text-gray-500 mb-4">
+          Bạn cần hỗ trợ gì thêm không? (Ví dụ: mang thêm đá, mượn bật lửa...)
+        </p>
+
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Nhập yêu cầu của bạn (tùy chọn)..."
+          className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all min-h-[100px] mb-6 resize-none"
+        />
+
+        <div className="flex gap-3">
+          <button disabled={isSending} onClick={onClose}
+            className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 transition disabled:opacity-50">
+            Bỏ qua
+          </button>
+          <button
+            disabled={isSending}
+            onClick={() => onConfirm(note)}
+            className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600 transition shadow-lg shadow-amber-500/30 disabled:opacity-50 flex justify-center items-center gap-2"
+          >
+            {isSending ? <Loader2 size={18} className="animate-spin" /> : "Gửi yêu cầu"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────
    Tab 1: Đơn hàng — giống hệt TableOrderPanel của manager
 ──────────────────────────────────────────────────────────── */
 function OrderTab({ tableId, tableName }) {
@@ -95,6 +137,7 @@ function OrderTab({ tableId, tableName }) {
   const [staffCalled, setStaffCalled]   = useState(false);
   const [cancellingId, setCancellingId] = useState(null);
   const [cancelModalItem, setCancelModalItem] = useState(null);
+  const [showStaffNoteModal, setShowStaffNoteModal] = useState(false);
 
   const loadOrder = useCallback(async () => {
     setLoading(true);
@@ -137,11 +180,12 @@ function OrderTab({ tableId, tableName }) {
     return () => socket.disconnect();
   }, [loadOrder]);
 
-  const handleCallStaff = async () => {
+  const handleCallStaff = async (note = "") => {
     setCallingStaff(true);
     try {
-      await createPublicServiceRequest({ tableId, requestType: "GoiMon" });
+      await createPublicServiceRequest({ tableId, requestType: "GoiMon", note });
       setStaffCalled(true);
+      setShowStaffNoteModal(false);
       setTimeout(() => setStaffCalled(false), 3500);
     } catch (err) {
       console.error("Gọi nhân viên lỗi:", err);
@@ -181,7 +225,7 @@ function OrderTab({ tableId, tableName }) {
       {/* Gọi nhân viên */}
       <div className="px-4 py-3 border-b border-gray-100">
         <button
-          onClick={handleCallStaff}
+          onClick={() => setShowStaffNoteModal(true)}
           disabled={callingStaff || staffCalled}
           className={`w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 ${
             staffCalled
@@ -318,6 +362,15 @@ function OrderTab({ tableId, tableName }) {
           isCancelling={cancellingId === cancelModalItem.orderDetailID}
           onClose={() => setCancelModalItem(null)}
           onConfirm={(qty) => confirmCancelQuantity(cancelModalItem.orderDetailID, qty)}
+        />
+      )}
+
+      {/* Modal ghi chú gọi nhân viên */}
+      {showStaffNoteModal && (
+        <StaffNoteModal 
+          isSending={callingStaff}
+          onClose={() => setShowStaffNoteModal(false)}
+          onConfirm={(note) => handleCallStaff(note)}
         />
       )}
     </div>

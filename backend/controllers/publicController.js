@@ -227,14 +227,14 @@ export const createPublicOrder = async (req, res) => {
 ───────────────────────────────────────────────────────────── */
 export const createServiceRequest = async (req, res) => {
     try {
-        const { tableId, requestType } = req.body;
+        const { tableId, requestType, note } = req.body;
 
         if (!tableId || !requestType) {
             return res.status(400).json({ message: "Thiếu tableId hoặc requestType." });
         }
 
         const tId = parseInt(tableId);
-        const allowedTypes = ["GoiMon", "ThanhToan"];
+        const allowedTypes = ["GoiMon", "ThanhToan", "GoiNuoc", "Khac"];
         if (!allowedTypes.includes(requestType)) {
             return res.status(400).json({ message: "Loại yêu cầu không hợp lệ." });
         }
@@ -261,10 +261,13 @@ export const createServiceRequest = async (req, res) => {
         });
 
         if (existing) {
-            // Đã có yêu cầu pending → chỉ cập nhật thời gian (đẩy lên đầu)
+            // Đã có yêu cầu pending → cập nhật thời gian và ghi chú mới (nếu có)
             await prisma.serviceRequest.update({
                 where: { requestID: existing.requestID },
-                data:  { createdTime: new Date() },
+                data:  { 
+                    createdTime: new Date(),
+                    note: note || existing.note
+                },
             });
             return res.json({
                 action:    "updated",
@@ -279,6 +282,7 @@ export const createServiceRequest = async (req, res) => {
                 branchID:    table.branchID,
                 tableID:     tId,
                 requestType: requestType,
+                note:        note || null,
                 status:      "Đang xử lý",
                 createdTime: new Date(),
             },

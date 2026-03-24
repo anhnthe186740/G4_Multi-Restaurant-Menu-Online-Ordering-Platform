@@ -453,6 +453,7 @@ model ServiceRequest {
   branchID    Int?               @map("BranchID")
   tableID     Int?               @map("TableID")
   requestType ServiceRequestType @map("RequestType")
+  note        String?            @map("Note") @db.Text
   status      String?            @map("Status") @db.VarChar(50)
   createdTime DateTime           @default(now()) @map("CreatedTime")
 
