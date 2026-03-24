@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, ClipboardList, Bell, Info, UtensilsCrossed, LayoutGrid, LogOut, History,
-    Users, BookOpen, Lock
+    Users, BookOpen, Lock, Gift
 } from 'lucide-react';
 import ChangePasswordModal from '../ChangePasswordModal';
 
@@ -23,6 +23,7 @@ export default function BranchManagerSidebar() {
         { icon: UtensilsCrossed, label: 'Theo dõi bếp',     path: '/manager/kds',             roles: ['BranchManager', 'Kitchen'] },
         { icon: Bell,            label: 'Yêu cầu phục vụ',  path: '/manager/service-requests', roles: ['BranchManager', 'Staff'] },
         { icon: Users,           label: 'Quản lý nhân viên',path: '/manager/staff',            roles: ['BranchManager'] },
+        { icon: Gift,            label: 'Khuyến mãi',          path: '/manager/promotions',      roles: ['BranchManager'] },
         { icon: Info,            label: 'Thông tin nhà hàng',path: '/manager/info',            roles: ['BranchManager'] },
         { icon: History,         label: 'Lịch sử thanh toán',path: '/manager/payment-history', roles: ['BranchManager'] },
     ];

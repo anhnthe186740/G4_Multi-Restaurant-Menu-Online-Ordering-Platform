@@ -12,8 +12,9 @@ import {
     getOwnerOrdersDetail,
     getOwnerOrdersHeatmap,
     getOwnerDashboardStats, // Will use this for Revenue, Cost, Profit
+    exportOwnerReport,
 } from '../api/ownerApi';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Store, Package, Download, ListOrdered, Receipt } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Store, Package, Download, ListOrdered, Receipt, RefreshCw } from 'lucide-react';
 
 /* ─── Helpers ─── */
 const fmtVND = (v) => {
@@ -109,6 +110,7 @@ export default function OwnerOverview() {
     const [dashboardStats, setDashboardStats] = useState(null);
     const [heatmap, setHeatmap] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
 
     /* Compute date range */
     const getParams = useCallback(() => {
@@ -157,30 +159,39 @@ export default function OwnerOverview() {
 
     const dateRange = getParams();
 
-    /* CSV Export */
-    const handleExportCSV = () => {
-        if (!ordersDetail.length) return;
-        const headers = ["Mã Đơn", "Thời gian", "Chi nhánh", "Món ăn", "Tổng tiền", "Trạng thái"];
-        const rows = ordersDetail.map(o => [
-            `#${o.orderID}`,
-            `"${new Date(o.orderTime).toLocaleString('vi-VN')}"`,
-            `"${o.branchName}"`,
-            `"${o.itemsSummary}"`,
-            o.totalAmount,
-            o.status
-        ]);
-
-        const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `bao-cao-don-hang-${dateRange.startDate}-den-${dateRange.endDate}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    /* Excel/PDF Export */
+    const handleExportFile = async (type = 'excel') => {
+        const params = getParams();
+        const startDateStr = params.startDate;
+        const endDateStr = params.endDate;
+        try {
+            setExporting(true);
+            const token = localStorage.getItem('token');
+            const branchParam = params.branchID ? `&branchID=${params.branchID}` : '';
+            const response = await fetch(
+                `http://localhost:5000/api/owner/reports/export?startDate=${startDateStr}&endDate=${endDateStr}&type=${type}${branchParam}`,
+                { method: 'GET', headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.message || 'Lỗi xuất báo cáo.');
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const extension = type === 'pdf' ? 'pdf' : 'xlsx';
+            link.setAttribute('download', `Bao_Cao_Owner_${startDateStr}_${endDateStr}.${extension}`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Lỗi khi xuất:', error);
+            alert(error.message || 'Lỗi khi tải file báo cáo.');
+        } finally {
+            setExporting(false);
+        }
     };
 
     return (
@@ -191,14 +202,24 @@ export default function OwnerOverview() {
                     <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
                     <p className="text-gray-400 text-sm mt-0.5">Quản lý hiệu suất kinh doanh trên toàn hệ thống</p>
                 </div>
-                <button
-                    onClick={handleExportCSV}
-                    disabled={loading || ordersDetail.length === 0}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                >
-                    <Download size={18} />
-                    Xuất báo cáo
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => handleExportFile('excel')}
+                        disabled={loading || exporting}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        {exporting ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} />}
+                        Xuất Excel
+                    </button>
+                    <button
+                        onClick={() => handleExportFile('pdf')}
+                        disabled={loading || exporting}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        {exporting ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} />}
+                        Xuất PDF
+                    </button>
+                </div>
             </div>
 
             {/* ── Filters ── */}

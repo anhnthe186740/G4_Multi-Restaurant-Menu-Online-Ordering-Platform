@@ -65,4 +65,11 @@ export const deleteBranchStaff = (id) => managerAxios.delete(`manager/staff/${id
 export const getManagerBranchMenu = () => managerAxios.get("manager/menu");
 export const saveManagerBranchMenu = (items) => managerAxios.post("manager/menu", { items });
 
+// ===== AUTO-PROMOTIONS (Manager) =====
+export const getManagerPromotions    = ()         => managerAxios.get("manager/promotions");
+export const createManagerPromotion  = (data)     => managerAxios.post("manager/promotions", data);
+export const updateManagerPromotion  = (id, data) => managerAxios.put(`manager/promotions/${id}`, data);
+export const deleteManagerPromotion  = (id)       => managerAxios.delete(`manager/promotions/${id}`);
+
 export default managerAxios;
+

@@ -52,6 +52,8 @@ export const getOwnerOrdersDetail = (params) =>
   ownerAxios.get("/owner/reports/orders-detail", { params });
 export const getOwnerOrdersHeatmap = (params) =>
   ownerAxios.get("/owner/reports/orders-heatmap", { params });
+export const exportOwnerReport = (params) =>
+  ownerAxios.get("/owner/reports/export", { params, responseType: 'blob' });
 
 // Menu management
 export const getOwnerMenuCategories = () => ownerAxios.get("/owner/menu/categories");
@@ -82,4 +84,14 @@ export const updateOwnerManager = (id, data) => ownerAxios.put(`/owner/managers/
 export const toggleOwnerManager = (id) => ownerAxios.patch(`/owner/managers/${id}/toggle`);
 export const deleteOwnerManager = (id) => ownerAxios.delete(`/owner/managers/${id}`);
 
+// ===== AUTO-PROMOTIONS (Owner) =====
+export const getOwnerPromotions      = ()         => ownerAxios.get("/owner/promotions");
+export const createOwnerPromotion    = (data)     => ownerAxios.post("/owner/promotions", data);
+export const updateOwnerPromotion    = (id, data) => ownerAxios.put(`/owner/promotions/${id}`, data);
+export const deleteOwnerPromotion    = (id)       => ownerAxios.delete(`/owner/promotions/${id}`);
+export const approveOwnerPromotion   = (id)       => ownerAxios.patch(`/owner/promotions/${id}/approve`);
+export const rejectOwnerPromotion    = (id)       => ownerAxios.patch(`/owner/promotions/${id}/reject`);
+export const getOwnerPromotionReport = ()         => ownerAxios.get("/owner/promotions/report");
+
 export default ownerAxios;
+
