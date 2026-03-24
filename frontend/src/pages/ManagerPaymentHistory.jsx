@@ -351,6 +351,12 @@ export default function ManagerPaymentHistory() {
                             </div>
 
                             <div className="pt-4 border-t border-dashed border-gray-200">
+                                {selectedTx.discountName && (
+                                    <div className="flex justify-between items-center mb-2 px-4">
+                                        <span className="text-xs text-gray-400">Khuyến mãi:</span>
+                                        <span className="text-xs font-bold text-emerald-600 uppercase">{selectedTx.discountName}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-center bg-emerald-50/50 p-4 rounded-2xl">
                                     <span className="text-sm font-bold text-emerald-800">TỔNG CỘNG</span>
                                     <span className="text-2xl font-black text-emerald-600 tracking-tighter">{formatCurrency(selectedTx.amount)}</span>
@@ -432,7 +438,7 @@ export default function ManagerPaymentHistory() {
                             </div>
                             {selectedTx.discountAmount > 0 && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', color: '#059669' }}>
-                                    <span>Giảm giá:</span>
+                                    <span>Khuyến mãi ({selectedTx.discountName || 'Giảm giá'}):</span>
                                     <span>-{formatCurrency(selectedTx.discountAmount)}</span>
                                 </div>
                             )}

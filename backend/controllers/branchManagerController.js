@@ -1717,6 +1717,7 @@ export const getPaymentHistory = async (req, res) => {
       include: {
         invoice: {
           include: {
+            discount: { select: { name: true } },
             order: {
               include: {
                 orderTables: {
@@ -1746,6 +1747,7 @@ export const getPaymentHistory = async (req, res) => {
           .join(", "),
         subTotal:       parseFloat(t.invoice?.subTotal || t.amount),
         discountAmount: parseFloat(t.invoice?.discountAmount || 0),
+        discountName:   t.invoice?.discount?.name || null,
         items: order?.orderDetails.map((d) => ({
           productName: d.product?.name ?? "Món đã xóa",
           quantity:    d.quantity,
