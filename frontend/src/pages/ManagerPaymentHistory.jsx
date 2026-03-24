@@ -425,8 +425,18 @@ export default function ManagerPaymentHistory() {
                             ))}
                         </div>
 
-                        <div style={{ borderTop: '1px dashed #000', paddingTop: '8px', marginTop: '8px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold' }}>
+                        <div style={{ borderTop: '1px dashed #000', paddingTop: '8px', marginTop: '8px', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span>Tạm tính:</span>
+                                <span>{formatCurrency(selectedTx.subTotal || selectedTx.amount)}</span>
+                            </div>
+                            {selectedTx.discountAmount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', color: '#059669' }}>
+                                    <span>Giảm giá:</span>
+                                    <span>-{formatCurrency(selectedTx.discountAmount)}</span>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold', borderTop: '1px solid #000', paddingTop: '4px', marginTop: '4px' }}>
                                 <span>TỔNG CỘNG:</span>
                                 <span>{formatCurrency(selectedTx.amount)}</span>
                             </div>

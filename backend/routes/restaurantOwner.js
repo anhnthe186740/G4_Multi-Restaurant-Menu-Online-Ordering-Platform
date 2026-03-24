@@ -44,6 +44,14 @@ import {
   toggleOwnerManager,
   deleteOwnerManager,
   updateOwnerManager,
+  // Promotions (Auto-Promotions)
+  getPromotions,
+  createPromotion,
+  updatePromotion,
+  deletePromotion,
+  approvePromotion,
+  rejectPromotion,
+  getPromotionReport,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import checkSubscription from "../middlewares/checkSub.js";
@@ -117,5 +125,14 @@ router.post("/managers", requireRole("RestaurantOwner"), createOwnerManager);
 router.put("/managers/:id", requireRole("RestaurantOwner"), updateOwnerManager);
 router.patch("/managers/:id/toggle", requireRole("RestaurantOwner"), toggleOwnerManager);
 router.delete("/managers/:id", requireRole("RestaurantOwner"), deleteOwnerManager);
+
+// ===== PROMOTIONS / AUTO-PROMOTIONS (Owner only) =====
+router.get("/promotions/report", requireRole("RestaurantOwner"), getPromotionReport);
+router.get("/promotions",         requireRole("RestaurantOwner"), getPromotions);
+router.post("/promotions",        requireRole("RestaurantOwner"), createPromotion);
+router.put("/promotions/:id",     requireRole("RestaurantOwner"), updatePromotion);
+router.delete("/promotions/:id",  requireRole("RestaurantOwner"), deletePromotion);
+router.patch("/promotions/:id/approve", requireRole("RestaurantOwner"), approvePromotion);
+router.patch("/promotions/:id/reject",  requireRole("RestaurantOwner"), rejectPromotion);
 
 export default router;
