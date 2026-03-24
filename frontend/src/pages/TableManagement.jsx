@@ -11,7 +11,9 @@ import {
     Bell, ChefHat, Loader2, AlertCircle, ClipboardList, UtensilsCrossed, Minus
 
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
     getManagerTables,
     createManagerTable,
@@ -436,6 +438,7 @@ function DeleteModal({ table, onClose, onConfirm }) {
 function PrintQRModal({ tables, onClose }) {
     const [selectedIds, setSelectedIds] = useState(tables.map(t => t.id));
     const [serverIP, setServerIP] = useState(window.location.hostname);
+    const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
         getServerIP()
@@ -454,29 +457,72 @@ function PrintQRModal({ tables, onClose }) {
 
     const tablesToPrint = tables.filter(t => selectedIds.includes(t.id));
 
-    const handlePrint = () => {
-        window.print();
+    const handlePrint = async () => {
+        if (tablesToPrint.length === 0) return;
+        setIsGenerating(true);
+        
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            // Tọa độ bắt đầu
+            let x = 15;
+            let y = 15;
+            const itemWidth = 85; 
+            
+            for (let i = 0; i < tablesToPrint.length; i++) {
+                const table = tablesToPrint[i];
+                const el = document.getElementById(`qr-print-card-${table.id}`);
+                if (!el) continue;
+                
+                // html2canvas capture
+                const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                
+                const imgProps = pdf.getImageProperties(imgData);
+                const itemHeight = (imgProps.height * itemWidth) / imgProps.width;
+                
+                // Nếu vượt quá chiều cao trang, sang trang mới
+                if (y + itemHeight > pdfHeight - 15) {
+                    pdf.addPage();
+                    x = 15;
+                    y = 15;
+                }
+                
+                pdf.addImage(imgData, 'PNG', x, y, itemWidth, itemHeight);
+                
+                // Xếp 2 cột: Cột 1 xong tới Cột 2, xong xuống hàng
+                if (x === 15) {
+                    x = 15 + itemWidth + 10; // Chuyển sang cột 2
+                } else {
+                    x = 15; // Reset về cột 1
+                    y += itemHeight + 10; // Xống hàng mới
+                }
+            }
+            
+            const dateStr = new Date().toISOString().split('T')[0];
+            pdf.save(`Ma_QR_Ban_${dateStr}.pdf`);
+        } catch (error) {
+            console.error('Lỗi khi xuất PDF:', error);
+            alert('Có lỗi xảy ra khi tạo file PDF.');
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm print:bg-transparent print:static print:block print:inset-auto">
-            <style dangerouslySetInnerHTML={{ __html: `
-                @media print {
-                    @page { margin: 10mm; size: A4 portrait; }
-                    body { margin: 0; padding: 0; background: white !important; }
-                    nav, aside, header, footer, .print-hidden, .no-print { display: none !important; }
-                }
-            ` }} />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
             
-            {/* Giao diện chọn bàn (Ẩn khi in) */}
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col print:hidden no-print">
+            {/* Giao diện chọn bàn */}
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col relative z-10">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-emerald-50/50">
                     <div>
                         <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2 uppercase tracking-tight">
                             <QrCode className="text-emerald-600" size={20} />
-                            QUẢN LÝ IN MÃ QR ({selectedIds.length}/{tables.length})
+                            QUẢN LÝ XUẤT QR CODE ({selectedIds.length}/{tables.length})
                         </h2>
-                        <p className="text-xs text-gray-500 mt-1">Chọn các bàn bạn muốn in tem QR.</p>
+                        <p className="text-xs text-gray-500 mt-1">Chọn các bàn bạn muốn tải mã QR dạng PDF.</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={toggleAll} className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition">
@@ -522,18 +568,19 @@ function PrintQRModal({ tables, onClose }) {
                 </div>
                 
                 <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-white rounded-b-2xl">
-                    <button onClick={onClose}
+                    <button disabled={isGenerating} onClick={onClose}
                         className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
                         ĐÓNG
                     </button>
                     <button onClick={handlePrint}
-                        disabled={selectedIds.length === 0}
-                        className={`px-8 py-2.5 rounded-xl text-sm font-black transition flex items-center gap-2 shadow-lg ${
-                            selectedIds.length > 0
+                        disabled={selectedIds.length === 0 || isGenerating}
+                        className={`min-w-[170px] px-8 py-2.5 rounded-xl text-sm font-black transition flex items-center justify-center gap-2 shadow-lg ${
+                            selectedIds.length > 0 && !isGenerating
                             ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
                             : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                         }`}>
-                        <Printer size={18} /> IN NGAY ({selectedIds.length})
+                        {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} 
+                        {isGenerating ? 'ĐANG TẠO PDF...' : `XUẤT PDF (${selectedIds.length})`}
                     </button>
                 </div>
             </div>
@@ -555,9 +602,25 @@ function PrintQRModal({ tables, onClose }) {
                                 <p className="text-xl font-black text-gray-800 tracking-wide">QUÉT MÃ ĐỂ ĐẶT MÓN</p>
                                 <p className="text-xs text-gray-400 font-medium">RestoOrder - Hân hạnh phục vụ</p>
                             </div>
+            {/* Vùng Render Ẩn dùng cho html2canvas chụp ảnh, không display none */}
+            <div className="fixed top-0 left-[-9999px] z-[-1] opacity-0 pointer-events-none">
+                {tablesToPrint.map(table => (
+                    <div id={`qr-print-card-${table.id}`} key={table.id} 
+                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[30px]" 
+                        style={{ width: '380px', height: '530px', backgroundColor: '#ffffff', color: '#000000', borderColor: '#9ca3af' }}>
+                        
+                        <h2 className="text-4xl font-black mb-6 uppercase tracking-widest" style={{ color: '#111827' }}>{table.name}</h2>
+                        <div className="p-4 border-2 rounded-3xl mb-6" style={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}>
+                            <QRCodeCanvas 
+                                value={`${window.location.origin}/self-order?tableId=${table.id}`} 
+                                size={250}
+                                level="H"
+                            />
                         </div>
-                    ))}
-                </div>
+                        <p className="text-2xl font-black tracking-wide mb-2 uppercase" style={{ color: '#1f2937' }}>Quét mã đặt món</p>
+                        <p className="text-sm font-medium tracking-wide" style={{ color: '#6b7280' }}>RestoOrder - Hân hạnh phục vụ</p>
+                    </div>
+                ))}
             </div>
         </div>
     );
