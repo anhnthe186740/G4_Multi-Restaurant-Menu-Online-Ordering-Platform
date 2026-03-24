@@ -799,10 +799,15 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                                                 )}
                                                 {/* Thông tin */}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className={`font-semibold text-sm ${
+                                                    <p className={`font-semibold text-sm flex items-center gap-2 ${
                                                         isCancelled ? 'line-through text-gray-400' : 'text-gray-800'
                                                     }`}>
                                                         {item.productName}
+                                                        {order.tables && order.tables.length > 1 && (
+                                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center gap-0.5 whitespace-nowrap">
+                                                                🪑 {item.tableName || "Bàn ?"}
+                                                            </span>
+                                                        )}
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className="text-xs text-gray-400">x{item.quantity}</span>

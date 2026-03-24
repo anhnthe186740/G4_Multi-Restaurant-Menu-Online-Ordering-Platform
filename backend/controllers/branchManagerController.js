@@ -867,6 +867,7 @@ export const confirmManagerOrder = async (req, res) => {
         data: items.map(item => ({
           orderID,
           productID: item.productID,
+          tableID: tId, // Mới: Lưu vết bàn nào đặt món này
           quantity: item.quantity,
           unitPrice: parseFloat(item.price),
           itemStatus: "Pending"
@@ -935,7 +936,12 @@ export const getBillByTable = async (req, res) => {
       include: {
         order: {
           include: {
-            orderDetails: { include: { product: true } },
+            orderDetails: { 
+              include: { 
+                product: true,
+                table: { select: { tableName: true } }
+              } 
+            },
             orderTables: { include: { table: true } }
           }
         }
@@ -955,11 +961,16 @@ export const getBillByTable = async (req, res) => {
       if (det.itemStatus === 'Cancelled') return;
 
       const pID = det.productID;
-      if (itemsMap[pID]) {
-        itemsMap[pID].quantity += det.quantity;
+      const tID = det.tableID || 0; // 0 nếu không có bàn (đơn mang về hoặc cũ)
+      const key = `${pID}_${tID}`; // Nhóm theo sản phẩm VÀ bàn
+
+      if (itemsMap[key]) {
+        itemsMap[key].quantity += det.quantity;
       } else {
-        itemsMap[pID] = {
+        itemsMap[key] = {
           productID: pID,
+          tableID: det.tableID,
+          tableName: det.table?.tableName || "Bàn",
           name: det.product?.name || "Món đã xóa",
           imageURL: det.product?.imageURL,
           price: parseFloat(det.unitPrice),
@@ -1855,7 +1866,10 @@ export const getTableOrderDetails = async (req, res) => {
         order: {
           include: {
             orderDetails: {
-              include: { product: { select: { name: true, imageURL: true, price: true } } },
+              include: { 
+                product: { select: { name: true, imageURL: true, price: true } },
+                table: { select: { tableName: true } } 
+              },
               orderBy: { orderDetailID: "asc" },
             },
             orderTables: { include: { table: { select: { tableID: true, tableName: true } } } },
@@ -1884,6 +1898,8 @@ export const getTableOrderDetails = async (req, res) => {
       items: order.orderDetails.map((d) => ({
         orderDetailID: d.orderDetailID,
         productID: d.productID,
+        tableID: d.tableID,
+        tableName: d.table?.tableName || "Bàn",
         productName: d.product?.name ?? "Món đã xóa",
         imageURL: d.product?.imageURL ?? null,
         quantity: d.quantity,
