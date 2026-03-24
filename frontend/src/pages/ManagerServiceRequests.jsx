@@ -9,8 +9,6 @@ import {
 /* ─── Constants ─── */
 const TABS = [
     { key: 'all',          label: 'Tất cả' },
-    { key: 'Gọi món',     label: 'Gọi món' },
-    { key: 'Thanh toán',  label: 'Thanh toán' },
 ];
 
 const ICON_MAP = {
@@ -122,9 +120,9 @@ export default function ManagerServiceRequests() {
         } finally {
             setLoading(false);
         }
-    }, []); // eslint-disable-line
+    }, [activeTab, page]); // eslint-disable-line
 
-    useEffect(() => { loadRequests(activeTab, page); }, [activeTab, page]); // eslint-disable-line
+    useEffect(() => { loadRequests(activeTab, page); }, [activeTab, page, loadRequests]); // eslint-disable-line
 
     // Auto-refresh 30s
     useEffect(() => {
@@ -171,8 +169,8 @@ export default function ManagerServiceRequests() {
             {/* ══ HEADER ══ */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Yêu cầu phục vụ</h1>
-                    <p className="text-sm text-gray-400 mt-0.5">Quản lý yêu cầu từ khách theo thời gian thực</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Yêu cầu hỗ trợ</h1>
+                    <p className="text-sm text-gray-400 mt-0.5">Theo dõi các yêu cầu gọi nhân viên từ khách hàng</p>
                 </div>
                 <button
                     onClick={() => loadRequests(activeTab, page)}
@@ -226,8 +224,9 @@ export default function ManagerServiceRequests() {
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-100 bg-gray-50/60">
-                                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Bàn</th>
-                                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Loại yêu cầu</th>
+                                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Bàn</th>
+                                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-40">Loại yêu cầu</th>
+                                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[250px]">Nội dung yêu cầu (Ghi chú)</th>
                                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-40">Thời gian</th>
                                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Trạng thái</th>
                                 <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Thao tác</th>
@@ -236,14 +235,14 @@ export default function ManagerServiceRequests() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={5} className="py-20 text-center">
+                                    <td colSpan={6} className="py-20 text-center">
                                         <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                                         <p className="text-gray-400 text-sm">Đang tải...</p>
                                     </td>
                                 </tr>
                             ) : requests.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="py-20 text-center">
+                                    <td colSpan={6} className="py-20 text-center">
                                         <CheckCircle2 size={40} className="text-gray-200 mx-auto mb-3" />
                                         <p className="text-gray-400 text-sm font-medium">Không có yêu cầu nào</p>
                                     </td>
@@ -277,10 +276,21 @@ export default function ManagerServiceRequests() {
                                                     <div className={`w-7 h-7 rounded-lg ${iconCfg.bg} flex items-center justify-center`}>
                                                         <IconComp size={14} className={iconCfg.color} />
                                                     </div>
-                                                    <span className={`text-sm font-semibold ${iconCfg.color}`}>
+                                                    <span className={`text-sm font-semibold ${iconCfg.color} whitespace-nowrap`}>
                                                         {req.displayType?.label ?? req.requestType}
                                                     </span>
                                                 </div>
+                                            </td>
+
+                                            {/* Ghi chú */}
+                                            <td className="px-6 py-4">
+                                                {req.note ? (
+                                                    <div className="bg-amber-50 text-amber-700 text-xs px-3 py-2 rounded-lg border border-amber-100 italic max-w-[300px] break-words">
+                                                        "{req.note}"
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-300 text-xs italic">Không có ghi chú</span>
+                                                )}
                                             </td>
 
                                             {/* Thời gian */}

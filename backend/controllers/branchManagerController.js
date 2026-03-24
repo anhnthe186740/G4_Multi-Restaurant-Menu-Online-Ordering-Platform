@@ -1491,7 +1491,7 @@ export const getServiceRequests = async (req, res) => {
     ]);
 
     const displayTypeMap = {
-      GoiMon: { label: "Gọi món", icon: "bell" },
+      GoiMon: { label: "Gọi nhân viên", icon: "bell" },
       ThanhToan: { label: "Thanh toán", icon: "credit-card" },
     };
 
@@ -1503,6 +1503,7 @@ export const getServiceRequests = async (req, res) => {
       displayType: displayTypeMap[r.requestType] ?? { label: r.requestType, icon: "more" },
       status: r.status,
       createdTime: r.createdTime,
+      note: r.note,
     }));
 
     res.json({
