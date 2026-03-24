@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { io } from "socket.io-client";
 import { getServerIP } from '../api/publicApi';
+import { SOCKET_URL, UPLOADS_URL } from '../api/config';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
@@ -555,7 +556,7 @@ function PrintQRModal({ tables, onClose }) {
                                     <h3 className={`font-bold text-sm mb-3 ${isSelected ? 'text-emerald-900' : 'text-gray-700'}`}>{table.name}</h3>
                                     <div className={`p-2 bg-white rounded-lg border-2 border-dashed ${isSelected ? 'border-emerald-100' : 'border-gray-50'}`}>
                                         <QRCodeSVG 
-                                            value={`http://${serverIP}:5173/self-order?tableId=${table.id}`} 
+                                            value={`${window.location.origin}/self-order?tableId=${table.id}`} 
                                             size={64}
                                             level="L"
                                         />
@@ -584,6 +585,23 @@ function PrintQRModal({ tables, onClose }) {
                 </div>
             </div>
 
+            {/* Giao diện THỰC TẾ KHI IN (Dàn trang chuẩn A4) */}
+            <div className="hidden print:block print:w-full print:bg-white no-screen">
+                <div className="grid grid-cols-2 gap-4">
+                    {tablesToPrint.map(table => (
+                        <div key={table.id} className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-400 rounded-[30px] break-inside-avoid mb-6" style={{ minHeight: '140mm' }}>
+                            <h2 className="text-4xl font-black mb-6 text-gray-900 uppercase tracking-widest">{table.name}</h2>
+                            <div className="p-4 bg-white border-2 border-gray-100 rounded-3xl shadow-sm">
+                                <QRCodeSVG 
+                                    value={`${window.location.origin}/self-order?tableId=${table.id}`} 
+                                    size={280}
+                                    level="H"
+                                />
+                            </div>
+                            <div className="mt-8 flex flex-col items-center gap-2">
+                                <p className="text-xl font-black text-gray-800 tracking-wide">QUÉT MÃ ĐỂ ĐẶT MÓN</p>
+                                <p className="text-xs text-gray-400 font-medium">RestoOrder - Hân hạnh phục vụ</p>
+                            </div>
             {/* Vùng Render Ẩn dùng cho html2canvas chụp ảnh, không display none */}
             <div className="fixed top-0 left-[-9999px] z-[-1] opacity-0 pointer-events-none">
                 {tablesToPrint.map(table => (
@@ -837,7 +855,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                                                 }`}>
                                                 {/* Ảnh mon */}
                                                 {item.imageURL ? (
-                                                    <img src={`http://${window.location.hostname}:5000${item.imageURL}`}
+                                                    <img src={`${UPLOADS_URL}${item.imageURL}`}
                                                         alt={item.productName}
                                                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                                                 ) : (

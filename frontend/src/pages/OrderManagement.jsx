@@ -7,7 +7,7 @@ import {
   processManagerCheckout,
 } from "../api/managerApi";
 
-const API_BASE = `http://${window.location.hostname}:5000`;
+import { SOCKET_URL } from "../api/config";
 
 // ============================================================
 // CONFIG & HELPERS
@@ -419,7 +419,7 @@ export default function OrderManagement() {
 
   // Socket.io — listen for tableUpdate events to refresh orders
   useEffect(() => {
-    const socket = io(API_BASE, { transports: ["websocket"] });
+    const socket = io(SOCKET_URL, { transports: ["websocket"] });
     socketRef.current = socket;
     socket.on("tableUpdate", () => fetchOrders());
     return () => socket.disconnect();
