@@ -9,7 +9,6 @@ import {
   getMenuByTable, createPublicOrder,
   createPublicServiceRequest, getPublicOrderByTable, cancelPublicOrderItem,
 } from "../api/publicApi";
-import { SOCKET_URL, UPLOADS_URL } from "../api/config";
 
 /* ────────────────────────────────────────────────────────────
    Badge trạng thái món (giống manager drawer)
@@ -161,7 +160,7 @@ function OrderTab({ tableId, tableName }) {
 
   // Realtime: lắng nghe bếp cập nhật trạng thái từng món
   useEffect(() => {
-    const socket = io(SOCKET_URL);
+    const socket = io(`http://${window.location.hostname}:5000`);
 
     socket.on("orderItemStatusChanged", ({ orderDetailID, itemStatus }) => {
       setOrder(prev => {
@@ -285,7 +284,7 @@ function OrderTab({ tableId, tableName }) {
                       }`}>
                       {item.imageURL ? (
                         <img
-                          src={`${UPLOADS_URL}${item.imageURL}`}
+                          src={`http://${window.location.hostname}:5000${item.imageURL}`}
                           alt={item.productName}
                           className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                       ) : (
@@ -485,7 +484,7 @@ function MenuTab({ tableId, data }) {
               className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex gap-3 hover:shadow-md transition-shadow">
               <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center">
                 {food.imageURL ? (
-                  <img src={`${UPLOADS_URL}${food.imageURL}`} alt={food.name} className="w-full h-full object-cover" />
+                  <img src={`http://${window.location.hostname}:5000${food.imageURL}`} alt={food.name} className="w-full h-full object-cover" />
                 ) : (
                   <ChefHat size={24} className="text-gray-300" />
                 )}

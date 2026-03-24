@@ -1,9 +1,7 @@
 import axios from 'axios';
 
-import { API_URL } from "./config";
-
 const publicApi = axios.create({
-    baseURL: `${API_URL}/public`,
+    baseURL: `http://${window.location.hostname}:5000/api/public`,
 });
 
 export const getMenuByTable             = async (tableId) => publicApi.get(`/menu/${tableId}`);

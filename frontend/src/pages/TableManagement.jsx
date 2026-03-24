@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { io } from "socket.io-client";
 import { getServerIP } from '../api/publicApi';
-import { SOCKET_URL, UPLOADS_URL } from '../api/config';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
 
-    Clock,
+     Clock,
     MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer,
     Bell, ChefHat, Loader2, AlertCircle, ClipboardList, UtensilsCrossed, Minus
 
@@ -62,7 +61,7 @@ function ThreeDotMenu({ onMerge, onSwitch, onEdit, onDelete, onPrint, onClear, i
                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-blue-50 text-gray-700 hover:text-blue-700">
                         <Merge size={13} /> Gộp bill
                     </button>
-                    <button onClick={() => { setOpen(false); onSwitch(); }}
+                     <button onClick={() => { setOpen(false); onSwitch(); }}
                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-orange-50 text-gray-700 hover:text-orange-700">
                         <RefreshCw size={13} /> Đổi bàn
                     </button>
@@ -100,12 +99,14 @@ function Switch({ checked, onChange, disabled }) {
     return (
         <button
             onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
-            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-emerald-500' : 'bg-gray-200'
-                } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${
+                checked ? 'bg-emerald-500' : 'bg-gray-200'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
             <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-1'
-                    }`}
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    checked ? 'translate-x-[22px]' : 'translate-x-1'
+                }`}
             />
         </button>
     );
@@ -125,7 +126,7 @@ function TableCard({ table, allTables, onMerge, onSwitch, onEdit, onDelete, onSe
     const handleCardClick = (e) => {
         // Tránh bị đè khi bấm vào các nút bên trong (3 chấm, thanh toán, v.v)
         if (e.target.closest('button')) return;
-
+        
         if (!active && !occupied) return; // Không cho chọn nếu bàn bị tắt
 
         if (occupied) {
@@ -134,14 +135,15 @@ function TableCard({ table, allTables, onMerge, onSwitch, onEdit, onDelete, onSe
     };
 
     return (
-        <div
+        <div 
             onClick={handleCardClick}
-            className={`relative bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${occupied || active ? 'cursor-pointer' : 'opacity-75 grayscale-[0.5]'
-                } ${isMerged ? 'border-amber-300 hover:border-amber-400' :
-                    occupied ? 'border-red-200 hover:border-red-300' :
-                        !active ? 'border-gray-200 bg-gray-50' :
-                            'border-gray-100 hover:border-emerald-200'
-                }`}>
+            className={`relative bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 hover:shadow-md ${
+                occupied || active ? 'cursor-pointer' : 'opacity-75 grayscale-[0.5]'
+            } ${isMerged ? 'border-amber-300 hover:border-amber-400' :
+            occupied ? 'border-red-200 hover:border-red-300' :
+                !active ? 'border-gray-200 bg-gray-50' :
+                'border-gray-100 hover:border-emerald-200'
+            }`}>
             {/* Thanh màu bên trái */}
             {isMerged && <div className="absolute left-0 top-4 bottom-4 w-1 bg-gradient-to-b from-amber-400 to-orange-400 rounded-r-full" />}
             {!isMerged && occupied && <div className="absolute left-0 top-4 bottom-4 w-1 bg-gradient-to-b from-red-400 to-rose-500 rounded-r-full" />}
@@ -154,12 +156,12 @@ function TableCard({ table, allTables, onMerge, onSwitch, onEdit, onDelete, onSe
                     </div>
                     <div className="flex items-center gap-1">
                         <StatusBadge status={table.status} />
-                        <ThreeDotMenu
-                            onMerge={onMerge}
-                            onSwitch={onSwitch}
-                            onEdit={onEdit}
-                            onDelete={onDelete}
-                            onPrint={onPrintQR}
+                         <ThreeDotMenu 
+                            onMerge={onMerge} 
+                             onSwitch={onSwitch}
+                            onEdit={onEdit} 
+                            onDelete={onDelete} 
+                            onPrint={onPrintQR} 
                             onClear={onClear}
                             isOccupied={occupied}
                         />
@@ -293,7 +295,7 @@ function MergeBillModal({ sourceTable, occupiedTables, onClose, onConfirm }) {
                 </div>
             </div>
         </div>
-    );
+     );
 }
 
 /* ─── Modal Đổi bàn — chọn 1 bàn trống ──────────────────────────── */
@@ -457,38 +459,38 @@ function PrintQRModal({ tables, onClose }) {
     const handlePrint = async () => {
         if (tablesToPrint.length === 0) return;
         setIsGenerating(true);
-
+        
         try {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
-
+            
             // Tọa độ bắt đầu
             let x = 15;
             let y = 15;
-            const itemWidth = 85;
-
+            const itemWidth = 85; 
+            
             for (let i = 0; i < tablesToPrint.length; i++) {
                 const table = tablesToPrint[i];
                 const el = document.getElementById(`qr-print-card-${table.id}`);
                 if (!el) continue;
-
+                
                 // html2canvas capture
                 const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
                 const imgData = canvas.toDataURL('image/png');
-
+                
                 const imgProps = pdf.getImageProperties(imgData);
                 const itemHeight = (imgProps.height * itemWidth) / imgProps.width;
-
+                
                 // Nếu vượt quá chiều cao trang, sang trang mới
                 if (y + itemHeight > pdfHeight - 15) {
                     pdf.addPage();
                     x = 15;
                     y = 15;
                 }
-
+                
                 pdf.addImage(imgData, 'PNG', x, y, itemWidth, itemHeight);
-
+                
                 // Xếp 2 cột: Cột 1 xong tới Cột 2, xong xuống hàng
                 if (x === 15) {
                     x = 15 + itemWidth + 10; // Chuyển sang cột 2
@@ -497,7 +499,7 @@ function PrintQRModal({ tables, onClose }) {
                     y += itemHeight + 10; // Xống hàng mới
                 }
             }
-
+            
             const dateStr = new Date().toISOString().split('T')[0];
             pdf.save(`Ma_QR_Ban_${dateStr}.pdf`);
         } catch (error) {
@@ -510,6 +512,7 @@ function PrintQRModal({ tables, onClose }) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            
             {/* Giao diện chọn bàn */}
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col relative z-10">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-emerald-50/50">
@@ -529,28 +532,30 @@ function PrintQRModal({ tables, onClose }) {
                         </button>
                     </div>
                 </div>
-
+                
                 <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         {tables.map(table => {
                             const isSelected = selectedIds.includes(table.id);
                             return (
-                                <div
-                                    key={table.id}
+                                <div 
+                                    key={table.id} 
                                     onClick={() => toggleTable(table.id)}
-                                    className={`bg-white p-4 rounded-2xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center text-center relative ${isSelected ? 'border-emerald-500 bg-emerald-50/20' : 'border-gray-100 hover:border-emerald-200'
-                                        }`}
+                                    className={`bg-white p-4 rounded-2xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center text-center relative ${
+                                        isSelected ? 'border-emerald-500 bg-emerald-50/20' : 'border-gray-100 hover:border-emerald-200'
+                                    }`}
                                 >
                                     <div className="absolute top-2 right-2">
-                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-gray-200'
-                                            }`}>
+                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${
+                                            isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-gray-200'
+                                        }`}>
                                             {isSelected && <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                         </div>
                                     </div>
                                     <h3 className={`font-bold text-sm mb-3 ${isSelected ? 'text-emerald-900' : 'text-gray-700'}`}>{table.name}</h3>
                                     <div className={`p-2 bg-white rounded-lg border-2 border-dashed ${isSelected ? 'border-emerald-100' : 'border-gray-50'}`}>
-                                        <QRCodeSVG
-                                            value={`${window.location.origin}/self-order?tableId=${table.id}`}
+                                        <QRCodeSVG 
+                                            value={`http://${serverIP}:5173/self-order?tableId=${table.id}`} 
                                             size={64}
                                             level="L"
                                         />
@@ -560,7 +565,7 @@ function PrintQRModal({ tables, onClose }) {
                         })}
                     </div>
                 </div>
-
+                
                 <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-white rounded-b-2xl">
                     <button disabled={isGenerating} onClick={onClose}
                         className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
@@ -568,11 +573,12 @@ function PrintQRModal({ tables, onClose }) {
                     </button>
                     <button onClick={handlePrint}
                         disabled={selectedIds.length === 0 || isGenerating}
-                        className={`min-w-[170px] px-8 py-2.5 rounded-xl text-sm font-black transition flex items-center justify-center gap-2 shadow-lg ${selectedIds.length > 0 && !isGenerating
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-                            }`}>
-                        {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
+                        className={`min-w-[170px] px-8 py-2.5 rounded-xl text-sm font-black transition flex items-center justify-center gap-2 shadow-lg ${
+                            selectedIds.length > 0 && !isGenerating
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                        }`}>
+                        {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} 
                         {isGenerating ? 'ĐANG TẠO PDF...' : `XUẤT PDF (${selectedIds.length})`}
                     </button>
                 </div>
@@ -581,14 +587,14 @@ function PrintQRModal({ tables, onClose }) {
             {/* Vùng Render Ẩn dùng cho html2canvas chụp ảnh, không display none */}
             <div className="fixed top-0 left-[-9999px] z-[-1] opacity-0 pointer-events-none">
                 {tablesToPrint.map(table => (
-                    <div id={`qr-print-card-${table.id}`} key={table.id}
-                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[30px]"
+                    <div id={`qr-print-card-${table.id}`} key={table.id} 
+                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[30px]" 
                         style={{ width: '380px', height: '530px', backgroundColor: '#ffffff', color: '#000000', borderColor: '#9ca3af' }}>
-
+                        
                         <h2 className="text-4xl font-black mb-6 uppercase tracking-widest" style={{ color: '#111827' }}>{table.name}</h2>
                         <div className="p-4 border-2 rounded-3xl mb-6" style={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}>
-                            <QRCodeCanvas
-                                value={`${window.location.origin}/self-order?tableId=${table.id}`}
+                            <QRCodeCanvas 
+                                value={`http://${serverIP}:5173/self-order?tableId=${table.id}`} 
                                 size={250}
                                 level="H"
                             />
@@ -604,11 +610,11 @@ function PrintQRModal({ tables, onClose }) {
 
 /* ─── Badge trạng thái món ─────────────────────────────────────────────────── */
 const ITEM_STATUS_CONFIG = {
-    Pending: { label: 'Đơn mới', bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300', dot: 'bg-yellow-400' },
-    Cooking: { label: 'Đang nấu', bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', dot: 'bg-orange-400' },
-    Ready: { label: 'Sẵn sàng', bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300', dot: 'bg-green-400' },
-    Served: { label: 'Đã phục vụ', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200', dot: 'bg-gray-400' },
-    Cancelled: { label: 'Đã huỷ', bg: 'bg-red-50', text: 'text-red-400', border: 'border-red-200', dot: 'bg-red-300' },
+    Pending:   { label: 'Đơn mới',     bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300', dot: 'bg-yellow-400' },
+    Cooking:   { label: 'Đang nấu',   bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', dot: 'bg-orange-400' },
+    Ready:     { label: 'Sẵn sàng',   bg: 'bg-green-100',  text: 'text-green-700',  border: 'border-green-300',  dot: 'bg-green-400'  },
+    Served:    { label: 'Đã phục vụ', bg: 'bg-gray-100',   text: 'text-gray-500',   border: 'border-gray-200',   dot: 'bg-gray-400'   },
+    Cancelled: { label: 'Đã huỷ',     bg: 'bg-red-50',     text: 'text-red-400',    border: 'border-red-200',    dot: 'bg-red-300'    },
 };
 
 function ItemStatusBadge({ status }) {
@@ -676,13 +682,13 @@ function CancelQuantityModal({ item, onClose, onConfirm, isCancelling }) {
 
 /* ─── Panel Order của bàn ──────────────────────────────────────────────────── */
 function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refreshTables }) {
-    const [order, setOrder] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [order, setOrder]           = useState(null);
+    const [loading, setLoading]       = useState(true);
+    const [error, setError]           = useState(null);
     const [callingStaff, setCallingStaff] = useState(false);
-    const [staffCalled, setStaffCalled] = useState(false);
+    const [staffCalled, setStaffCalled]   = useState(false);
     const [cancellingId, setCancellingId] = useState(null);
-    const [checkingOut, setCheckingOut] = useState(false);
+    const [checkingOut, setCheckingOut]   = useState(false);
     const [cancelModalItem, setCancelModalItem] = useState(null);
 
     const loadOrder = useCallback(async () => {
@@ -731,7 +737,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
         try {
             await cancelManagerOrderItem(orderDetailID, cancelQuantity);
             setCancelModalItem(null);
-            await loadOrder();
+            await loadOrder(); 
         } catch (err) {
             alert(err.response?.data?.message || "Không thể huỷ món này.");
         } finally {
@@ -756,40 +762,30 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
     };
 
     // Tính tổng tiền chỉ các món chưa bị huỷ
-    const activeItems = order?.items?.filter(i => i.itemStatus !== 'Cancelled') ?? [];
+    const activeItems    = order?.items?.filter(i => i.itemStatus !== 'Cancelled') ?? [];
     const cancelledItems = order?.items?.filter(i => i.itemStatus === 'Cancelled') ?? [];
-    const displayTotal = activeItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+    const displayTotal   = activeItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
 
     return (
         <div className="flex flex-col h-full bg-white">
             {/* Header */}
-            <div className="flex-shrink-0 px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+            <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-emerald-700 to-emerald-600 flex-shrink-0">
                 <div>
-                    <h2 className="font-black text-gray-900 flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm">🪑</div>
-                        {tableName}
+                    <h2 className="font-bold text-white text-lg">
+                        {order?.tables && order.tables.length > 1 
+                            ? order.tables.map(t => t.name).join(' + ') 
+                            : tableName}
                     </h2>
-                    {order?.tables && order.tables.length > 1 && (
-                        <p className="text-[10px] font-bold text-emerald-600 mt-0.5 px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-100 inline-block">
-                            🔗 Đã gộp: {order.tables.map(t => t.name).join(' + ')}
+                    {order && (
+                        <p className="text-emerald-200 text-xs mt-0.5">
+                            Đơn #{order.orderID} · {order.orderStatus === 'Open' ? '🟡 Chờ xử lý' : '🟠 Đang phục vụ'}
                         </p>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleCallStaff}
-                        disabled={callingStaff || staffCalled}
-                        className={`p-2 rounded-xl border transition-all flex items-center gap-2 text-xs font-bold ${staffCalled
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                            }`}>
-                        {callingStaff ? <Loader2 size={14} className="animate-spin" /> : staffCalled ? <CheckCircle size={14} /> : <Bell size={14} />}
-                        {staffCalled ? 'Đã gọi' : 'Gọi NV'}
-                    </button>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition text-gray-400">
-                        <X size={20} />
-                    </button>
-                </div>
+                <button onClick={onClose}
+                    className="p-2 hover:bg-emerald-800 rounded-xl transition text-white">
+                    <X size={20} />
+                </button>
             </div>
 
             {/* Body */}
@@ -811,6 +807,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                     </div>
                 ) : (
                     <>
+
                         {/* Section: Danh sách món */}
                         <div className="px-5 py-4">
                             <div className="flex items-center justify-between mb-3">
@@ -829,17 +826,18 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                                 <div className="space-y-2">
                                     {order.items.map(item => {
                                         const isCancelled = item.itemStatus === 'Cancelled';
-                                        const isPending = item.itemStatus === 'Pending';
+                                        const isPending   = item.itemStatus === 'Pending';
                                         const isCancelling = cancellingId === item.orderDetailID;
                                         return (
                                             <div key={item.orderDetailID}
-                                                className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${isCancelled
-                                                    ? 'bg-gray-50 border-gray-100 opacity-60'
-                                                    : 'bg-white border-gray-100 hover:border-gray-200'
-                                                    }`}>
+                                                className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
+                                                    isCancelled
+                                                        ? 'bg-gray-50 border-gray-100 opacity-60'
+                                                        : 'bg-white border-gray-100 hover:border-gray-200'
+                                                }`}>
                                                 {/* Ảnh mon */}
                                                 {item.imageURL ? (
-                                                    <img src={`${UPLOADS_URL}${item.imageURL}`}
+                                                    <img src={`http://${window.location.hostname}:5000${item.imageURL}`}
                                                         alt={item.productName}
                                                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                                                 ) : (
@@ -847,8 +845,9 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                                                 )}
                                                 {/* Thông tin */}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className={`font-semibold text-sm flex items-center gap-2 ${isCancelled ? 'line-through text-gray-400' : 'text-gray-800'
-                                                        }`}>
+                                                    <p className={`font-semibold text-sm flex items-center gap-2 ${
+                                                        isCancelled ? 'line-through text-gray-400' : 'text-gray-800'
+                                                    }`}>
                                                         {item.productName}
                                                         {order.tables && order.tables.length > 1 && (
                                                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center gap-0.5 whitespace-nowrap">
@@ -913,6 +912,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                             Đã huỷ {cancelledItems.length} món
                         </p>
                     )}
+
                 </div>
             )}
 
@@ -939,18 +939,20 @@ function TableDrawerTabs({ tableId, tableName, onClose, onCheckoutSuccess, refre
             <div className="flex border-b border-gray-200 flex-shrink-0 bg-white">
                 <button
                     onClick={() => setActiveTab('order')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'order'
-                        ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                        }`}>
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${
+                        activeTab === 'order'
+                            ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}>
                     <ClipboardList size={15} /> Đơn hàng
                 </button>
                 <button
                     onClick={() => setActiveTab('menu')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'menu'
-                        ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                        }`}>
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold transition-all border-b-2 ${
+                        activeTab === 'menu'
+                            ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}>
                     <UtensilsCrossed size={15} /> Thêm món
                 </button>
             </div>
@@ -998,7 +1000,6 @@ function Toast({ message, onClose }) {
         const t = setTimeout(onClose, 3000);
         return () => clearTimeout(t);
     }, [onClose]);
-
     return (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-medium">
             <CheckCircle size={15} className="text-emerald-400" />
@@ -1027,8 +1028,10 @@ export default function TableManagement() {
     // ==========================================
     // PAYMENT QUEUE STATE
     // ==========================================
-    const [paymentQueue, setPaymentQueue] = useState([]);
+    const [paymentQueue, setPaymentQueue] = useState([]); 
+    // Mảng chứa: { tableId, tableName, paymentData, billData }
     const [activeQueueItem, setActiveQueueItem] = useState(null); // tableId đang mở modal QR lại
+    // ==========================================
 
     const showToast = (msg) => setToast(msg);
 
@@ -1058,8 +1061,8 @@ export default function TableManagement() {
 
     // Socket.io for Real-time
     useEffect(() => {
-        const socket = io(SOCKET_URL);
-
+        const socket = io(`http://${window.location.hostname}:5000`);
+        
         socket.on("connect", () => {
             console.log("🟢 Connected to Real-time Server");
         });
@@ -1186,7 +1189,7 @@ export default function TableManagement() {
             showToast('Lỗi thay đổi trạng thái: ' + (err.response?.data?.message || err.message));
         }
     };
-
+    
     const handleClearTableStatus = async (tableID) => {
         try {
             await updateManagerTableStatus(tableID, 'Trống');
@@ -1221,7 +1224,7 @@ export default function TableManagement() {
     };
 
     /* ── Xử lý Checkout từ Drawer ── */
-    // Nhận object {type, paymentData, billData} từ component con,
+    // Nhận object { type, paymentData, billData } từ component con, 
     // nếu type = 'QR' thì đưa vào Queue và tắt drawer
     const handleDrawerCheckoutSuccess = (message, payload) => {
         setMenuDrawerTableId(null); // Đóng drawer
@@ -1245,7 +1248,7 @@ export default function TableManagement() {
         setActiveQueueItem(null);
         setPaymentQueue(prev => prev.filter(item => item.tableId !== tableId));
         showToast(`Thanh toán mã QR thành công!`);
-        loadTables();
+        loadTables(); // Reload trạng thái bàn về Trống
     };
 
     return (
@@ -1276,7 +1279,7 @@ export default function TableManagement() {
                         </div>
                     </div>
                 </div>
-
+    
                 {/* ── Loading ── */}
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
@@ -1302,19 +1305,20 @@ export default function TableManagement() {
                             </div>
                             {/* Nút hành động */}
                             <div className="flex items-center gap-2">
-                                <button
+                                <button 
                                     onClick={() => setPrintTables(displayed)}
                                     disabled={displayed.length === 0}
-                                    className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-xl transition ${displayed.length > 0
-                                        ? 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                                    className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-xl transition ${
+                                        displayed.length > 0 
+                                        ? 'border-gray-200 hover:bg-gray-50 text-gray-600' 
                                         : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
-                                        }`}
+                                    }`} 
                                     title="In mã QR">
                                     <QrCode size={14} /> <span className="hidden sm:inline">In tất cả mã QR</span>
                                 </button>
                             </div>
                         </div>
-
+    
                         {/* ── Grid bàn ── */}
                         {displayed.length === 0 ? (
                             <div className="text-center py-20 text-gray-400">
@@ -1374,8 +1378,9 @@ export default function TableManagement() {
 
             {/* Drawer: 2 tabs — Đơn hàng | Thêm món */}
             <div
-                className={`fixed inset-y-0 right-0 w-full md:w-[540px] shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col bg-white ${menuDrawerTableId ? 'translate-x-0' : 'translate-x-full'
-                    }`}
+                className={`fixed inset-y-0 right-0 w-full md:w-[540px] shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col bg-white ${
+                    menuDrawerTableId ? 'translate-x-0' : 'translate-x-full'
+                }`}
             >
                 {menuDrawerTableId && (
                     <TableDrawerTabs
@@ -1390,7 +1395,7 @@ export default function TableManagement() {
 
             {/* Backdrop phủ đen đằng sau */}
             {menuDrawerTableId && (
-                <div
+                <div 
                     className="fixed inset-0 bg-black/30 z-[50] backdrop-blur-sm transition-opacity"
                     onClick={() => setMenuDrawerTableId(null)}
                 />
@@ -1404,9 +1409,9 @@ export default function TableManagement() {
                             <Clock className="text-amber-500 animate-pulse" size={20} />
                             <span className="text-sm">Hàng chờ QR ({paymentQueue.length})</span>
                         </div>
-
+                        
                         {paymentQueue.map((item) => (
-                            <button
+                            <button 
                                 key={item.tableId}
                                 onClick={() => setActiveQueueItem(item.tableId)}
                                 className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl hover:shadow-md transition group"

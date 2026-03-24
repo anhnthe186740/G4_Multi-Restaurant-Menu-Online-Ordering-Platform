@@ -1,7 +1,8 @@
 import axios from "axios";
 
-import { API_URL } from "./config";
+const API_URL = "http://localhost:5000/api";
 
+// Create a dedicated axios instance for admin APIs
 const adminAxios = axios.create({
   baseURL: API_URL,
 });
@@ -49,7 +50,7 @@ export const getRestaurantsForRenewal = () => adminAxios.get("/admin/service-pac
 export const getRestaurantStatuses = () => adminAxios.get("/admin/service-packages/active-subscriptions");
 
 // ✅ PUBLIC — không cần token, dùng cho homepage
-export const getPublicServicePackages = () => axios.get(`${API_URL}/public/service-packages`);
+export const getPublicServicePackages = () => axios.get("http://localhost:5000/api/public/service-packages");
 
 // ========== REGISTRATION REQUESTS APIs ==========
 export const getRegistrationRequests = (params) => adminAxios.get("/admin/registration-requests", { params });

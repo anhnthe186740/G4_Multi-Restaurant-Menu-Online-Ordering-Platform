@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { API_URL } from "./config";
+const API_URL = `http://${window.location.hostname}:5000/api/`;
 
 const managerAxios = axios.create({ baseURL: API_URL });
 
