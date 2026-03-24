@@ -22,6 +22,7 @@ import {
   getProductRevenueStats,
   getDetailedOrdersReport,
   getOrdersHeatmap_Owner,
+  exportOwnerReport,
   // Menu management
   getMenuCategories,
   createMenuCategory,
@@ -88,6 +89,7 @@ router.get("/reports/branch-summary", requireRole("RestaurantOwner"), getBranchS
 router.get("/reports/product-stats", requireRole("RestaurantOwner"), getProductRevenueStats);
 router.get("/reports/orders-detail", requireRole("RestaurantOwner"), getDetailedOrdersReport);
 router.get("/reports/orders-heatmap", requireRole("RestaurantOwner"), getOrdersHeatmap_Owner);
+router.get("/reports/export", requireRole("RestaurantOwner"), exportOwnerReport);
 
 // ===== MENU MANAGEMENT (Owner only) =====
 // Categories
