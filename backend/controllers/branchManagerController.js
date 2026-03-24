@@ -412,6 +412,16 @@ export const getTables = async (req, res) => {
       select: { tableID: true, tableName: true, capacity: true, status: true, qrCode: true, mergedGroupId: true, isActive: true },
     });
 
+    // 2. Tìm các bàn đang có đơn hàng hoạt động (Open/Serving)
+    const activeOrderTables = await prisma.orderTable.findMany({
+      where: {
+        tableID: { in: tables.map(t => t.tableID) },
+        order: { orderStatus: { in: ["Open", "Serving"] }, branchID }
+      },
+      select: { tableID: true }
+    });
+    const activeTableIds = new Set(activeOrderTables.map(ot => ot.tableID));
+
     // Build mergedWith: danh sách các tableID cùng nhóm (trừ chính nó)
     const result = tables.map(t => {
       let mergedWith = [];
@@ -429,6 +439,7 @@ export const getTables = async (req, res) => {
         mergedGroupId: t.mergedGroupId ?? null,
         mergedWith,               // mảng ID các bàn cùng nhóm
         isActive: t.isActive,
+        hasOrder: activeTableIds.has(t.tableID), // Thêm flag này
       };
     });
 
@@ -524,6 +535,19 @@ export const updateTableStatus = async (req, res) => {
 
     const dbStatus = mapStatusToDB(status);
     console.log(`[updateTableStatus] DBStatus mapping: ${dbStatus}`);
+
+    // Nếu muốn đưa về Trống, kiểm tra xem có đơn hàng nào không
+    if (dbStatus === "Available") {
+      const activeOrder = await prisma.orderTable.findFirst({
+        where: {
+          tableID,
+          order: { orderStatus: { in: ["Open", "Serving"] }, branchID }
+        }
+      });
+      if (activeOrder) {
+        return res.status(400).json({ message: "Bàn đang có đơn hàng hoạt động, không thể trả bàn trống." });
+      }
+    }
 
     // Khi thanh toán (về Trống): xóa mergedGroupId của toàn bộ nhóm
     if (dbStatus === "Available" && existing.mergedGroupId) {
