@@ -37,9 +37,6 @@ import {
   saveBranchMenu,
   // Promotions
   getMyPromotions,
-  createMyPromotion,
-  updateMyPromotion,
-  deleteMyPromotion,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -103,9 +100,6 @@ router.post("/menu", requireRole("BranchManager"), saveBranchMenu);
 
 // ===== PROMOTIONS / AUTO-PROMOTIONS =====
 router.get("/promotions",        requireRole("BranchManager", "Staff"), getMyPromotions);
-router.post("/promotions",       requireRole("BranchManager"), createMyPromotion);
-router.put("/promotions/:id",    requireRole("BranchManager"), updateMyPromotion);
-router.delete("/promotions/:id", requireRole("BranchManager"), deleteMyPromotion);
 
 export default router;
 

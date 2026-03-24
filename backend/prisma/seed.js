@@ -387,7 +387,6 @@ async function main() {
         startDate: now,
         endDate: next3Month,
         status: "Active",
-        priority: 1
       },
       {
         restaurantID: rest1.restaurantID,
@@ -398,7 +397,6 @@ async function main() {
         startDate: now,
         endDate: next3Month,
         status: "Active",
-        priority: 1
       },
     ],
   });

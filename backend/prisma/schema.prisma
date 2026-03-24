@@ -251,7 +251,6 @@ model Branch {
   serviceRequests ServiceRequest[]
   staff           User[]           @relation("BranchStaff")
   branchMenuItems BranchMenu[]
-  discounts       Discount[]
 
   @@map("Branches")
 }
@@ -383,7 +382,7 @@ model OrderDetail {
 model Discount {
   discountID        Int             @id @default(autoincrement()) @map("DiscountID")
   restaurantID      Int?            @map("RestaurantID")
-  branchID          Int?            @map("BranchID")            // NULL = toàn chuỗi, có giá trị = chi nhánh cụ thể
+  applicableBranchIDs String?       @map("ApplicableBranchIDs") @db.VarChar(255) // VD: "1,2,5"
   name              String          @map("Name") @db.VarChar(100)
   discountType      DiscountType    @map("DiscountType")
   value             Decimal         @map("Value") @db.Decimal(15, 2)
@@ -393,7 +392,6 @@ model Discount {
   endDate           DateTime?       @map("EndDate")
   happyHourStart    String?         @map("HappyHourStart") @db.VarChar(5)  // "HH:MM"
   happyHourEnd      String?         @map("HappyHourEnd") @db.VarChar(5)    // "HH:MM"
-  priority          Int             @default(0) @map("Priority")           // số cao = ưu tiên hơn
   usageLimit        Int?            @map("UsageLimit")                      // null = không giới hạn
   usedCount         Int             @default(0) @map("UsedCount")
   applicableDays    String?         @map("ApplicableDays") @db.VarChar(50) // Ví dụ: "0,6" (0=CN, 6=T7)
@@ -403,7 +401,6 @@ model Discount {
 
   // Relations
   restaurant Restaurant? @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
-  branch     Branch?     @relation(fields: [branchID], references: [branchID], onDelete: SetNull)
   createdBy  User?       @relation("PromotionCreator", fields: [createdByUserID], references: [userID], onDelete: SetNull)
   invoices   Invoice[]
 

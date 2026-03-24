@@ -95,10 +95,7 @@ export function findBestPromotion(promotions, subTotal) {
 
   for (const p of step2) {
     const amount = calcDiscount(p, sub);
-    if (
-      amount > bestAmount ||
-      (amount === bestAmount && best && p.priority > best.priority)
-    ) {
+    if (amount > bestAmount) {
       best = p;
       bestAmount = amount;
     }

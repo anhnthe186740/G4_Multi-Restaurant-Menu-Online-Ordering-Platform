@@ -370,7 +370,7 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                                     <div className="bg-gray-50 p-6 space-y-3">
                                         <div className="flex justify-between items-center text-gray-500">
                                             <span className="font-medium">Tạm tính</span>
-                                            <span className="font-bold">{formatPrice(billData.totalAmount)}</span>
+                                            <span className="font-bold">{formatPrice(billData.subTotal || billData.totalAmount)}</span>
                                         </div>
                                         {billData.appliedPromotion ? (
                                             <div className="flex justify-between items-center text-emerald-600">
@@ -390,9 +390,16 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                                         )}
                                         <div className="flex justify-between items-center pt-3 border-t border-gray-200">
                                             <span className="text-xl font-black text-gray-900">TỔNG CỘNG</span>
-                                            <span className="text-3xl font-black text-emerald-600 leading-none">
-                                                {formatPrice(Math.max(0, billData.totalAmount - (billData.appliedPromotion?.discountAmount || 0)))}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                                {billData.appliedPromotion && (
+                                                    <span className="text-sm font-bold text-gray-400 line-through mb-1">
+                                                        {formatPrice(billData.subTotal || billData.totalAmount)}
+                                                    </span>
+                                                )}
+                                                <span className="text-3xl font-black text-emerald-600 leading-none">
+                                                    {formatPrice(billData.totalAmount)}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

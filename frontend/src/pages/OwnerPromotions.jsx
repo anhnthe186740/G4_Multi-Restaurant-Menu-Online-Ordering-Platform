@@ -38,7 +38,7 @@ const DAYS_OF_WEEK = [
 const EMPTY_FORM = {
   name: '', description: '', discountType: 'Percentage', value: '', minOrderValue: '',
   maxDiscountAmount: '', startDate: '', endDate: '',
-  happyHourStart: '', happyHourEnd: '', priority: 0, usageLimit: '', branchID: '', applicableDays: []
+  happyHourStart: '', happyHourEnd: '', usageLimit: '', branchIDs: [], applicableDays: []
 };
 
 /* ════════════════════════════════════════════════════════════════════
@@ -55,6 +55,7 @@ export default function OwnerPromotions() {
   const [form, setForm]               = useState(EMPTY_FORM);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showLogicWarning, setShowLogicWarning] = useState(false);
 
   /* ── Fetch ── */
   const fetchAll = useCallback(async () => {
@@ -91,14 +92,35 @@ export default function OwnerPromotions() {
       startDate: p.startDate ? dayjs(p.startDate).format('YYYY-MM-DD') : '',
       endDate:   p.endDate   ? dayjs(p.endDate).format('YYYY-MM-DD')   : '',
       happyHourStart: p.happyHourStart ?? '', happyHourEnd: p.happyHourEnd ?? '',
-      priority: p.priority, usageLimit: p.usageLimit ?? '', branchID: p.branchID ?? '',
+      usageLimit: p.usageLimit ?? '', branchIDs: p.applicableBranchIDs ? p.applicableBranchIDs.split(',').map(Number) : [],
       applicableDays: p.applicableDays ? p.applicableDays.split(',').map(Number) : [],
     });
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    if (!form.name || !form.value) return toast.error('Vui lòng nhập tên và giá trị giảm.');
+  const checkLogicConflict = () => {
+    if (!form.startDate || !form.endDate || !form.applicableDays || form.applicableDays.length === 0) return false;
+    
+    const start = dayjs(form.startDate);
+    const end = dayjs(form.endDate);
+    const diffDays = end.diff(start, 'day');
+    
+    // Nếu khoảng cách >= 6 ngày thì chắc chắn bao phủ hết các thứ trong tuần
+    if (diffDays >= 6) return false;
+    
+    // Kiểm tra từng ngày trong khoảng
+    const daysInRange = [];
+    for (let i = 0; i <= diffDays; i++) {
+      daysInRange.push(start.add(i, 'day').day());
+    }
+    
+    // Nếu không có bất kỳ ngày nào trong dải khớp với applicableDays -> Xung đột
+    const hasOverlap = form.applicableDays.some(d => daysInRange.includes(d));
+    return !hasOverlap;
+  };
+
+  const executeSave = async () => {
+    setShowLogicWarning(false);
     setSaving(true);
     try {
       const payload = {
@@ -108,7 +130,7 @@ export default function OwnerPromotions() {
         minOrderValue: parseFloat(form.minOrderValue) || 0,
         maxDiscountAmount: form.maxDiscountAmount ? parseFloat(form.maxDiscountAmount) : null,
         usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
-        branchID: form.branchID ? parseInt(form.branchID) : null,
+        branchIDs: form.branchIDs,
         startDate: form.startDate || null,
         endDate: form.endDate || null,
         happyHourStart: form.happyHourStart || null,
@@ -128,6 +150,27 @@ export default function OwnerPromotions() {
       toast.error(e?.response?.data?.message || 'Lỗi lưu dữ liệu.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (!form.name.trim()) return toast.error('Vui lòng nhập tên chiến dịch.');
+    if (!form.value || parseFloat(form.value) <= 0) return toast.error('Giá trị giảm phải lớn hơn 0.');
+    if (form.discountType === 'Percentage' && parseFloat(form.value) > 100) return toast.error('Mức giảm phần trăm không được vượt quá 100%.');
+    if (form.minOrderValue && parseFloat(form.minOrderValue) < 0) return toast.error('Đơn tối thiểu không hợp lệ.');
+    if (form.maxDiscountAmount && parseFloat(form.maxDiscountAmount) <= 0) return toast.error('Mức giảm tối đa phải hợp lệ.');
+    if (form.usageLimit && parseInt(form.usageLimit) <= 0) return toast.error('Giới hạn lượt dùng phải từ 1 trở lên.');
+    if (form.startDate && form.endDate && dayjs(form.startDate).isAfter(dayjs(form.endDate))) {
+      return toast.error('Ngày bắt đầu không được sau ngày kết thúc.');
+    }
+    if (form.happyHourStart && form.happyHourEnd && form.happyHourStart >= form.happyHourEnd) {
+      return toast.error('Giờ bắt đầu Happy Hour phải nhỏ hơn Giờ kết thúc.');
+    }
+
+    if (checkLogicConflict()) {
+      setShowLogicWarning(true);
+    } else {
+      executeSave();
     }
   };
 
@@ -291,11 +334,13 @@ export default function OwnerPromotions() {
                           <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${cfg.color}`}>
                             {cfg.label}
                           </span>
-                          {p.branchID === null && (
+                          {!p.applicableBranchIDs && (
                             <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-bold">Toàn chuỗi</span>
                           )}
-                          {p.branchID !== null && p.branch && (
-                            <span className="px-2 py-0.5 rounded-full bg-slate-600/40 border border-slate-600 text-slate-300 text-[10px] font-bold">{p.branch.name}</span>
+                          {p.applicableBranchIDs && (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-600/40 border border-slate-600/60 text-slate-300 text-[10px] font-bold">
+                              {p.applicableBranchIDs.split(',').length} chi nhánh
+                            </span>
                           )}
                         </div>
                         <h3 className="text-white font-bold mt-1.5 truncate">{p.name}</h3>
@@ -506,24 +551,37 @@ export default function OwnerPromotions() {
                 </div>
               </Field>
 
-              {/* Branch + Priority + UsageLimit */}
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Chi nhánh">
-                  <select
-                    className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/60"
-                    value={form.branchID} onChange={e => setForm(f => ({ ...f, branchID: e.target.value }))}
-                  >
-                    <option value="">Toàn chuỗi</option>
-                    {branches.map(b => <option key={b.branchID} value={b.branchID}>{b.name}</option>)}
-                  </select>
-                </Field>
-                <Field label="Ưu tiên">
-                  <input type="number" min="0"
-                    className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/60"
-                    value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-                  />
-                </Field>
-                <Field label="Giới hạn lượt">
+              {/* Applicable Branches */}
+              <Field label="Chi nhánh áp dụng (Bỏ chọn tất cả = Toàn chuỗi)">
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {branches.map(b => {
+                    const isChecked = form.branchIDs.includes(b.branchID);
+                    return (
+                      <button
+                        key={b.branchID}
+                        type="button"
+                        onClick={() => {
+                          const newIds = isChecked
+                            ? form.branchIDs.filter(v => v !== b.branchID)
+                            : [...form.branchIDs, b.branchID];
+                          setForm(f => ({ ...f, branchIDs: newIds }));
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border flex items-center justify-center ${
+                          isChecked
+                            ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-500/30'
+                            : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        {b.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
+
+              {/* Usage Limit */}
+              <div className="grid grid-cols-1 gap-3">
+                <Field label="Giới hạn lượt dùng (Bỏ trống = Không giới hạn)">
                   <input type="number" min="1"
                     className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/60"
                     placeholder="Không giới hạn"
@@ -547,6 +605,44 @@ export default function OwnerPromotions() {
               >
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 {editPromo ? 'Cập nhật' : 'Tạo chiến dịch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════ LOGIC WARNING ════ */}
+      {showLogicWarning && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#111827] border border-amber-900/40 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <AlertCircle size={20} className="text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white">Cảnh báo Logic</h3>
+                <p className="text-slate-400 text-xs">Phát hiện xung đột lịch</p>
+              </div>
+            </div>
+            
+            <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+              Các "Thứ" bạn chọn không nằm trong khoảng "Ngày bắt đầu - kết thúc" của chiến dịch. Khuyến mãi này có khả năng sẽ không bao giờ được kích hoạt. Bạn có chắc chắn muốn lưu cấu hình này?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLogicWarning(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm font-semibold hover:bg-slate-700 transition"
+              >
+                Huỷ để sửa lại
+              </button>
+              <button
+                onClick={executeSave}
+                disabled={saving}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold transition flex items-center gap-2"
+              >
+                {saving && <Loader2 size={14} className="animate-spin" />}
+                Vẫn tiếp tục lưu
               </button>
             </div>
           </div>

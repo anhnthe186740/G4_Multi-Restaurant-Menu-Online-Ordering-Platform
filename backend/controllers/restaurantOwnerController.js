@@ -2320,11 +2320,10 @@ export const getPromotions = async (req, res) => {
     const promotions = await prisma.discount.findMany({
       where: { restaurantID: restaurant.restaurantID },
       include: {
-        branch: { select: { branchID: true, name: true } },
         createdBy: { select: { fullName: true, role: true } },
         _count: { select: { invoices: true } },
       },
-      orderBy: [{ status: 'asc' }, { priority: 'desc' }, { discountID: 'desc' }],
+      orderBy: [{ status: 'asc' }, { discountID: 'desc' }],
     });
 
     res.json(promotions.map(p => ({
@@ -2351,8 +2350,8 @@ export const createPromotion = async (req, res) => {
     const {
       name, description, discountType, value, minOrderValue = 0,
       maxDiscountAmount, startDate, endDate,
-      happyHourStart, happyHourEnd, priority = 0,
-      usageLimit, branchID, applicableDays
+      happyHourStart, happyHourEnd,
+      usageLimit, branchIDs, applicableDays
     } = req.body;
 
     if (!name || !discountType || value === undefined) {
@@ -2362,18 +2361,15 @@ export const createPromotion = async (req, res) => {
       return res.status(400).json({ message: 'discountType phải là Percentage hoặc FixedAmount.' });
     }
 
-    // Validate branchID thuộc restaurant (nếu có)
-    if (branchID) {
-      const branch = await prisma.branch.findFirst({
-        where: { branchID: parseInt(branchID), restaurantID: restaurant.restaurantID },
-      });
-      if (!branch) return res.status(404).json({ message: 'Chi nhánh không thuộc nhà hàng của bạn.' });
+    let applicableBranchIDs = null;
+    if (Array.isArray(branchIDs) && branchIDs.length > 0) {
+      applicableBranchIDs = branchIDs.map(id => parseInt(id, 10)).join(',');
     }
 
     const promo = await prisma.discount.create({
       data: {
         restaurantID: restaurant.restaurantID,
-        branchID: branchID ? parseInt(branchID) : null,
+        applicableBranchIDs,
         name: name.trim(),
         discountType,
         value: parseFloat(value),
@@ -2383,7 +2379,6 @@ export const createPromotion = async (req, res) => {
         endDate: endDate ? new Date(endDate) : null,
         happyHourStart: happyHourStart || null,
         happyHourEnd: happyHourEnd || null,
-        priority: parseInt(priority),
         usageLimit: usageLimit ? parseInt(usageLimit) : null,
         applicableDays: applicableDays || null,
         description: description ? description.trim() : null,
@@ -2415,8 +2410,8 @@ export const updatePromotion = async (req, res) => {
     const {
       name, description, discountType, value, minOrderValue,
       maxDiscountAmount, startDate, endDate,
-      happyHourStart, happyHourEnd, priority,
-      usageLimit, branchID, status, applicableDays
+      happyHourStart, happyHourEnd, 
+      usageLimit, branchIDs, status, applicableDays
     } = req.body;
 
     const updated = await prisma.discount.update({
@@ -2431,9 +2426,10 @@ export const updatePromotion = async (req, res) => {
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
         ...(happyHourStart !== undefined && { happyHourStart: happyHourStart || null }),
         ...(happyHourEnd !== undefined && { happyHourEnd: happyHourEnd || null }),
-        ...(priority !== undefined && { priority: parseInt(priority) }),
         ...(usageLimit !== undefined && { usageLimit: usageLimit ? parseInt(usageLimit) : null }),
-        ...(branchID !== undefined && { branchID: branchID ? parseInt(branchID) : null }),
+        ...(branchIDs !== undefined && { 
+          applicableBranchIDs: (Array.isArray(branchIDs) && branchIDs.length > 0) ? branchIDs.map(id => parseInt(id, 10)).join(',') : null 
+        }),
         ...(status !== undefined && { status }),
         ...(applicableDays !== undefined && { applicableDays: applicableDays || null }),
         ...(description !== undefined && { description: description ? description.trim() : null }),
@@ -2532,19 +2528,25 @@ export const getPromotionReport = async (req, res) => {
       where: { restaurantID: restaurant.restaurantID },
       include: {
         invoices: { select: { discountAmount: true, issuedDate: true } },
-        branch: { select: { name: true } },
       },
     });
 
     const report = promotions.map(p => {
       const totalDiscount = p.invoices.reduce((s, inv) => s + parseFloat(inv.discountAmount || 0), 0);
+      
+      let branchNameStr = 'Toàn chuỗi';
+      if (p.applicableBranchIDs) {
+        const count = p.applicableBranchIDs.split(',').length;
+        branchNameStr = `${count} chi nhánh`;
+      }
+      
       return {
         discountID: p.discountID,
         name: p.name,
         discountType: p.discountType,
         value: parseFloat(p.value),
         status: p.status,
-        branchName: p.branch?.name ?? 'Toàn chuỗi',
+        branchName: branchNameStr,
         usedCount: p.usedCount,
         totalDiscountGiven: totalDiscount,
         invoiceCount: p.invoices.length,

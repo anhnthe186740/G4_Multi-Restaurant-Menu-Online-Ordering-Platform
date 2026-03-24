@@ -214,7 +214,16 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                                         )}
                                         <div className="px-4 py-3 bg-white border-t border-gray-100 flex justify-between items-center">
                                             <span className="font-black text-gray-900">TỔNG CỘNG</span>
-                                            <span className="font-black text-xl text-emerald-600">{formatCurrency(paymentData.amount)}</span>
+                                            <div className="flex flex-col items-end">
+                                                {billData.appliedPromotion && (
+                                                    <span className="text-sm font-bold text-gray-400 line-through mb-0.5">
+                                                        {formatCurrency(billData.subTotal || billData.totalAmount)}
+                                                    </span>
+                                                )}
+                                                <span className="font-black text-xl text-emerald-600 leading-none">
+                                                    {formatCurrency(paymentData.amount)}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -307,6 +316,13 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                             </div>
                         </div>
                     ))}
+                </div>
+
+                <div className="py-2 space-y-1" style={{ borderBottom: '1px solid #eee' }}>
+                    <div className="flex justify-between items-center text-sm">
+                        <span style={{ color: '#6b7280' }}>Tạm tính:</span>
+                        <span className="font-bold">{formatCurrency(billData.subTotal || billData.totalAmount)}</span>
+                    </div>
                 </div>
 
                 {billData?.appliedPromotion && (
