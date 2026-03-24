@@ -52,6 +52,7 @@ import {
   approvePromotion,
   rejectPromotion,
   getPromotionReport,
+  togglePromotion,
 } from "../controllers/restaurantOwnerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import checkSubscription from "../middlewares/checkSub.js";
@@ -134,5 +135,6 @@ router.put("/promotions/:id",     requireRole("RestaurantOwner"), updatePromotio
 router.delete("/promotions/:id",  requireRole("RestaurantOwner"), deletePromotion);
 router.patch("/promotions/:id/approve", requireRole("RestaurantOwner"), approvePromotion);
 router.patch("/promotions/:id/reject",  requireRole("RestaurantOwner"), rejectPromotion);
+router.patch("/promotions/:id/toggle",  requireRole("RestaurantOwner"), togglePromotion);
 
 export default router;

@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Tag, Plus, Pencil, Trash2, CheckCircle2, XCircle, Loader2, Clock, AlertCircle, TrendingDown, BadgePercent, DollarSign, RefreshCw, Gift, ChevronDown, BarChart3, Zap, Calendar, Users } from 'lucide-react';
+import { Tag, Plus, Pencil, CheckCircle2, XCircle, Loader2, Clock, AlertCircle, TrendingDown, BadgePercent, DollarSign, RefreshCw, Gift, ChevronDown, BarChart3, Zap, Calendar, Users } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import dayjs from 'dayjs';
 import {
   getOwnerPromotions, createOwnerPromotion, updateOwnerPromotion,
   deleteOwnerPromotion, approveOwnerPromotion, rejectOwnerPromotion,
-  getOwnerPromotionReport
+  getOwnerPromotionReport, toggleOwnerPromotion
 } from '../api/ownerApi';
 import { getOwnerBranches } from '../api/ownerApi';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
@@ -55,7 +55,6 @@ export default function OwnerPromotions() {
   const [editPromo, setEditPromo]     = useState(null);
   const [form, setForm]               = useState(EMPTY_FORM);
   const [saving, setSaving]           = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null);
   const [showLogicWarning, setShowLogicWarning] = useState(false);
 
   /* ── Fetch ── */
@@ -146,9 +145,18 @@ export default function OwnerPromotions() {
       setShowModal(false);
       fetchAll();
     } catch (e) {
-      toast.error(e?.response?.data?.message || 'Lỗi lưu dữ liệu.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggle = async (id) => {
+    try {
+      const res = await toggleOwnerPromotion(id);
+      toast.success(res.data.message);
+      fetchAll();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Lỗi bật/tắt chiến dịch.');
     }
   };
 
@@ -160,15 +168,6 @@ export default function OwnerPromotions() {
     
     if (checkLogicConflict()) setShowLogicWarning(true);
     else executeSave();
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await deleteOwnerPromotion(id);
-      toast.success('Đã xoá chiến dịch.');
-      setConfirmDelete(null);
-      fetchAll();
-    } catch (e) { toast.error('Lỗi: ' + (e?.response?.data?.message || e.message)); }
   };
 
   const handleApprove = async (id) => {
@@ -376,11 +375,17 @@ export default function OwnerPromotions() {
                           </button>
                         </>
                       )}
+                      {p.status !== 'PendingApproval' && (
+                        <button 
+                          onClick={() => handleToggle(p.discountID)} 
+                          className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl transition-all active:scale-95 border ${p.status === 'Active' ? 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'}`}
+                          title={p.status === 'Active' ? 'Tắt tạm thời' : 'Bật lại'}
+                        >
+                          <Zap size={16} fill={p.status === 'Active' ? 'currentColor' : 'none'} />
+                        </button>
+                      )}
                       <button onClick={() => openEdit(p)} className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-400 hover:text-blue-600 transition-all active:scale-95 border border-slate-200">
                         <Pencil size={16} />
-                      </button>
-                      <button onClick={() => setConfirmDelete(p)} className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-white hover:bg-rose-50 text-rose-400 hover:text-rose-600 transition-all active:scale-95 border border-slate-200">
-                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
@@ -500,22 +505,6 @@ export default function OwnerPromotions() {
              <div className="flex flex-col gap-3">
                 <button onClick={executeSave} disabled={saving} className="w-full py-4 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest text-xs shadow-xl active:scale-95">Xác nhận lưu</button>
                 <button onClick={() => setShowLogicWarning(false)} className="w-full py-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-black uppercase tracking-widest text-xs transition-all">Quay lại sửa</button>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════ CONFIRM DELETE ════ */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white border border-slate-200 rounded-[40px] p-10 max-w-md w-full shadow-2xl relative overflow-hidden text-center">
-             <div className="absolute top-0 left-0 w-full h-1 bg-rose-500" />
-             <div className="w-20 h-20 rounded-3xl bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto mb-6 shadow-sm"><Trash2 size={40} className="text-rose-600" /></div>
-             <h3 className="text-2xl font-black text-slate-800 mb-2">Xoá chiến dịch?</h3>
-             <p className="text-slate-500 text-sm mb-10">Bạn có chắc muốn xóa <span className="text-slate-800 font-bold">"{confirmDelete.name}"</span>? Hành động này không thể hoàn tác.</p>
-             <div className="flex flex-col gap-3">
-                <button onClick={() => handleDelete(confirmDelete.discountID)} className="w-full py-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest text-xs shadow-xl active:scale-95">Đồng ý xoá</button>
-                <button onClick={() => setConfirmDelete(null)} className="w-full py-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-black uppercase tracking-widest text-xs">Giữ lại</button>
              </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ import {
     Search, Download, Eye, TrendingUp, TrendingDown,
     Banknote, CreditCard, Smartphone, RefreshCw,
     ChevronLeft, ChevronRight, X, Calendar, Filter,
-    RotateCcw, Receipt, Building2
+    RotateCcw, Receipt, Building2, Tag
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -108,6 +108,7 @@ function TransactionModal({ tx, onClose }) {
                     {[
                         { label: 'Mã đơn hàng', value: tx.orderID ? `#ORD-${tx.orderID}` : '—', icon: Receipt },
                         { label: 'Chi nhánh', value: tx.branchName || '—', icon: Building2 },
+                        { label: 'Khuyến mãi', value: tx.discountName || '—', icon: Tag },
                         { label: 'Phương thức', value: method.label || tx.paymentMethod, icon: MethodIcon },
                         { label: 'Thời gian', value: fmtDate(tx.transactionTime), icon: Calendar },
                     ].map(({ label, value, icon: Icon }) => (

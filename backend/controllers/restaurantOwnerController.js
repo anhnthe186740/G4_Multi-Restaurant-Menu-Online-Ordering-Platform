@@ -718,6 +718,7 @@ export const getPaymentHistory = async (req, res) => {
       include: {
         invoice: {
           include: {
+            discount: { select: { name: true } },
             order: {
               include: {
                 branch: { select: { name: true } },
@@ -778,6 +779,7 @@ export const getPaymentHistory = async (req, res) => {
       branchName: t.invoice?.order?.branch?.name ?? null,
       paymentMethod: t.paymentMethod,
       amount: parseFloat(t.amount),
+      discountName: t.invoice?.discount?.name || null,
       status: t.status,
       transactionTime: t.transactionTime,
       paymentGatewayRef: t.paymentGatewayRef,
@@ -2514,6 +2516,40 @@ export const rejectPromotion = async (req, res) => {
     res.json({ message: 'Đã từ chối chiến dịch.' });
   } catch (err) {
     console.error('rejectPromotion error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/* ── PATCH /api/owner/promotions/:id/toggle ── */
+export const togglePromotion = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const promoID = parseInt(req.params.id);
+    const existing = await prisma.discount.findFirst({
+      where: { discountID: promoID, restaurantID: restaurant.restaurantID },
+    });
+    if (!existing) return res.status(404).json({ message: 'Chiến dịch không tồn tại.' });
+
+    // PendingApproval không cho toggle (phải Duyệt hoặc Từ chối trước)
+    if (existing.status === 'PendingApproval') {
+      return res.status(400).json({ message: 'Chiến dịch đang chờ duyệt, không thể bật/tắt.' });
+    }
+
+    const newStatus = existing.status === 'Active' ? 'Inactive' : 'Active';
+    const updated = await prisma.discount.update({
+      where: { discountID: promoID },
+      data: { status: newStatus },
+    });
+
+    res.json({ 
+      message: `Đã ${newStatus === 'Active' ? 'bật' : 'tắt'} chiến dịch thành công!`, 
+      promotion: updated 
+    });
+  } catch (err) {
+    console.error('togglePromotion error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   }
 };

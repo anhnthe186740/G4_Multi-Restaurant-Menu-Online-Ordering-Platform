@@ -92,6 +92,7 @@ export const deleteOwnerPromotion    = (id)       => ownerAxios.delete(`/owner/p
 export const approveOwnerPromotion   = (id)       => ownerAxios.patch(`/owner/promotions/${id}/approve`);
 export const rejectOwnerPromotion    = (id)       => ownerAxios.patch(`/owner/promotions/${id}/reject`);
 export const getOwnerPromotionReport = ()         => ownerAxios.get("/owner/promotions/report");
+export const toggleOwnerPromotion    = (id)       => ownerAxios.patch(`/owner/promotions/${id}/toggle`);
 
 export default ownerAxios;
 
