@@ -108,7 +108,8 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     };
 
     const handleProcessPayment = async (method = "Cash") => {
-        if (!window.confirm(`Xác nhận thanh toán ${formatPrice(billData.totalAmount)} bằng Tiền mặt?`)) {
+        const finalAmount = Math.max(0, billData.totalAmount - (billData.appliedPromotion?.discountAmount || 0));
+        if (!window.confirm(`Xác nhận thanh toán ${formatPrice(finalAmount)} bằng Tiền mặt?`)) {
             return;
         }
         try {
@@ -371,13 +372,27 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
                                             <span className="font-medium">Tạm tính</span>
                                             <span className="font-bold">{formatPrice(billData.totalAmount)}</span>
                                         </div>
-                                        <div className="flex justify-between items-center text-emerald-600">
-                                            <span className="font-medium">Giảm giá</span>
-                                            <span className="font-bold">0 đ</span>
-                                        </div>
+                                        {billData.appliedPromotion ? (
+                                            <div className="flex justify-between items-center text-emerald-600">
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">Giảm giá</span>
+                                                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded uppercase mt-0.5 font-bold w-max">
+                                                        {billData.appliedPromotion.name}
+                                                    </span>
+                                                </div>
+                                                <span className="font-bold text-lg">- {formatPrice(billData.appliedPromotion.discountAmount)}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between items-center text-gray-400">
+                                                <span className="font-medium">Giảm giá</span>
+                                                <span className="font-bold">0 đ</span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between items-center pt-3 border-t border-gray-200">
                                             <span className="text-xl font-black text-gray-900">TỔNG CỘNG</span>
-                                            <span className="text-3xl font-black text-emerald-600 leading-none">{formatPrice(billData.totalAmount)}</span>
+                                            <span className="text-3xl font-black text-emerald-600 leading-none">
+                                                {formatPrice(Math.max(0, billData.totalAmount - (billData.appliedPromotion?.discountAmount || 0)))}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

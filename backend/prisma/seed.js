@@ -380,21 +380,25 @@ async function main() {
     data: [
       {
         restaurantID: rest1.restaurantID,
-        code: "WELCOME10",
+        name: "Giảm 10% Khách mới",
         discountType: "Percentage",
         value: 10,
         minOrderValue: 100000,
         startDate: now,
         endDate: next3Month,
+        status: "Active",
+        priority: 1
       },
       {
         restaurantID: rest1.restaurantID,
-        code: "FREESHIP50K",
+        name: "Giảm thẳng 50k",
         discountType: "FixedAmount",
         value: 50000,
         minOrderValue: 200000,
         startDate: now,
         endDate: next3Month,
+        status: "Active",
+        priority: 1
       },
     ],
   });

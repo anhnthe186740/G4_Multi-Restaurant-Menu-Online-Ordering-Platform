@@ -77,6 +77,12 @@ enum DiscountType {
   FixedAmount
 }
 
+enum PromotionStatus {
+  Active
+  PendingApproval
+  Inactive
+}
+
 enum InvoiceStatus {
   Open
   Closed
@@ -141,6 +147,7 @@ model User {
   createdOrders        Order[]
   supportTickets       SupportTicket[]
   resetTokens          PasswordResetToken[]
+  createdPromotions    Discount[]            @relation("PromotionCreator")
 
   @@map("Users")
 }
@@ -244,6 +251,7 @@ model Branch {
   serviceRequests ServiceRequest[]
   staff           User[]           @relation("BranchStaff")
   branchMenuItems BranchMenu[]
+  discounts       Discount[]
 
   @@map("Branches")
 }
@@ -371,19 +379,32 @@ model OrderDetail {
   @@map("OrderDetails")
 }
 
-// 13. Discounts
+// 13. Discounts (Auto-Promotions)
 model Discount {
-  discountID    Int          @id @default(autoincrement()) @map("DiscountID")
-  restaurantID  Int?         @map("RestaurantID")
-  code          String       @unique @map("Code") @db.VarChar(50)
-  discountType  DiscountType @map("DiscountType")
-  value         Decimal      @map("Value") @db.Decimal(15, 2)
-  minOrderValue Decimal      @default(0) @map("MinOrderValue") @db.Decimal(15, 2)
-  startDate     DateTime?    @map("StartDate")
-  endDate       DateTime?    @map("EndDate")
+  discountID        Int             @id @default(autoincrement()) @map("DiscountID")
+  restaurantID      Int?            @map("RestaurantID")
+  branchID          Int?            @map("BranchID")            // NULL = toàn chuỗi, có giá trị = chi nhánh cụ thể
+  name              String          @map("Name") @db.VarChar(100)
+  discountType      DiscountType    @map("DiscountType")
+  value             Decimal         @map("Value") @db.Decimal(15, 2)
+  minOrderValue     Decimal         @default(0) @map("MinOrderValue") @db.Decimal(15, 2)
+  maxDiscountAmount Decimal?        @map("MaxDiscountAmount") @db.Decimal(15, 2) // cap số tiền giảm tối đa
+  startDate         DateTime?       @map("StartDate")
+  endDate           DateTime?       @map("EndDate")
+  happyHourStart    String?         @map("HappyHourStart") @db.VarChar(5)  // "HH:MM"
+  happyHourEnd      String?         @map("HappyHourEnd") @db.VarChar(5)    // "HH:MM"
+  priority          Int             @default(0) @map("Priority")           // số cao = ưu tiên hơn
+  usageLimit        Int?            @map("UsageLimit")                      // null = không giới hạn
+  usedCount         Int             @default(0) @map("UsedCount")
+  applicableDays    String?         @map("ApplicableDays") @db.VarChar(50) // Ví dụ: "0,6" (0=CN, 6=T7)
+  description       String?         @map("Description") @db.Text
+  status            PromotionStatus @default(Active) @map("Status")
+  createdByUserID   Int?            @map("CreatedByUserID")
 
   // Relations
   restaurant Restaurant? @relation(fields: [restaurantID], references: [restaurantID], onDelete: Cascade)
+  branch     Branch?     @relation(fields: [branchID], references: [branchID], onDelete: SetNull)
+  createdBy  User?       @relation("PromotionCreator", fields: [createdByUserID], references: [userID], onDelete: SetNull)
   invoices   Invoice[]
 
   @@map("Discounts")

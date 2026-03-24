@@ -201,6 +201,17 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                                                 </div>
                                             ))}
                                         </div>
+                                        {billData.appliedPromotion && (
+                                            <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-100 flex flex-col gap-1">
+                                                <div className="flex justify-between items-center text-emerald-700">
+                                                    <span className="font-bold text-sm">Khuyến mãi</span>
+                                                    <span className="font-bold text-sm">- {formatCurrency(billData.appliedPromotion.discountAmount)}</span>
+                                                </div>
+                                                <span className="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded uppercase font-bold w-max">
+                                                    {billData.appliedPromotion.name}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="px-4 py-3 bg-white border-t border-gray-100 flex justify-between items-center">
                                             <span className="font-black text-gray-900">TỔNG CỘNG</span>
                                             <span className="font-black text-xl text-emerald-600">{formatCurrency(paymentData.amount)}</span>
@@ -297,6 +308,18 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                         </div>
                     ))}
                 </div>
+
+                {billData?.appliedPromotion && (
+                    <div className="py-2 mb-4 space-y-1" style={{ borderBottom: '1px solid #d1d5db' }}>
+                        <div className="flex justify-between font-bold" style={{ color: '#059669' }}>
+                            <span>KHUYẾN MÃI</span>
+                            <span>- {formatCurrency(billData.appliedPromotion.discountAmount)}</span>
+                        </div>
+                        <div className="text-xs" style={{ color: '#059669' }}>
+                            {billData.appliedPromotion.name}
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex justify-between items-center mb-8">
                     <span className="text-lg font-black tracking-wide">TỔNG CỘNG</span>

@@ -2305,3 +2305,256 @@ export const updateOwnerManager = async (req, res) => {
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
+
+/* ================================================================
+   PROMOTION (AUTO-PROMOTIONS) — Owner Management
+================================================================ */
+
+/* ── GET /api/owner/promotions ── */
+export const getPromotions = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const promotions = await prisma.discount.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      include: {
+        branch: { select: { branchID: true, name: true } },
+        createdBy: { select: { fullName: true, role: true } },
+        _count: { select: { invoices: true } },
+      },
+      orderBy: [{ status: 'asc' }, { priority: 'desc' }, { discountID: 'desc' }],
+    });
+
+    res.json(promotions.map(p => ({
+      ...p,
+      value: parseFloat(p.value),
+      minOrderValue: parseFloat(p.minOrderValue),
+      maxDiscountAmount: p.maxDiscountAmount ? parseFloat(p.maxDiscountAmount) : null,
+      usedCount: p.usedCount,
+      invoiceCount: p._count.invoices,
+    })));
+  } catch (err) {
+    console.error('getPromotions error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/* ── POST /api/owner/promotions ── */
+export const createPromotion = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const {
+      name, description, discountType, value, minOrderValue = 0,
+      maxDiscountAmount, startDate, endDate,
+      happyHourStart, happyHourEnd, priority = 0,
+      usageLimit, branchID, applicableDays
+    } = req.body;
+
+    if (!name || !discountType || value === undefined) {
+      return res.status(400).json({ message: 'Thiếu tên, loại hoặc giá trị giảm giá.' });
+    }
+    if (!['Percentage', 'FixedAmount'].includes(discountType)) {
+      return res.status(400).json({ message: 'discountType phải là Percentage hoặc FixedAmount.' });
+    }
+
+    // Validate branchID thuộc restaurant (nếu có)
+    if (branchID) {
+      const branch = await prisma.branch.findFirst({
+        where: { branchID: parseInt(branchID), restaurantID: restaurant.restaurantID },
+      });
+      if (!branch) return res.status(404).json({ message: 'Chi nhánh không thuộc nhà hàng của bạn.' });
+    }
+
+    const promo = await prisma.discount.create({
+      data: {
+        restaurantID: restaurant.restaurantID,
+        branchID: branchID ? parseInt(branchID) : null,
+        name: name.trim(),
+        discountType,
+        value: parseFloat(value),
+        minOrderValue: parseFloat(minOrderValue),
+        maxDiscountAmount: maxDiscountAmount ? parseFloat(maxDiscountAmount) : null,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        happyHourStart: happyHourStart || null,
+        happyHourEnd: happyHourEnd || null,
+        priority: parseInt(priority),
+        usageLimit: usageLimit ? parseInt(usageLimit) : null,
+        applicableDays: applicableDays || null,
+        description: description ? description.trim() : null,
+        status: 'Active', // Owner tạo → luôn Active ngay
+        createdByUserID: userID,
+      },
+    });
+
+    res.status(201).json({ message: 'Tạo chiến dịch thành công!', promotion: promo });
+  } catch (err) {
+    console.error('createPromotion error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/* ── PUT /api/owner/promotions/:id ── */
+export const updatePromotion = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const promoID = parseInt(req.params.id);
+    const existing = await prisma.discount.findFirst({
+      where: { discountID: promoID, restaurantID: restaurant.restaurantID },
+    });
+    if (!existing) return res.status(404).json({ message: 'Chiến dịch không tồn tại.' });
+
+    const {
+      name, description, discountType, value, minOrderValue,
+      maxDiscountAmount, startDate, endDate,
+      happyHourStart, happyHourEnd, priority,
+      usageLimit, branchID, status, applicableDays
+    } = req.body;
+
+    const updated = await prisma.discount.update({
+      where: { discountID: promoID },
+      data: {
+        ...(name !== undefined && { name: name.trim() }),
+        ...(discountType !== undefined && { discountType }),
+        ...(value !== undefined && { value: parseFloat(value) }),
+        ...(minOrderValue !== undefined && { minOrderValue: parseFloat(minOrderValue) }),
+        ...(maxDiscountAmount !== undefined && { maxDiscountAmount: maxDiscountAmount ? parseFloat(maxDiscountAmount) : null }),
+        ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
+        ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+        ...(happyHourStart !== undefined && { happyHourStart: happyHourStart || null }),
+        ...(happyHourEnd !== undefined && { happyHourEnd: happyHourEnd || null }),
+        ...(priority !== undefined && { priority: parseInt(priority) }),
+        ...(usageLimit !== undefined && { usageLimit: usageLimit ? parseInt(usageLimit) : null }),
+        ...(branchID !== undefined && { branchID: branchID ? parseInt(branchID) : null }),
+        ...(status !== undefined && { status }),
+        ...(applicableDays !== undefined && { applicableDays: applicableDays || null }),
+        ...(description !== undefined && { description: description ? description.trim() : null }),
+      },
+    });
+
+    res.json({ message: 'Cập nhật chiến dịch thành công!', promotion: updated });
+  } catch (err) {
+    console.error('updatePromotion error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/* ── DELETE /api/owner/promotions/:id ── */
+export const deletePromotion = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const promoID = parseInt(req.params.id);
+    const existing = await prisma.discount.findFirst({
+      where: { discountID: promoID, restaurantID: restaurant.restaurantID },
+    });
+    if (!existing) return res.status(404).json({ message: 'Chiến dịch không tồn tại.' });
+
+    // Nếu đã có invoice → không xoá cứng, chỉ deactivate
+    const invoiceCount = await prisma.invoice.count({ where: { discountID: promoID } });
+    if (invoiceCount > 0) {
+      await prisma.discount.update({ where: { discountID: promoID }, data: { status: 'Inactive' } });
+      return res.json({ message: 'Chiến dịch đã được vô hiệu hóa (đã có hoá đơn liên kết).' });
+    }
+
+    await prisma.discount.delete({ where: { discountID: promoID } });
+    res.json({ message: 'Đã xoá chiến dịch thành công.' });
+  } catch (err) {
+    console.error('deletePromotion error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/* ── PATCH /api/owner/promotions/:id/approve ── */
+export const approvePromotion = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const promoID = parseInt(req.params.id);
+    const existing = await prisma.discount.findFirst({
+      where: { discountID: promoID, restaurantID: restaurant.restaurantID, status: 'PendingApproval' },
+    });
+    if (!existing) return res.status(404).json({ message: 'Chiến dịch không tồn tại hoặc không ở trạng thái chờ duyệt.' });
+
+    const updated = await prisma.discount.update({
+      where: { discountID: promoID },
+      data: { status: 'Active' },
+    });
+
+    res.json({ message: 'Đã duyệt chiến dịch thành công!', promotion: updated });
+  } catch (err) {
+    console.error('approvePromotion error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/* ── PATCH /api/owner/promotions/:id/reject ── */
+export const rejectPromotion = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const promoID = parseInt(req.params.id);
+    const existing = await prisma.discount.findFirst({
+      where: { discountID: promoID, restaurantID: restaurant.restaurantID },
+    });
+    if (!existing) return res.status(404).json({ message: 'Chiến dịch không tồn tại.' });
+
+    await prisma.discount.update({ where: { discountID: promoID }, data: { status: 'Inactive' } });
+    res.json({ message: 'Đã từ chối chiến dịch.' });
+  } catch (err) {
+    console.error('rejectPromotion error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/* ── GET /api/owner/promotions/report ── */
+export const getPromotionReport = async (req, res) => {
+  try {
+    const userID = req.user.userId;
+    const restaurant = await getOwnerRestaurant(userID);
+    if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng.' });
+
+    const promotions = await prisma.discount.findMany({
+      where: { restaurantID: restaurant.restaurantID },
+      include: {
+        invoices: { select: { discountAmount: true, issuedDate: true } },
+        branch: { select: { name: true } },
+      },
+    });
+
+    const report = promotions.map(p => {
+      const totalDiscount = p.invoices.reduce((s, inv) => s + parseFloat(inv.discountAmount || 0), 0);
+      return {
+        discountID: p.discountID,
+        name: p.name,
+        discountType: p.discountType,
+        value: parseFloat(p.value),
+        status: p.status,
+        branchName: p.branch?.name ?? 'Toàn chuỗi',
+        usedCount: p.usedCount,
+        totalDiscountGiven: totalDiscount,
+        invoiceCount: p.invoices.length,
+      };
+    });
+
+    res.json(report);
+  } catch (err) {
+    console.error('getPromotionReport error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+

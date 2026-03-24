@@ -35,6 +35,11 @@ import {
   createManagerServiceRequest,
   getBranchMenu,
   saveBranchMenu,
+  // Promotions
+  getMyPromotions,
+  createMyPromotion,
+  updateMyPromotion,
+  deleteMyPromotion,
 } from "../controllers/branchManagerController.js";
 import { authenticateToken, requireRole } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -64,11 +69,8 @@ router.post("/confirm-order",      requireRole("BranchManager", "Staff"), confir
 router.get("/tables/:id/bill",           requireRole("BranchManager", "Staff"), getBillByTable);
 router.post("/tables/:id/checkout",      requireRole("BranchManager", "Staff"), processManagerCheckout);
 router.get("/tables/:id/order-details",  requireRole("BranchManager", "Staff"), getTableOrderDetails);
-
-router.get("/tables/:id/bill",     getBillByTable);
-router.post("/tables/:id/checkout", processManagerCheckout);
-router.post("/tables/:id/payment-link", createTablePaymentLink);
-router.get("/tables/:id/payment-status/:orderCode", checkTablePaymentStatus);
+router.post("/tables/:id/payment-link", requireRole("BranchManager", "Staff"), createTablePaymentLink);
+router.get("/tables/:id/payment-status/:orderCode", requireRole("BranchManager", "Staff"), checkTablePaymentStatus);
 // Orders (Manager + Staff)
 router.get("/orders",              requireRole("BranchManager", "Staff"), getOrders);
 router.patch("/orders/:id/status", requireRole("BranchManager", "Staff"), updateOrderStatus);
@@ -98,6 +100,12 @@ router.delete("/staff/:id",       requireRole("BranchManager"), deleteBranchStaf
 // Branch Menu (Manager only)
 router.get("/menu",  requireRole("BranchManager"), getBranchMenu);
 router.post("/menu", requireRole("BranchManager"), saveBranchMenu);
+
+// ===== PROMOTIONS / AUTO-PROMOTIONS =====
+router.get("/promotions",        requireRole("BranchManager", "Staff"), getMyPromotions);
+router.post("/promotions",       requireRole("BranchManager"), createMyPromotion);
+router.put("/promotions/:id",    requireRole("BranchManager"), updateMyPromotion);
+router.delete("/promotions/:id", requireRole("BranchManager"), deleteMyPromotion);
 
 export default router;
 

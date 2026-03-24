@@ -38,6 +38,8 @@ import ManagerPaymentHistory from "./pages/ManagerPaymentHistory";
 import ManagerStaff from "./pages/ManagerStaff";
 import ManagerCreateStaff from "./pages/ManagerCreateStaff";
 import ManagerMenu from "./pages/ManagerMenu";
+import OwnerPromotions from "./pages/OwnerPromotions";
+import ManagerPromotions from "./pages/ManagerPromotions";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SubscriptionGuard from "./components/SubscriptionGuard";
 import SelfOrderingMenu from "./pages/SelfOrderingMenu";
@@ -352,6 +354,25 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="BranchManager">
               <ManagerMenu />
+            </ProtectedRoute>
+          }
+        />
+        {/* ── AUTO PROMOTIONS ── */}
+        <Route
+          path="/owner/promotions"
+          element={
+            <ProtectedRoute requiredRole="RestaurantOwner">
+              <SubscriptionGuard>
+                <OwnerPromotions />
+              </SubscriptionGuard>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/promotions"
+          element={
+            <ProtectedRoute requiredRole="BranchManager">
+              <ManagerPromotions />
             </ProtectedRoute>
           }
         />
