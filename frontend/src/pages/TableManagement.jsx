@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { io } from "socket.io-client";
 import { getServerIP } from '../api/publicApi';
+import { SOCKET_URL, UPLOADS_URL } from '../api/config';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     Search, Plus, QrCode, Pencil, Trash2, Users,
@@ -509,7 +510,7 @@ function PrintQRModal({ tables, onClose }) {
                                     <h3 className={`font-bold text-sm mb-3 ${isSelected ? 'text-emerald-900' : 'text-gray-700'}`}>{table.name}</h3>
                                     <div className={`p-2 bg-white rounded-lg border-2 border-dashed ${isSelected ? 'border-emerald-100' : 'border-gray-50'}`}>
                                         <QRCodeSVG 
-                                            value={`http://${serverIP}:5173/self-order?tableId=${table.id}`} 
+                                            value={`${window.location.origin}/self-order?tableId=${table.id}`} 
                                             size={64}
                                             level="L"
                                         />
@@ -545,7 +546,7 @@ function PrintQRModal({ tables, onClose }) {
                             <h2 className="text-4xl font-black mb-6 text-gray-900 uppercase tracking-widest">{table.name}</h2>
                             <div className="p-4 bg-white border-2 border-gray-100 rounded-3xl shadow-sm">
                                 <QRCodeSVG 
-                                    value={`http://${serverIP}:5173/self-order?tableId=${table.id}`} 
+                                    value={`${window.location.origin}/self-order?tableId=${table.id}`} 
                                     size={280}
                                     level="H"
                                 />
@@ -791,7 +792,7 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
                                                 }`}>
                                                 {/* Ảnh mon */}
                                                 {item.imageURL ? (
-                                                    <img src={`http://${window.location.hostname}:5000${item.imageURL}`}
+                                                    <img src={`${UPLOADS_URL}${item.imageURL}`}
                                                         alt={item.productName}
                                                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                                                 ) : (
