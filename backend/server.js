@@ -42,9 +42,23 @@ io.on("connection", (socket) => {
   });
 });
 
-// CORS Configuration — explicitly allow Authorization header
+// CORS Configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:5174"
+].filter(Boolean);
+
 const corsOptions = {
-  origin: true,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== "production") {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
