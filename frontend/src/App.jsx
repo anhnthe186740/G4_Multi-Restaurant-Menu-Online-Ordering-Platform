@@ -44,6 +44,12 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SubscriptionGuard from "./components/SubscriptionGuard";
 import SelfOrderingMenu from "./pages/SelfOrderingMenu";
 
+// Import new pages
+import FeaturesPage from "./pages/FeaturesPage";
+import PricingPage from "./pages/PricingPage";
+import SolutionsPage from "./pages/SolutionsPage";
+import ContactPage from "./pages/ContactPage";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -91,6 +97,40 @@ export default function App() {
             <AuthLayout>
               <ResetPassword />
             </AuthLayout>
+          }
+        />
+
+        {/* Public Marketing Pages */}
+        <Route
+          path="/features"
+          element={
+            <MainLayout>
+              <FeaturesPage />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/pricing"
+          element={
+            <MainLayout>
+              <PricingPage />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/solutions"
+          element={
+            <MainLayout>
+              <SolutionsPage />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/contact"
+          element={
+            <MainLayout>
+              <ContactPage />
+            </MainLayout>
           }
         />
 

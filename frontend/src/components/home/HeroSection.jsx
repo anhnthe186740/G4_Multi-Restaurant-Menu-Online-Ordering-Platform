@@ -1,4 +1,7 @@
+import { useNavigate } from "react-router-dom";
+
 export default function HeroSection() {
+    const navigate = useNavigate();
     return (
         <section className="relative pt-12 pb-20 md:pt-24 md:pb-32 overflow-hidden">
             {/* Background glow effect */}
@@ -26,7 +29,10 @@ export default function HeroSection() {
                         <button className="h-12 px-8 rounded-full bg-green-500 hover:bg-green-600 text-white font-bold transition shadow-lg shadow-green-500/25">
                             Dùng thử miễn phí
                         </button>
-                        <button className="h-12 px-8 rounded-full border border-gray-600 hover:border-white text-gray-300 hover:text-white font-bold transition">
+                        <button 
+                            onClick={() => navigate("/features")}
+                            className="h-12 px-8 rounded-full border border-gray-600 hover:border-white text-gray-300 hover:text-white font-bold transition"
+                        >
                             Xem bản Demo
                         </button>
                     </div>

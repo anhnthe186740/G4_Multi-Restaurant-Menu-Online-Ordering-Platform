@@ -1,6 +1,7 @@
 import Header from "./Header";
 import Footer from "./Footer";
 import RegistrationStatusButton from "../RegistrationStatusButton";
+import FloatingContactButtons from "./FloatingContactButtons";
 
 export default function MainLayout({ children }) {
   return (
@@ -19,6 +20,9 @@ export default function MainLayout({ children }) {
 
       {/* Floating registration status button */}
       <RegistrationStatusButton />
+
+      {/* Floating contact buttons (Zalo & Phone) */}
+      <FloatingContactButtons />
     </div>
   );
 }

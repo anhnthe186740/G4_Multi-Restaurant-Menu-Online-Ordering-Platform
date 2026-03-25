@@ -43,10 +43,19 @@ export default function Header() {
 
         {/* NAV LINKS */}
         <nav className="hidden md:flex items-center gap-8">
-          {['Tính năng', 'Bảng giá', 'Giải pháp', 'Liên hệ'].map((item) => (
-            <a key={item} href="#" className="text-sm font-medium text-gray-300 hover:text-white transition">
-              {item}
-            </a>
+          {[
+            { name: 'Tính năng', path: '/features' },
+            { name: 'Bảng giá', path: '/pricing' },
+            { name: 'Giải pháp', path: '/solutions' },
+            { name: 'Liên hệ', path: '/contact' }
+          ].map((item) => (
+            <Link 
+              key={item.name} 
+              to={item.path} 
+              className="text-sm font-medium text-gray-300 hover:text-white hover:underline transition underline-offset-4"
+            >
+              {item.name}
+            </Link>
           ))}
         </nav>
 
