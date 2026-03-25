@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node --env-file=.env server.js",
-    "dev": "nodemon --env-file=.env server.js",
+    "dev": "node prisma/seed.js && nodemon --env-file=.env server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "setup": "npm install && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js"
   },

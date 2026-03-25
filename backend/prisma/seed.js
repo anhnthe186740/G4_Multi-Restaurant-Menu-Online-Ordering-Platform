@@ -21,25 +21,25 @@ async function main() {
   // =============================================
   // 0. CLEAN UP (xóa theo thứ tự FK)
   // =============================================
-  await prisma.transaction.deleteMany();
-  await prisma.invoiceDetail.deleteMany();
-  await prisma.invoice.deleteMany();
-  await prisma.orderDetail.deleteMany();
-  await prisma.orderTable.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.serviceRequest.deleteMany();
-  await prisma.supportTicket.deleteMany();
-  await prisma.registrationRequest.deleteMany();
-  await prisma.table.deleteMany();
-  await prisma.branch.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.category.deleteMany();
-  await prisma.discount.deleteMany();
-  await prisma.subscription.deleteMany();
-  await prisma.restaurant.deleteMany();
-  await prisma.servicePackage.deleteMany();
-  await prisma.user.deleteMany();
-  console.log("✅ Đã xóa dữ liệu cũ\n");
+  await prisma.transaction.deleteMany(); console.log("   - Xóa Transactions");
+  await prisma.invoiceDetail.deleteMany(); console.log("   - Xóa InvoiceDetails");
+  await prisma.invoice.deleteMany(); console.log("   - Xóa Invoices");
+  await prisma.orderDetail.deleteMany(); console.log("   - Xóa OrderDetails");
+  await prisma.orderTable.deleteMany(); console.log("   - Xóa OrderTables");
+  await prisma.order.deleteMany(); console.log("   - Xóa Orders");
+  await prisma.serviceRequest.deleteMany(); console.log("   - Xóa ServiceRequests");
+  await prisma.supportTicket.deleteMany(); console.log("   - Xóa SupportTickets");
+  await prisma.registrationRequest.deleteMany(); console.log("   - Xóa RegistrationRequests");
+  await prisma.table.deleteMany(); console.log("   - Xóa Tables");
+  await prisma.branch.deleteMany(); console.log("   - Xóa Branches");
+  await prisma.product.deleteMany(); console.log("   - Xóa Products");
+  await prisma.category.deleteMany(); console.log("   - Xóa Categories");
+  await prisma.discount.deleteMany(); console.log("   - Xóa Discounts");
+  await prisma.subscription.deleteMany(); console.log("   - Xóa Subscriptions");
+  await prisma.restaurant.deleteMany(); console.log("   - Xóa Restaurants");
+  await prisma.servicePackage.deleteMany(); console.log("   - Xóa ServicePackages");
+  await prisma.user.deleteMany(); console.log("   - Xóa Users");
+  console.log("✅ Đã xóa dữ liệu cũ thành công\n");
 
   // =============================================
   // 1. SERVICE PACKAGES
@@ -306,7 +306,7 @@ async function main() {
       // branch1 – Hoàn Kiếm (5 bàn)
       { branchID: branch1.branchID, tableName: "Bàn 01", capacity: 2, status: "Available" },
       { branchID: branch1.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
-      { branchID: branch1.branchID, tableName: "Bàn 03", capacity: 4, status: "Occupied" },
+      { branchID: branch1.branchID, tableName: "Bàn 03", capacity: 4, status: "Available" },
       { branchID: branch1.branchID, tableName: "Bàn 04", capacity: 6, status: "Available" },
       { branchID: branch1.branchID, tableName: "Bàn 05", capacity: 8, status: "Available" },
       // branch2 – Đống Đa (4 bàn)
@@ -316,7 +316,7 @@ async function main() {
       { branchID: branch2.branchID, tableName: "Bàn VIP 01", capacity: 10, status: "Available" },
       // branch4 – Cầu Giấy (3 bàn)
       { branchID: branch4.branchID, tableName: "Bàn 01", capacity: 2, status: "Available" },
-      { branchID: branch4.branchID, tableName: "Bàn 02", capacity: 4, status: "Occupied" },
+      { branchID: branch4.branchID, tableName: "Bàn 02", capacity: 4, status: "Available" },
       { branchID: branch4.branchID, tableName: "Bàn 03", capacity: 4, status: "Available" },
       // branch5 – Bắc Từ Liêm (2 bàn, tạm dừng)
       { branchID: branch5.branchID, tableName: "Bàn 01", capacity: 4, status: "Available" },
@@ -327,7 +327,7 @@ async function main() {
       { branchID: branch3.branchID, tableName: "Bàn 03", capacity: 6, status: "Available" },
       // branch6 – BBQ Hoàng Mai (4 bàn)
       { branchID: branch6.branchID, tableName: "Bàn A1", capacity: 4, status: "Available" },
-      { branchID: branch6.branchID, tableName: "Bàn A2", capacity: 4, status: "Occupied" },
+      { branchID: branch6.branchID, tableName: "Bàn A2", capacity: 4, status: "Available" },
       { branchID: branch6.branchID, tableName: "Bàn B1", capacity: 6, status: "Available" },
       { branchID: branch6.branchID, tableName: "Bàn VIP", capacity: 10, status: "Available" },
     ],
@@ -380,7 +380,7 @@ async function main() {
     data: [
       {
         restaurantID: rest1.restaurantID,
-        name: "Giảm 10% Khách mới",
+        name: "Giảm 10%",
         discountType: "Percentage",
         value: 10,
         minOrderValue: 100000,
@@ -390,7 +390,7 @@ async function main() {
       },
       {
         restaurantID: rest1.restaurantID,
-        name: "Giảm thẳng 50k",
+        name: "Giảm 50k",
         discountType: "FixedAmount",
         value: 50000,
         minOrderValue: 200000,
@@ -529,152 +529,152 @@ async function main() {
   // =============================================
   // 10. ORDERS — 90 ngày dữ liệu thực tế
   // =============================================
-  const products = await prisma.product.findMany({
-    where: { category: { restaurantID: rest1.restaurantID } },
-    select: { productID: true, price: true },
-  });
+  // const products = await prisma.product.findMany({
+  //   where: { category: { restaurantID: rest1.restaurantID } },
+  //   select: { productID: true, price: true },
+  // });
 
-  // Tạo date dựa vào số ngày trước + giờ + phút
-  const mkDate = (daysAgo, hour, minute = 0) => {
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    d.setHours(hour, minute, 0, 0);
-    return d;
-  };
+  // // Tạo date dựa vào số ngày trước + giờ + phút
+  // const mkDate = (daysAgo, hour, minute = 0) => {
+  //   const d = new Date();
+  //   d.setDate(d.getDate() - daysAgo);
+  //   d.setHours(hour, minute, 0, 0);
+  //   return d;
+  // };
 
-  // Map sản phẩm theo chỉ số để dễ dùng
-  const p = products; // alias ngắn gọn
+  // // Map sản phẩm theo chỉ số để dễ dùng
+  // const p = products; // alias ngắn gọn
 
-  // Helper: tạo order mẫu
-  const mkOrder = (branchID, daysAgo, hour, items) => ({
-    branchID, daysAgo, hour, items,
-  });
+  // // Helper: tạo order mẫu
+  // const mkOrder = (branchID, daysAgo, hour, items) => ({
+  //   branchID, daysAgo, hour, items,
+  // });
 
-  // Tạo mảng orderSamples trải rộng 90 ngày
-  // Branch 1 (Hoàn Kiếm) — chi nhánh chính, doanh thu cao nhất
-  // Branch 2 (Đống Đa) — trung bình
-  // Branch 4 (Cầu Giấy) — thấp hơn
-  const orderSamples = [];
+  // // Tạo mảng orderSamples trải rộng 90 ngày
+  // // Branch 1 (Hoàn Kiếm) — chi nhánh chính, doanh thu cao nhất
+  // // Branch 2 (Đống Đa) — trung bình
+  // // Branch 4 (Cầu Giấy) — thấp hơn
+  // const orderSamples = [];
 
-  // Hàm sinh orders ngẫu nhiên theo ngày
-  const addOrdersForDay = (branchID, daysAgo, count, baseItems) => {
-    const peakHours = [7, 8, 11, 12, 13, 18, 19, 20];
-    for (let i = 0; i < count; i++) {
-      const hour = peakHours[i % peakHours.length];
-      const itemCount = 1 + (i % 3);
-      const items = baseItems.slice(0, itemCount).map((idx, j) => [idx, 1 + (j + i) % 3]);
-      orderSamples.push(mkOrder(branchID, daysAgo, hour, items));
-    }
-  };
+  // // Hàm sinh orders ngẫu nhiên theo ngày
+  // const addOrdersForDay = (branchID, daysAgo, count, baseItems) => {
+  //   const peakHours = [7, 8, 11, 12, 13, 18, 19, 20];
+  //   for (let i = 0; i < count; i++) {
+  //     const hour = peakHours[i % peakHours.length];
+  //     const itemCount = 1 + (i % 3);
+  //     const items = baseItems.slice(0, itemCount).map((idx, j) => [idx, 1 + (j + i) % 3]);
+  //     orderSamples.push(mkOrder(branchID, daysAgo, hour, items));
+  //   }
+  // };
 
-  // Branch 1 (Hoàn Kiếm) — 2-5 orders/ngày trong 90 ngày
-  for (let day = 0; day <= 89; day++) {
-    const ordersPerDay = day < 7 ? 5 : day < 30 ? 4 : 3; // gần = nhiều hơn
-    addOrdersForDay(branch1.branchID, day, ordersPerDay, [0, 1, 2, 3, 4, 7]);
-  }
+  // // Branch 1 (Hoàn Kiếm) — 2-5 orders/ngày trong 90 ngày
+  // for (let day = 0; day <= 89; day++) {
+  //   const ordersPerDay = day < 7 ? 5 : day < 30 ? 4 : 3; // gần = nhiều hơn
+  //   addOrdersForDay(branch1.branchID, day, ordersPerDay, [0, 1, 2, 3, 4, 7]);
+  // }
 
-  // Branch 2 (Đống Đa) — 2-3 orders/ngày trong 90 ngày
-  for (let day = 0; day <= 89; day++) {
-    const ordersPerDay = day < 7 ? 3 : day < 30 ? 2 : 2;
-    addOrdersForDay(branch2.branchID, day, ordersPerDay, [0, 2, 3, 5, 6, 8]);
-  }
+  // // Branch 2 (Đống Đa) — 2-3 orders/ngày trong 90 ngày
+  // for (let day = 0; day <= 89; day++) {
+  //   const ordersPerDay = day < 7 ? 3 : day < 30 ? 2 : 2;
+  //   addOrdersForDay(branch2.branchID, day, ordersPerDay, [0, 2, 3, 5, 6, 8]);
+  // }
 
-  // Branch 4 (Cầu Giấy) — 1-2 orders/ngày trong 60 ngày
-  for (let day = 0; day <= 59; day++) {
-    const ordersPerDay = day < 7 ? 2 : 1;
-    addOrdersForDay(branch4.branchID, day, ordersPerDay, [1, 3, 4, 9]);
-  }
+  // // Branch 4 (Cầu Giấy) — 1-2 orders/ngày trong 60 ngày
+  // for (let day = 0; day <= 59; day++) {
+  //   const ordersPerDay = day < 7 ? 2 : 1;
+  //   addOrdersForDay(branch4.branchID, day, ordersPerDay, [1, 3, 4, 9]);
+  // }
 
-  // Tạo orders trong DB
-  let createdOrderCount = 0;
-  const allCreatedOrders = [];
+  // // Tạo orders trong DB
+  // let createdOrderCount = 0;
+  // const allCreatedOrders = [];
 
-  for (const o of orderSamples) {
-    let total = 0;
-    const details = o.items
-      .filter(([idx]) => idx < p.length)
-      .map(([idx, qty]) => {
-        const prod = p[idx];
-        const linePrice = parseFloat(prod.price) * qty;
-        total += linePrice;
-        return { productID: prod.productID, quantity: qty, unitPrice: prod.price };
-      });
-    if (details.length === 0) continue;
+  // for (const o of orderSamples) {
+  //   let total = 0;
+  //   const details = o.items
+  //     .filter(([idx]) => idx < p.length)
+  //     .map(([idx, qty]) => {
+  //       const prod = p[idx];
+  //       const linePrice = parseFloat(prod.price) * qty;
+  //       total += linePrice;
+  //       return { productID: prod.productID, quantity: qty, unitPrice: prod.price };
+  //     });
+  //   if (details.length === 0) continue;
 
-    const orderTime = mkDate(o.daysAgo, o.hour, Math.floor(Math.random() * 50));
-    const statuses = ['Completed', 'Completed', 'Completed', 'Completed', 'Cancelled'];
-    const orderStatusVal = statuses[createdOrderCount % statuses.length];
+  //   const orderTime = mkDate(o.daysAgo, o.hour, Math.floor(Math.random() * 50));
+  //   const statuses = ['Completed', 'Completed', 'Completed', 'Completed', 'Cancelled'];
+  //   const orderStatusVal = statuses[createdOrderCount % statuses.length];
 
-    const order = await prisma.order.create({
-      data: {
-        branchID: o.branchID,
-        orderTime,
-        totalAmount: total,
-        paymentStatus: orderStatusVal === 'Cancelled' ? 'Unpaid' : 'Paid',
-        orderStatus: orderStatusVal,
-        orderDetails: { create: details },
-      },
-    });
-    allCreatedOrders.push({ orderID: order.orderID, totalAmount: total, orderTime, status: orderStatusVal });
-    createdOrderCount++;
-  }
-  console.log(`✅ Tạo ${createdOrderCount} Orders mẫu (90 ngày, 3 chi nhánh)`);
+  //   const order = await prisma.order.create({
+  //     data: {
+  //       branchID: o.branchID,
+  //       orderTime,
+  //       totalAmount: total,
+  //       paymentStatus: orderStatusVal === 'Cancelled' ? 'Unpaid' : 'Paid',
+  //       orderStatus: orderStatusVal,
+  //       orderDetails: { create: details },
+  //     },
+  //   });
+  //   allCreatedOrders.push({ orderID: order.orderID, totalAmount: total, orderTime, status: orderStatusVal });
+  //   createdOrderCount++;
+  // }
+  // console.log(`✅ Tạo ${createdOrderCount} Orders mẫu (90 ngày, 3 chi nhánh)`);
 
   // =============================================
   // 11. INVOICES + TRANSACTIONS
   // =============================================
-  const paidOrders = allCreatedOrders.filter(o => o.status !== 'Cancelled');
-  const paymentMethods = ['Cash', 'BankTransfer', 'E_Wallet'];
-  const txStatuses = ['Success', 'Success', 'Success', 'Success', 'Failed'];
+  // const paidOrders = allCreatedOrders.filter(o => o.status !== 'Cancelled');
+  // const paymentMethods = ['Cash', 'BankTransfer', 'E_Wallet'];
+  // const txStatuses = ['Success', 'Success', 'Success', 'Success', 'Failed'];
 
-  let invoiceCount = 0;
-  let txCount = 0;
+  // let invoiceCount = 0;
+  // let txCount = 0;
 
-  for (let i = 0; i < paidOrders.length; i++) {
-    const order = paidOrders[i];
-    const method = paymentMethods[i % paymentMethods.length];
-    const txStatus = txStatuses[i % txStatuses.length];
+  // for (let i = 0; i < paidOrders.length; i++) {
+  //   const order = paidOrders[i];
+  //   const method = paymentMethods[i % paymentMethods.length];
+  //   const txStatus = txStatuses[i % txStatuses.length];
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        orderID: order.orderID,
-        issuedDate: order.orderTime,
-        status: 'Closed',
-        subTotal: order.totalAmount,
-        discountAmount: 0,
-        totalAmount: order.totalAmount,
-      },
-    });
-    invoiceCount++;
+  //   const invoice = await prisma.invoice.create({
+  //     data: {
+  //       orderID: order.orderID,
+  //       issuedDate: order.orderTime,
+  //       status: 'Closed',
+  //       subTotal: order.totalAmount,
+  //       discountAmount: 0,
+  //       totalAmount: order.totalAmount,
+  //     },
+  //   });
+  //   invoiceCount++;
 
-    await prisma.transaction.create({
-      data: {
-        invoiceID: invoice.invoiceID,
-        amount: order.totalAmount,
-        paymentMethod: method,
-        status: txStatus,
-        transactionTime: order.orderTime,
-      },
-    });
-    txCount++;
+  //   await prisma.transaction.create({
+  //     data: {
+  //       invoiceID: invoice.invoiceID,
+  //       amount: order.totalAmount,
+  //       paymentMethod: method,
+  //       status: txStatus,
+  //       transactionTime: order.orderTime,
+  //     },
+  //   });
+  //   txCount++;
 
-    // Retry transaction (failed before success)
-    if (i % 9 === 0 && txStatus === 'Success') {
-      const retryTime = new Date(order.orderTime);
-      retryTime.setMinutes(retryTime.getMinutes() - 3);
-      await prisma.transaction.create({
-        data: {
-          invoiceID: invoice.invoiceID,
-          amount: order.totalAmount,
-          paymentMethod: method,
-          status: 'Failed',
-          transactionTime: retryTime,
-        },
-      });
-      txCount++;
-    }
-  }
-  console.log(`✅ Tạo ${invoiceCount} Invoices + ${txCount} Transactions`);
+  //   // Retry transaction (failed before success)
+  //   if (i % 9 === 0 && txStatus === 'Success') {
+  //     const retryTime = new Date(order.orderTime);
+  //     retryTime.setMinutes(retryTime.getMinutes() - 3);
+  //     await prisma.transaction.create({
+  //       data: {
+  //         invoiceID: invoice.invoiceID,
+  //         amount: order.totalAmount,
+  //         paymentMethod: method,
+  //         status: 'Failed',
+  //         transactionTime: retryTime,
+  //       },
+  //     });
+  //     txCount++;
+  //   }
+  // }
+  // console.log(`✅ Tạo ${invoiceCount} Invoices + ${txCount} Transactions`);
 
   console.log('\n🎉 Seed hoàn tất!\n');
   console.log('📋 Tài khoản đăng nhập:');
