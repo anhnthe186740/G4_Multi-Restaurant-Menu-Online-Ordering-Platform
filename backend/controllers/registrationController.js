@@ -1,5 +1,7 @@
 import prisma from "../config/prismaClient.js";
 import bcrypt from "bcrypt";
+import { sendRegistrationApprovedEmail } from "../config/emailService.js";
+import nodemailer from "nodemailer";
 
 /* ================= CREATE REGISTRATION REQUEST (PUBLIC) ================= */
 export const createRegistrationRequest = async (req, res) => {
@@ -200,6 +202,7 @@ export const approveRequest = async (req, res) => {
             } catch { /* bỏ qua nếu parse lỗi */ }
         }
 
+        let plainPassword = null;
         await prisma.$transaction(async (tx) => {
             let ownerUserID;
 
@@ -214,6 +217,7 @@ export const approveRequest = async (req, res) => {
             } else {
                 // ── Trường hợp 2: Gửi form không đăng nhập → tạo tài khoản mới ──
                 const randomPw = Math.random().toString(36).slice(-8) + "A1!";
+                plainPassword = randomPw;
                 const passwordHash = await bcrypt.hash(randomPw, 10);
 
                 const emailMatch = request.contactInfo?.match(/[\w.-]+@[\w.-]+\.\w+/);
@@ -270,6 +274,39 @@ export const approveRequest = async (req, res) => {
                 },
             });
         });
+
+        // ── Gửi email thông báo cho customer (ngoài transaction) ──
+        try {
+            const updatedRequest = await prisma.registrationRequest.findUnique({
+                where: { requestID: parseInt(id) },
+                include: { owner: true }
+            });
+
+            if (updatedRequest) {
+                const targetEmail = updatedRequest.owner?.email || (updatedRequest.contactInfo?.match(/[\w.-]+@[\w.-]+\.\w+/) || [])[0];
+                const fullName = updatedRequest.owner?.fullName || updatedRequest.ownerName || "Chủ nhà hàng";
+                const restaurantName = updatedRequest.restaurantName || "Nhà hàng của bạn";
+
+                if (targetEmail) {
+                    console.log(`📧 [Registration] Sending approval email to: ${targetEmail} for restaurant: ${restaurantName}`);
+                    const info = await sendRegistrationApprovedEmail(
+                        targetEmail,
+                        fullName,
+                        restaurantName,
+                        plainPassword ? { username: updatedRequest.owner.username, password: plainPassword } : null
+                    );
+                    if (info && nodemailer.getTestMessageUrl(info)) {
+                        console.log(`🔗 [Registration] Preview Email Link: ${nodemailer.getTestMessageUrl(info)}`);
+                    } else if (info) {
+                        console.log(`✅ [Registration] Email sent successfully to ${targetEmail}`);
+                    }
+                } else {
+                    console.log(`⚠️ [Registration] No email found for requestID: ${id}`);
+                }
+            }
+        } catch (emailError) {
+            console.error("Error sending approval email:", emailError);
+        }
 
         res.json({ message: "Đã phê duyệt yêu cầu thành công" });
 
