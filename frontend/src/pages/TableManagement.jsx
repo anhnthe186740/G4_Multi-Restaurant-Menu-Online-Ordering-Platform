@@ -1320,40 +1320,42 @@ export default function TableManagement() {
                         </div>
     
                         {/* ── Grid bàn ── */}
-                        {displayed.length === 0 ? (
-                            <div className="text-center py-20 text-gray-400">
-                                <p className="text-sm">Không tìm thấy bàn nào</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {displayed.map(table => (
-                                    <TableCard
-                                        key={table.id}
-                                        table={table}
-                                        allTables={tables}
-                                        occupiedTables={occupiedTables}
-                                        onMerge={() => setMergeSource(table)}
-                                        onEdit={() => setEditTable(table)}
-                                        onDelete={() => setDeleteTable(table)}
-                                        onSelect={() => handleSelect(table)}
-                                        onCheckout={() => handleCheckout(table)}
-                                        onOpenMenuDrawer={(id) => setMenuDrawerTableId(id)}
-                                        onPrintQR={() => setPrintTables([table])}
-                                        onToggleActive={handleToggleActive}
-                                        onSwitch={() => setSwitchSource(table)}
-                                        onClear={() => handleClearTableStatus(table.id)}
-                                    />
-                                ))}
-                                {/* Card thêm nhanh */}
-                                {filter === 'all' && !search && (
-                                    <button onClick={() => setAddModal(true)}
-                                        className="bg-white rounded-2xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all flex flex-col items-center justify-center gap-2 py-8 text-gray-400 hover:text-emerald-600 min-h-[160px]">
-                                        <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center hover:bg-emerald-100 transition">
-                                            <Plus size={18} />
-                                        </div>
-                                        <span className="text-xs font-medium">Thêm bàn mới</span>
-                                    </button>
-                                )}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            {displayed.map(table => (
+                                <TableCard
+                                    key={table.id}
+                                    table={table}
+                                    allTables={tables}
+                                    occupiedTables={occupiedTables}
+                                    onMerge={() => setMergeSource(table)}
+                                    onEdit={() => setEditTable(table)}
+                                    onDelete={() => setDeleteTable(table)}
+                                    onSelect={() => handleSelect(table)}
+                                    onCheckout={() => handleCheckout(table)}
+                                    onOpenMenuDrawer={(id) => setMenuDrawerTableId(id)}
+                                    onPrintQR={() => setPrintTables([table])}
+                                    onToggleActive={handleToggleActive}
+                                    onSwitch={() => setSwitchSource(table)}
+                                    onClear={() => handleClearTableStatus(table.id)}
+                                />
+                            ))}
+
+                            {/* Nút thêm nhanh luôn hiện khi không search/filter */}
+                            {filter === 'all' && !search && (
+                                <button onClick={() => setAddModal(true)}
+                                    className="bg-white rounded-2xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all flex flex-col items-center justify-center gap-2 py-8 text-gray-400 hover:text-emerald-600 min-h-[160px]">
+                                    <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center hover:bg-emerald-100 transition" >
+                                        <Plus size={18} />
+                                    </div>
+                                    <span className="text-xs font-medium">Thêm bàn mới</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Thông báo khi không có kết quả search/filter */}
+                        {displayed.length === 0 && (search || filter !== 'all') && (
+                            <div className="text-center py-20 text-gray-400 w-full">
+                                <p className="text-sm">Không tìm thấy bàn nào khớp với lựa chọn</p>
                             </div>
                         )}
                     </>
