@@ -1957,23 +1957,28 @@ export const updateItemStatus = async (req, res) => {
       include: { order: { include: { orderTables: { select: { tableID: true }, take: 1 } } } }
     });
 
-    // Nếu món được Served, đảm bảo trạng thái đơn hàng là "Serving"
-    if (status === "Served") {
+    // Nếu món được xử lý (Cooking, Ready, Served), đảm bảo trạng thái đơn hàng là "Serving"
+    const isProcessing = ["Cooking", "Ready", "Served"].includes(status);
+    if (isProcessing) {
       await prisma.order.update({
         where: { orderID: updated.orderID },
         data: { orderStatus: "Serving" }
       });
     }
 
-    // Phát realtime cho trang QR của khách
+    // Phát realtime cho khách và quản lý
     const io = req.app.get("io");
     const tableID = updated.order?.orderTables?.[0]?.tableID ?? null;
-    io?.emit("orderItemStatusChanged", {
-      orderDetailID: parseInt(orderDetailID),
-      itemStatus: status,
-      tableID,
-      orderID: updated.orderID,
-    });
+    if (io) {
+      io.emit("orderItemStatusChanged", {
+        orderDetailID: parseInt(orderDetailID),
+        itemStatus: status,
+        tableID,
+        orderID: updated.orderID,
+      });
+      // Phát tín hiệu để Table Layout (Manager) render lại cục bộ hoặc load lại if panel open
+      io.emit("tableUpdate", { branchID: updated.order.branchID, tableID, timestamp: Date.now() });
+    }
 
     res.json({ message: "Cập nhật trạng thái món thành công", updated });
   } catch (error) {
@@ -2001,7 +2006,6 @@ export const updateMultipleItemStatus = async (req, res) => {
     const ids = orderDetailIDs.map(id => parseInt(id));
 
     // Kiểm tra quyền trên các món này
-    // Lấy tất cả branchID của các món này
     const details = await prisma.orderDetail.findMany({
       where: { orderDetailID: { in: ids } },
       include: { order: { select: { branchID: true } } }
@@ -2045,22 +2049,17 @@ export const updateMultipleItemStatus = async (req, res) => {
       data: { itemStatus: status }
     });
 
-    if (status === "Served") {
-      const affectedDetails = await prisma.orderDetail.findMany({
-        where: { orderDetailID: { in: ids } },
-        select: { orderID: true }
+    // Nếu món được xử lý, đảm bảo toàn bộ các order liên quan chuyển sang "Serving"
+    const orderIDs = [...new Set(details.map(d => d.orderID))];
+    const isProcessing = ["Cooking", "Ready", "Served"].includes(status);
+    if (isProcessing) {
+      await prisma.order.updateMany({
+        where: { orderID: { in: orderIDs } },
+        data: { orderStatus: "Serving" }
       });
-      const orderIDs = [...new Set(affectedDetails.map(d => d.orderID))];
-
-      for (const orderID of orderIDs) {
-        await prisma.order.update({
-          where: { orderID },
-          data: { orderStatus: "Serving" }
-        });
-      }
     }
 
-    // Phát realtime cho từng orderDetailID đã cập nhật
+    // Phát realtime
     const io = req.app.get("io");
     if (io) {
       ids.forEach(id => {
@@ -2068,6 +2067,10 @@ export const updateMultipleItemStatus = async (req, res) => {
           orderDetailID: id,
           itemStatus: status,
         });
+      });
+      // Phát tableUpdate cho từng chi nhánh liên quan giúp cập nhật Sơ đồ bàn
+      branchIDs.forEach(bID => {
+        io.emit("tableUpdate", { branchID: bID, timestamp: Date.now() });
       });
     }
 

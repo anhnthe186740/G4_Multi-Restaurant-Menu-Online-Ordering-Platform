@@ -707,6 +707,23 @@ function TableOrderPanel({ tableId, tableName, onClose, onCheckoutSuccess, refre
 
     useEffect(() => { loadOrder(); }, [loadOrder]);
 
+    // Lắng nghe realtime để cập nhật trạng thái món ngay lập tức nếu Drawer đang mở
+    useEffect(() => {
+        const socket = io(`http://${window.location.hostname}:5000`);
+        
+        socket.on("orderItemStatusChanged", (data) => {
+            // Nếu update này thuộc về order hiện tại, tải lại
+            if (order && data.orderID === order.orderID) {
+                console.log("🚀 Order detail updated via socket:", data);
+                loadOrder();
+            }
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [order, loadOrder]);
+
     const handleCallStaff = async () => {
         setCallingStaff(true);
         try {
