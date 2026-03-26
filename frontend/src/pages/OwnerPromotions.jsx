@@ -54,6 +54,7 @@ export default function OwnerPromotions() {
   const [showModal, setShowModal]     = useState(false);
   const [editPromo, setEditPromo]     = useState(null);
   const [form, setForm]               = useState(EMPTY_FORM);
+  const [showHappyHour, setShowHappyHour] = useState(false);
   const [saving, setSaving]           = useState(false);
   const [showLogicWarning, setShowLogicWarning] = useState(false);
 
@@ -90,7 +91,12 @@ export default function OwnerPromotions() {
   const displayed = promotions;
 
   /* ── Modal helpers ── */
-  const openCreate = () => { setEditPromo(null); setForm(EMPTY_FORM); setShowModal(true); };
+  const openCreate = () => { 
+    setEditPromo(null); 
+    setForm(EMPTY_FORM); 
+    setShowHappyHour(false);
+    setShowModal(true); 
+  };
   const openEdit   = (p) => {
     setEditPromo(p);
     setForm({
@@ -103,6 +109,7 @@ export default function OwnerPromotions() {
       branchIDs: p.applicableBranchIDs ? p.applicableBranchIDs.split(',').map(Number) : [],
       applicableDays: p.applicableDays ? p.applicableDays.split(',').map(Number) : [],
     });
+    setShowHappyHour(!!(p.happyHourStart || p.happyHourEnd));
     setShowModal(true);
   };
 
@@ -131,8 +138,8 @@ export default function OwnerPromotions() {
         branchIDs: form.branchIDs,
         startDate: form.startDate || null,
         endDate: form.endDate || null,
-        happyHourStart: form.happyHourStart || null,
-        happyHourEnd: form.happyHourEnd || null,
+        happyHourStart: showHappyHour ? (form.happyHourStart || null) : null,
+        happyHourEnd: showHappyHour ? (form.happyHourEnd || null) : null,
         applicableDays: form.applicableDays.length > 0 ? form.applicableDays.join(',') : null,
       };
       if (editPromo) {
@@ -351,7 +358,7 @@ export default function OwnerPromotions() {
 
                     <p className="text-sm text-slate-500 mb-8 line-clamp-2 italic leading-relaxed font-medium">"{p.description || 'Không có mô tả cho chiến dịch này.'}"</p>
 
-                    <div className="grid grid-cols-2 gap-3 text-[10px] mb-8 mt-auto">
+                    <div className="grid grid-cols-2 gap-3 text-[10px] mb-4 mt-auto">
                       <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                         <p className="text-slate-400 font-bold uppercase tracking-widest mb-1 opacity-80">Đơn tối thiểu</p>
                         <p className="text-slate-700 font-black">{p.minOrderValue > 0 ? fmtCurrency(p.minOrderValue) : 'Không có'}</p>
@@ -361,6 +368,22 @@ export default function OwnerPromotions() {
                         <p className={`font-black ${p.usageLimit && p.usedCount >= p.usageLimit ? 'text-rose-600' : 'text-slate-700'}`}>
                           {p.usedCount}{p.usageLimit ? `/${p.usageLimit}` : ''}
                         </p>
+                      </div>
+                      <div className="col-span-2 bg-slate-50 rounded-xl p-3 border border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-600">
+                          <Clock size={12} />
+                          <p className="font-bold uppercase tracking-widest">Khung giờ vàng</p>
+                        </div>
+                        <p className="text-slate-700 font-black">
+                          {p.happyHourStart ? `${p.happyHourStart} - ${p.happyHourEnd}` : 'Cả ngày'}
+                        </p>
+                      </div>
+                      <div className="col-span-2 bg-slate-50 rounded-xl p-3 border border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-blue-600">
+                          <Calendar size={12} />
+                          <p className="font-bold uppercase tracking-widest">Hết hạn</p>
+                        </div>
+                        <p className="text-slate-700 font-black">{p.endDate ? dayjs(p.endDate).format('DD.MM.YYYY') : 'Vô thời hạn'}</p>
                       </div>
                     </div>
 
@@ -432,6 +455,38 @@ export default function OwnerPromotions() {
                 <Field label="Giảm tối đa (VNĐ)"><input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-800 focus:outline-none focus:border-blue-500" value={form.maxDiscountAmount} onChange={e => setForm(f => ({ ...f, maxDiscountAmount: e.target.value }))} /></Field>
                 <Field label="Ngày bắt đầu"><input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-800 focus:outline-none" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></Field>
                 <Field label="Ngày kết thúc"><input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-800 focus:outline-none" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></Field>
+
+                {/* ── HAPPY HOUR SECTION ── */}
+                <div className="col-span-2 px-6 py-5 bg-amber-50/50 border border-amber-100 rounded-[32px] space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center border border-amber-200">
+                        <Clock size={20} className="text-amber-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-amber-900 leading-tight">Khung giờ vàng (Happy Hour)</h4>
+                        <p className="text-[9px] text-amber-600 font-bold uppercase tracking-wider">Chỉ áp dụng giảm giá trong khung giờ này</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={showHappyHour} onChange={() => setShowHappyHour(!showHappyHour)} />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                  </div>
+
+                  {showHappyHour && (
+                    <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest ml-1">Giờ bắt đầu</label>
+                        <input type="time" className="w-full bg-white border border-amber-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-amber-500 font-bold" value={form.happyHourStart} onChange={e => setForm(f => ({ ...f, happyHourStart: e.target.value }))} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest ml-1">Giờ kết thúc</label>
+                        <input type="time" className="w-full bg-white border border-amber-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-amber-500 font-bold" value={form.happyHourEnd} onChange={e => setForm(f => ({ ...f, happyHourEnd: e.target.value }))} />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="col-span-2">
                   <Field label="Thứ áp dụng">

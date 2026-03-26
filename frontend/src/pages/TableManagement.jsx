@@ -3,12 +3,9 @@ import { io } from "socket.io-client";
 import { getServerIP } from '../api/publicApi';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
-    Search, Plus, QrCode, Pencil, Trash2, Users,
-
-     Clock,
-    MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer,
+    Search, Plus, QrCode, Pencil, Trash2, Users, BanknoteIcon,
+    Clock, MoreVertical, X, Merge, CreditCard, CheckCircle, RefreshCw, Printer,
     Bell, ChefHat, Loader2, AlertCircle, ClipboardList, UtensilsCrossed, Minus
-
 } from 'lucide-react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
@@ -1228,18 +1225,21 @@ export default function TableManagement() {
     // nếu type = 'QR' thì đưa vào Queue và tắt drawer
     const handleDrawerCheckoutSuccess = (message, payload) => {
         setMenuDrawerTableId(null); // Đóng drawer
-        if (payload?.type === 'QR') {
+        if (payload?.type === 'QR' || payload?.type === 'Cash') {
             // Thêm vào Queue
             setPaymentQueue(prev => {
                 // tránh duplicate
-                if (prev.find(item => item.tableId === payload.tableId)) return prev;
+                const existing = prev.find(item => item.tableId === payload.tableId);
+                if (existing) {
+                    // Cập nhật nếu đã tồn tại nhưng có thể thay đổi type
+                    return prev.map(item => item.tableId === payload.tableId ? payload : item);
+                }
                 return [...prev, payload];
             });
-            setActiveQueueItem(payload.tableId); // Tự động mở QR thay vì buộc người dùng bấm
-            // Không gán toast message nếu không cần thiết
+            setActiveQueueItem(payload.tableId); 
         } else {
-            showToast(message || 'Thanh toán tiền mặt thành công!');
-            loadTables(); // Refresh nếu thanh toán tiền mặt thành công
+            showToast(message || 'Thanh toán thành công!');
+            loadTables(); 
         }
     };
 
@@ -1409,24 +1409,34 @@ export default function TableManagement() {
                     <div className="flex items-center gap-4 min-w-max md:pl-64">
                         <div className="flex items-center gap-2 pr-4 border-r border-gray-200 font-bold text-gray-600">
                             <Clock className="text-amber-500 animate-pulse" size={20} />
-                            <span className="text-sm">Hàng chờ QR ({paymentQueue.length})</span>
+                            <span className="text-sm">Hàng chờ ({paymentQueue.length})</span>
                         </div>
                         
                         {paymentQueue.map((item) => (
                             <button 
                                 key={item.tableId}
                                 onClick={() => setActiveQueueItem(item.tableId)}
-                                className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl hover:shadow-md transition group"
+                                className={`flex items-center gap-3 px-4 py-2 border rounded-xl hover:shadow-md transition group ${
+                                    item.type === 'Cash' 
+                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100' 
+                                    : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100'
+                                }`}
                             >
-                                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-black text-xs">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${
+                                    item.type === 'Cash' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+                                }`}>
                                     🪑
                                 </div>
                                 <div className="text-left flex-1 min-w-[100px]">
                                     <p className="text-xs font-bold text-gray-800 leading-tight">{item.tableName}</p>
-                                    <p className="text-[10px] text-gray-500 font-medium">Đang quét...</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">
+                                        {item.type === 'Cash' ? 'Chờ thu tiền...' : 'Đang quét QR...'}
+                                    </p>
                                 </div>
-                                <div className="w-6 h-6 rounded-full bg-white border border-emerald-200 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition shrink-0">
-                                    <QrCode size={12} />
+                                <div className={`w-6 h-6 rounded-full bg-white border flex items-center justify-center group-hover:scale-110 transition shrink-0 ${
+                                    item.type === 'Cash' ? 'border-blue-200 text-blue-500' : 'border-emerald-200 text-emerald-500'
+                                }`}>
+                                    {item.type === 'Cash' ? <BanknoteIcon size={12} /> : <QrCode size={12} />}
                                 </div>
                             </button>
                         ))}
@@ -1439,9 +1449,11 @@ export default function TableManagement() {
                 <TablePaymentModal
                     isOpen={true}
                     onClose={() => setActiveQueueItem(null)}
-                    paymentData={paymentQueue.find(q => q.tableId === activeQueueItem).paymentData}
-                    billData={paymentQueue.find(q => q.tableId === activeQueueItem).billData}
-                    tableName={paymentQueue.find(q => q.tableId === activeQueueItem).tableName}
+                    paymentData={paymentQueue.find(q => q.tableId === activeQueueItem)?.paymentData}
+                    billData={paymentQueue.find(q => q.tableId === activeQueueItem)?.billData}
+                    tableName={paymentQueue.find(q => q.tableId === activeQueueItem)?.tableName}
+                    paymentMethod={paymentQueue.find(q => q.tableId === activeQueueItem)?.type || 'QR'}
+                    initialStatus={paymentQueue.find(q => q.tableId === activeQueueItem)?.initialStatus || 'PENDING'}
                     onPaymentSuccess={() => handleQueuePaymentSuccess(activeQueueItem)}
                 />
             )}

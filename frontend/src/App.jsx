@@ -43,6 +43,7 @@ import ManagerPromotions from "./pages/ManagerPromotions";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SubscriptionGuard from "./components/SubscriptionGuard";
 import SelfOrderingMenu from "./pages/SelfOrderingMenu";
+import StaffReadyOrders from "./pages/StaffReadyOrders";
 
 // Import new pages
 import FeaturesPage from "./pages/FeaturesPage";
@@ -345,6 +346,14 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole={["BranchManager", "Staff"]}>
               <ManagerServiceRequests />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/ready-orders"
+          element={
+            <ProtectedRoute requiredRole={["BranchManager", "Staff"]}>
+              <StaffReadyOrders />
             </ProtectedRoute>
           }
         />
