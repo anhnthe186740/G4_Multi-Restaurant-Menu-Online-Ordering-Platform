@@ -28,21 +28,23 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#02140c]/80 backdrop-blur border-b border-white/10">
+    <header className="sticky top-0 z-50 glass">
       <div className="max-w-[1200px] mx-auto flex items-center justify-between px-6 py-4">
 
         {/* LOGO */}
-        <Link to="/" className="flex items-center gap-2 font-bold text-xl">
-          <div className="flex items-center gap-3 font-bold text-white">
-            <svg className="w-6 h-6 text-green-500" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
-            </svg>
-            RestoManager
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="flex items-center gap-3 font-bold text-white text-xl">
+            <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
+              </svg>
+            </div>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300">RestoManager</span>
           </div>
         </Link>
 
         {/* NAV LINKS */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-10">
           {[
             { name: 'Tính năng', path: '/features' },
             { name: 'Bảng giá', path: '/pricing' },
@@ -52,65 +54,70 @@ export default function Header() {
             <Link 
               key={item.name} 
               to={item.path} 
-              className="text-sm font-medium text-gray-300 hover:text-white hover:underline transition underline-offset-4"
+              className="text-sm font-semibold text-gray-400 hover:text-emerald-400 transition-colors duration-300 relative group"
             >
               {item.name}
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-400 transition-all duration-300 group-hover:w-full"></span>
             </Link>
           ))}
         </nav>
 
         {/* ACTIONS */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
 
           {/* ADMIN DASHBOARD LINK */}
           {user && user.role === 'Admin' && (
             <Link
               to="/admin/dashboard"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition font-semibold text-sm"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all duration-300 font-bold text-sm border border-emerald-500/20"
             >
-              <span>📊</span>
-              <span>Dashboard</span>
+              📊 Dashboard
             </Link>
           )}
-
-          {/* CART */}
-
 
           {/* AUTH */}
           {!user ? (
             <Link
               to="/login"
-              className="h-9 px-4 rounded-xl bg-orange-500 text-white text-sm font-bold
-                hover:bg-orange-600 transition flex items-center justify-center"
+              className="h-10 px-6 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white text-sm font-bold
+                hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 flex items-center justify-center active:scale-95"
             >
               Đăng nhập
             </Link>
           ) : (
             <div className="relative">
               {/* Avatar */}
-              <button onClick={() => setOpen(!open)}>
+              <button 
+                onClick={() => setOpen(!open)}
+                className="focus:outline-none transition-transform duration-300 active:scale-90"
+              >
                 <img
                   src={user.avatar || "https://i.pravatar.cc/100"}
-                  className="w-9 h-9 rounded-full border-2 border-orange-400"
+                  className="w-10 h-10 rounded-xl border-2 border-emerald-500/30 object-cover p-0.5"
                 />
               </button>
 
               {/* Dropdown */}
               {open && (
-                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg
-                  border border-gray-100 overflow-hidden">
+                <div className="absolute right-0 mt-4 w-56 glass rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+                  <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                    <p className="text-sm font-bold text-white truncate">{user.fullName}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
+                  </div>
                   <button
                     onClick={handleProfile}
-                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors flex items-center gap-3"
                   >
-                    {user.role === "RestaurantOwner" ? "🏪 Quản lý nhà hàng" : "👤 Hồ sơ"}
+                    <span className="text-lg">{user.role === "RestaurantOwner" ? "🏪" : "👤"}</span>
+                    <span>{user.role === "RestaurantOwner" ? "Quản lý nhà hàng" : "Hồ sơ cá nhân"}</span>
                   </button>
 
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50"
+                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3"
                   >
-                    🚪 Đăng xuất
+                    <span className="text-lg">🚪</span>
+                    <span>Đăng xuất</span>
                   </button>
                 </div>
               )}

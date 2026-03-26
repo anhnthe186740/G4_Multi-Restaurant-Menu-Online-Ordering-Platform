@@ -41,33 +41,31 @@ export default function PricingSection() {
     };
 
     return (
-        <section className="py-24 relative overflow-hidden">
+        <section className="py-24 md:py-32 relative overflow-hidden bg-[#020617]">
+            {/* Background Decoration */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/5 rounded-full blur-[120px] -z-10" />
+
             <div className="max-w-[1200px] mx-auto px-6 relative z-10">
 
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Lựa chọn gói dịch vụ</h2>
-                    <p className="text-gray-400">Phù hợp cho mọi quy mô từ quán nhỏ đến chuỗi nhà hàng lớn.</p>
-                    {packages.length > 0 && (
-                        <div className="mt-8 inline-flex items-center bg-[#042014] rounded-full p-1 border border-white/10">
-                            <button className="px-6 py-2 rounded-full bg-green-500 text-white text-sm font-bold shadow-lg">
-                                Phổ biến nhất
-                            </button>
-                        </div>
-                    )}
+                <div className="text-center mb-20 animate-fade-in-up">
+                    <h2 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">
+                        Lựa chọn gói <span className="text-gradient">linh hoạt</span>
+                    </h2>
+                    <p className="text-gray-400 text-lg">Phù hợp từ mô hình quán cafe nhỏ đến chuỗi nhà hàng cao cấp.</p>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center items-center py-20">
-                        <div className="w-10 h-10 border-4 border-green-500/30 border-t-green-500 rounded-full animate-spin" />
+                        <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
                     </div>
                 ) : packages.length === 0 ? (
-                    <p className="text-center text-gray-500">Chưa có gói dịch vụ nào.</p>
+                    <p className="text-center text-gray-500 animate-fade-in-up">Chưa có gói dịch vụ nào được cấu hình.</p>
                 ) : (
                     <div
-                        className={`grid gap-8 items-start ${packages.length === 1
+                        className={`grid gap-8 items-stretch ${packages.length === 1
                             ? "grid-cols-1 max-w-sm mx-auto"
                             : packages.length === 2
-                                ? "md:grid-cols-2 max-w-2xl mx-auto"
+                                ? "md:grid-cols-2 max-w-4xl mx-auto"
                                 : "md:grid-cols-3"
                             }`}
                     >
@@ -81,64 +79,58 @@ export default function PricingSection() {
                             return (
                                 <div
                                     key={pkg.packageID || pkg.PackageID}
-                                    className={`relative p-8 rounded-2xl transition-all duration-300 ${isPopular
-                                        ? "bg-[#042014] border border-green-500 shadow-xl shadow-green-900/10 md:-translate-y-4"
-                                        : "bg-[#03180f] border border-white/5 hover:border-white/20 hover:-translate-y-1"
+                                    className={`relative p-10 rounded-[2.5rem] transition-all duration-500 flex flex-col animate-fade-in-up stagger-${index+1} ${isPopular
+                                        ? "bg-slate-900/60 border-2 border-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.15)] md:-translate-y-6 scale-105 z-20"
+                                        : "glass-card z-10"
                                         }`}
                                 >
-                                    {/* Phổ biến nhất badge */}
+                                    {/* Popular Badge */}
                                     {isPopular && (
-                                        <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl">
-                                            PHỔ BIẾN NHẤT
+                                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-[10px] font-black px-4 py-2 rounded-full shadow-lg shadow-emerald-500/30 uppercase tracking-widest whitespace-nowrap">
+                                            Phổ biến nhất
                                         </div>
                                     )}
 
-                                    {/* Tên gói */}
-                                    <h3 className="text-xl font-bold text-white mb-2">
-                                        {pkg.PackageName || pkg.packageName}
-                                    </h3>
-
-                                    {/* Giá */}
-                                    <div className="flex items-end gap-1 mb-1">
-                                        <span className={`font-bold text-white ${isPopular ? "text-5xl" : "text-4xl"}`}>
-                                            {formatPrice(pkg.Price ?? pkg.price)}
-                                        </span>
-                                        {(pkg.Duration || pkg.duration) && (
-                                            <span className="text-gray-500 text-sm mb-1">
-                                                /{pkg.Duration || pkg.duration} tháng
+                                    <div className="mb-8">
+                                        <h3 className="text-2xl font-black text-white mb-4">
+                                            {pkg.PackageName || pkg.packageName}
+                                        </h3>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-4xl md:text-5xl font-black text-white">
+                                                {formatPrice(pkg.Price ?? pkg.price)}
                                             </span>
-                                        )}
+                                            {(pkg.Duration || pkg.duration) && (
+                                                <span className="text-gray-500 font-bold">
+                                                    /{pkg.Duration || pkg.duration} tháng
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Mô tả ngắn (nếu có) */}
                                     {pkg.description && (
-                                        <p className="text-gray-500 text-sm mb-6">{pkg.description}</p>
+                                        <p className="text-gray-500 leading-relaxed mb-8">{pkg.description}</p>
                                     )}
 
-                                    {/* CTA Button */}
+                                    <ul className="space-y-5 mb-10 flex-grow">
+                                        {features.map((feature, i) => (
+                                            <li key={i} className="flex items-start gap-3 group">
+                                                <div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500 transition-colors duration-300">
+                                                    <span className="material-symbols-outlined text-[14px] text-emerald-400 group-hover:text-white">check</span>
+                                                </div>
+                                                <span className="text-gray-300 text-sm font-medium group-hover:text-white transition-colors capitalize">{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+
                                     <button
                                         onClick={() => handleCTA(pkg.PackageName || pkg.packageName)}
-                                        className={`w-full py-3 rounded-xl font-bold transition mt-4 mb-8 ${isPopular
-                                            ? "bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/20"
-                                            : "bg-[#0a2e1e] text-green-500 hover:bg-[#0f422b]"
+                                        className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all duration-300 transform active:scale-95 ${isPopular
+                                            ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-xl shadow-emerald-500/30"
+                                            : "bg-white/5 text-white hover:bg-white/10 border border-white/10"
                                             }`}
                                     >
-                                        Đăng Kí Ngay
+                                        Đăng kí dùng thử
                                     </button>
-
-                                    {/* Features list */}
-                                    {features.length > 0 && (
-                                        <ul className="space-y-4 text-sm text-gray-400">
-                                            {features.map((feature, i) => (
-                                                <li key={i} className="flex items-center gap-3">
-                                                    <span className="material-symbols-outlined text-green-500 text-lg">
-                                                        check_circle
-                                                    </span>
-                                                    {feature}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
                                 </div>
                             );
                         })}

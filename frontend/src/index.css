@@ -2,47 +2,86 @@
 
 @config "../tailwind.config.js";
 
-/* CSS global */
+:root {
+  --primary: #10b981;
+  --primary-dark: #059669;
+  --secondary: #0ea5e9;
+  --background: #020617;
+  --card-bg: #0f172a;
+  --card-border: rgba(255, 255, 255, 0.05);
+}
+
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #f8fafc; /* Màu nền sáng mặc định */
-  color: #1e293b; /* Màu chữ tối mặc định */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  @apply bg-[#020617] text-slate-200 antialiased selection:bg-emerald-500/30;
 }
 
 html {
-  font-family: 'Inter', sans-serif;
   scroll-behavior: smooth;
 }
 
-/* Remove default input styles */
-input:focus {
-  outline: none;
-}
-
-/* Custom scrollbar - Cập nhật theo màu Neon Green & Dark Background */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  /* Màu nền sáng */
+  background: #020617;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  /* Màu xám trung tính */
+  background: #1e293b;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-  /* Đậm hơn khi hover */
+  background: #334155;
 }
 
-/* Utility classes */
-.form-input:focus {
-  border-color: #00c04b !important;
-  box-shadow: 0 0 0 3px rgba(0, 192, 75, 0.2) !important;
+@layer utilities {
+  .glass {
+    @apply backdrop-blur-md bg-slate-900/70 border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-slate-900/40 backdrop-blur-sm border border-white/5 hover:border-emerald-500/30 transition-all duration-500;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400;
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float-slow {
+  animation: float 6s ease-in-out infinite;
 }
