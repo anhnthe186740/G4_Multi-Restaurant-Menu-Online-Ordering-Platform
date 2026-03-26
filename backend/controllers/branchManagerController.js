@@ -1428,6 +1428,9 @@ export const getOrders = async (req, res) => {
       orderTable: o.orderTables
         .map((ot) => ot.table?.tableName ?? `Bàn ${ot.table?.tableID}`)
         .join(" + "),
+      tableName: o.orderTables
+        .map((ot) => ot.table?.tableName ?? `Bàn ${ot.table?.tableID}`)
+        .join(" + "),
       tableIds: o.orderTables.map((ot) => ot.tableID),
       orderDetails: o.orderDetails.map((d) => ({
         id: d.orderDetailID,
