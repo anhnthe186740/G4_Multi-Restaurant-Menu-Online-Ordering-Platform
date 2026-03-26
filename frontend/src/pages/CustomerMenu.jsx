@@ -108,27 +108,36 @@ export default function CustomerMenu({ tableIdProp, onCheckoutSuccess }) {
     };
 
     const handleProcessPayment = async (method = "Cash") => {
-        const finalAmount = Math.max(0, billData.totalAmount - (billData.appliedPromotion?.discountAmount || 0));
-        if (!window.confirm(`Xác nhận thanh toán ${formatPrice(finalAmount)} bằng Tiền mặt?`)) {
+        if (method === "Cash") {
+            const finalAmount = Math.max(0, billData.totalAmount - (billData.appliedPromotion?.discountAmount || 0));
+            if (!window.confirm(`Xác nhận thanh toán ${formatPrice(finalAmount)} bằng Tiền mặt?`)) {
+                return;
+            }
+
+            try {
+                setIsProcessing(true);
+                await processManagerCheckout(tableId, { paymentMethod: method });
+                
+                // Sau khi API thành công, mở modal hoá đơn ở trạng thái PAID
+                if (onCheckoutSuccess) {
+                    onCheckoutSuccess('Thanh toán thành công!', {
+                        type: 'Cash',
+                        tableId,
+                        tableName: billData?.tables?.[0]?.name || `Bàn ${tableId}`,
+                        billData: billData,
+                        initialStatus: 'PAID' // Báo cho modal biết là đã thanh toán xong
+                    });
+                }
+            } catch (err) {
+                console.error("Checkout error", err);
+                alert("Lỗi thanh toán: " + (err.response?.data?.message || err.message));
+            } finally {
+                setIsProcessing(false);
+            }
             return;
         }
-        try {
-            setIsProcessing(true);
-            await processManagerCheckout(tableId, { paymentMethod: method });
-            if (onCheckoutSuccess) {
 
-                const allNames = billData?.tables?.map(t => t.name).join(' + ') || `Bàn ${tableId}`;
-                onCheckoutSuccess(`Thanh toán ${allNames} thành công!`);
-
-//                 onCheckoutSuccess(`Bàn đã thanh toán thành công!`, { type: 'Cash', tableId });
-
-            }
-        } catch (err) {
-            console.error("Checkout error", err);
-            alert("Lỗi thanh toán: " + (err.response?.data?.message || err.message));
-        } finally {
-            setIsProcessing(false);
-        }
+        // Logic cũ cho các phương thức khác (nếu có)
     };
 
     // Handle QR/Bank Transfer payment — creates PayOS link
