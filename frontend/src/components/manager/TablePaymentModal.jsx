@@ -16,20 +16,22 @@ const formatCurrency = (amount) =>
 /* ═══════════════════════════════════════════
    TablePaymentModal — Modal thanh toán QR
 ═══════════════════════════════════════════ */
-export default function TablePaymentModal({ isOpen, onClose, paymentData, billData, tableName, onPaymentSuccess }) {
-    // paymentData: { orderCode, amount, qrCode, checkoutUrl }
+export default function TablePaymentModal({ isOpen, onClose, paymentData, billData, tableName, onPaymentSuccess, paymentMethod = 'QR', initialStatus = 'PENDING' }) {
+    // paymentData: { orderCode, amount, qrCode, checkoutUrl } (có thể null nếu paymentMethod là Cash)
     // billData: { items, totalAmount, tables }
 
-    const [status, setStatus] = useState('PENDING'); // PENDING | PAID | CANCELLED
+    const [status, setStatus] = useState(initialStatus); // PENDING | PAID | CANCELLED
+    const [isProcessingCash, setIsProcessingCash] = useState(false);
     const pollingRef = useRef(null);
     const receiptRef = useRef(null); // Ref cho HTML của Hóa đơn ảo (ẩn)
     const [isExporting, setIsExporting] = useState(false);
 
     const tableId = billData?.tables?.[0]?.id;
+    const isCash = paymentMethod === 'Cash';
 
-    // ── Polling kiểm tra trạng thái ──
+    // ── Polling kiểm tra trạng thái (Chỉ dành cho QR) ──
     const startPolling = useCallback(() => {
-        if (!paymentData?.orderCode || !tableId) return;
+        if (isCash || status === 'PAID' || !paymentData?.orderCode || !tableId) return;
         
         pollingRef.current = setInterval(async () => {
             try {
@@ -50,20 +52,51 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                 console.error('Polling error:', err);
             }
         }, 3000);
-    }, [paymentData, tableId, onPaymentSuccess]);
+    }, [isCash, status, paymentData, tableId, onPaymentSuccess]);
 
     // ── Khởi động khi mở modal ──
     useEffect(() => {
-        if (!isOpen || !paymentData) return;
+        if (!isOpen) return;
         
-        setStatus('PENDING');
+        setStatus(initialStatus);
 
-        startPolling();
+        if (!isCash && paymentData && initialStatus !== 'PAID') {
+            startPolling();
+        }
 
+        // Nếu là tiền mặt và đã PAID ngay từ đầu (xử lý xong ở CustomerMenu), 
+        // ta vẫn để status là PAID để hiện giao diện thành công/xem hoá đơn.
+        // Tuy nhiên ta sẽ gọi onPaymentSuccess sau 1 khoảng thời gian nếu người dùng không đóng thủ công?
+        // Hoặc cứ để đó cho đến khi họ bấm Đóng.
+        
         return () => {
             clearInterval(pollingRef.current);
         };
-    }, [isOpen, paymentData, startPolling]);
+    }, [isOpen, paymentData, isCash, initialStatus, startPolling]);
+
+    // ── Xử lý Thanh toán Tiền mặt (Xác nhận thủ công) ──
+    const handleConfirmCashPayment = async () => {
+        if (!isCash || !tableId) return;
+        
+        const finalAmount = Math.max(0, billData.totalAmount - (billData.appliedPromotion?.discountAmount || 0));
+        if (!window.confirm(`Xác nhận đã thu ${formatCurrency(finalAmount)} tiền mặt từ khách?`)) {
+            return;
+        }
+
+        try {
+            setIsProcessingCash(true);
+            await processManagerCheckout(tableId, { paymentMethod: 'Cash' });
+            setStatus('PAID');
+            setTimeout(() => {
+                if (onPaymentSuccess) onPaymentSuccess();
+            }, 2000);
+        } catch (err) {
+            console.error("Cash checkout error:", err);
+            alert("Lỗi xác nhận thanh toán: " + (err.response?.data?.message || err.message));
+        } finally {
+            setIsProcessingCash(false);
+        }
+    };
 
     // ── Xử lý Xuất PDF ──
     const handleExportPDF = async () => {
@@ -77,13 +110,10 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
             });
             const imgData = canvas.toDataURL('image/png');
             
-            // Tính toán kích thước tự động dựa dẫm A4 hoặc kích thước receipt
-            // Thường bill in ra là cuộn giấy 80mm
-            // pdf định dạng point, mm. Khổ A4 là 210 x 297 mm
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: [80, (canvas.height * 80) / canvas.width] // Chiều rộng 80mm, chiều dài tỉ lệ thuận
+                format: [80, (canvas.height * 80) / canvas.width] 
             });
             
             pdf.addImage(imgData, 'PNG', 0, 0, 80, (canvas.height * 80) / canvas.width);
@@ -96,11 +126,14 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
         }
     };
 
-    if (!isOpen || !paymentData) return null;
+    if (!isOpen) return null;
+    if (!isCash && !paymentData) return null;
 
     const isPending = status === 'PENDING';
     const isPaid = status === 'PAID';
     const isFailed = status === 'CANCELLED' || status === 'EXPIRED';
+
+    const displayAmount = isCash ? billData.totalAmount : paymentData.amount;
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -110,12 +143,15 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                 <div className={`px-6 py-4 flex items-center justify-between
                     ${isPaid ? 'bg-gradient-to-r from-emerald-600 to-teal-600' :
                       isFailed ? 'bg-gradient-to-r from-red-500 to-rose-600' :
+                      isCash ? 'bg-gradient-to-r from-blue-700 to-indigo-800' :
                       'bg-gradient-to-r from-gray-800 to-gray-900'}
                     text-white`}>
                     <div className="flex items-center gap-3">
-                        <BanknoteIcon size={22} />
+                        {isCash ? <Receipt size={22} /> : <BanknoteIcon size={22} />}
                         <div>
-                            <h3 className="font-bold text-base leading-tight">Thanh toán chuyển khoản</h3>
+                            <h3 className="font-bold text-base leading-tight">
+                                {isCash ? 'Thanh toán tiền mặt' : 'Thanh toán chuyển khoản'}
+                            </h3>
                             <p className="text-xs opacity-80">{tableName || `Bàn ${tableId}`}</p>
                         </div>
                     </div>
@@ -127,14 +163,14 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                    {/* ── Trạng thái: Đã thanh toán ── */}
-                    {isPaid && (
+                    {/* ── Trạng thái: Đã thanh toán (Dành cho QR - Chiếm toàn màn hình) ── */}
+                    {!isCash && isPaid && (
                         <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                             <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mb-5">
                                 <CheckCircle2 size={48} className="text-emerald-500" />
                             </div>
                             <h3 className="text-2xl font-black text-gray-800 mb-2">Thanh toán thành công!</h3>
-                            <p className="text-gray-500 text-sm mb-1">Số tiền: <strong className="text-emerald-600">{formatCurrency(paymentData.amount)}</strong></p>
+                            <p className="text-gray-500 text-sm mb-1">Số tiền: <strong className="text-emerald-600">{formatCurrency(displayAmount)}</strong></p>
                             <p className="text-gray-400 text-xs">Bàn sẽ được giải phóng tự động...</p>
                             <div className="mt-6 w-12 h-1 bg-emerald-200 rounded-full animate-pulse" />
                         </div>
@@ -161,12 +197,25 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                         </div>
                     )}
 
-                    {/* ── Trạng thái: Đang chờ ── */}
-                    {isPending && (
+                    {/* ── Nội dung Hóa đơn (Luôn hiện với Tiền mặt hoặc khi QR chưa xong) ── */}
+                    {(isCash || isPending) && !isFailed && (
                         <>
+                            {/* Thông báo thành công nhỏ nếu là Tiền mặt đã thanh toán */}
+                            {isCash && isPaid && (
+                                <div className="mx-5 mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+                                        <CheckCircle2 size={20} className="text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-emerald-800">Thanh toán thành công</p>
+                                        <p className="text-[10px] text-emerald-600">Bàn đã được giải phóng trên hệ thống</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Chi tiết hóa đơn */}
                             {billData && (
-                                <div className="px-5 pt-5">
+                                <div className="px-5 pt-5 pb-2">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
                                             <Receipt size={15} className="text-gray-400" />
@@ -221,7 +270,7 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                                                     </span>
                                                 )}
                                                 <span className="font-black text-xl text-emerald-600 leading-none">
-                                                    {formatCurrency(paymentData.amount)}
+                                                    {formatCurrency(displayAmount)}
                                                 </span>
                                             </div>
                                         </div>
@@ -229,50 +278,64 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                                 </div>
                             )}
 
-                            {/* QR Code & Hướng dẫn */}
-                            <div className="px-5 py-4">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Quét mã QR để thanh toán</span>
-                                </div>
-
-                                {/* QR + Countdown */}
-                                <div className="bg-gradient-to-b from-gray-50 to-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center">
-                                    {paymentData.qrCode ? (
-                                        <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100 mb-3">
-                                            <QRCodeSVG 
-                                                value={paymentData.qrCode} 
-                                                size={180}
-                                                level="M"
-                                                includeMargin={false}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="w-[180px] h-[180px] flex items-center justify-center bg-gray-100 rounded-2xl mb-3">
-                                            <Loader2 className="animate-spin text-gray-400" size={32} />
-                                        </div>
-                                    )}
-
-                                    {/* Polling indicator */}
-                                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                                        <RefreshCw size={11} className="animate-spin" />
-                                        <span>Đang tự động kiểm tra thanh toán...</span>
-                                    </div>
-                                </div>
-
-                                {/* Link dự phòng */}
-                                {paymentData.checkoutUrl && (
-                                    <a 
-                                        href={paymentData.checkoutUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
+                            {isCash ? (
+                                /* Giao diện nút Đóng cho Tiền mặt */
+                                <div className="px-5 py-6">
+                                    <button 
+                                        onClick={() => {
+                                            onPaymentSuccess && onPaymentSuccess();
+                                            onClose();
+                                        }}
+                                        className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-lg shadow-xl hover:bg-black transition flex items-center justify-center gap-3"
                                     >
-                                        <ExternalLink size={14} />
-                                        Mở trang thanh toán PayOS
-                                        <ChevronRight size={13} className="text-gray-400" />
-                                    </a>
-                                )}
-                            </div>
+                                        ĐÓNG HÓA ĐƠN
+                                    </button>
+                                </div>
+                            ) : (
+                                /* Giao diện quét mã QR */
+                                <div className="px-5 py-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Quét mã QR để thanh toán</span>
+                                    </div>
+
+                                    {/* QR + Countdown */}
+                                    <div className="bg-gradient-to-b from-gray-50 to-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center">
+                                        {paymentData?.qrCode ? (
+                                            <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100 mb-3">
+                                                <QRCodeSVG 
+                                                    value={paymentData.qrCode} 
+                                                    size={180}
+                                                    level="M"
+                                                    includeMargin={false}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="w-[180px] h-[180px] flex items-center justify-center bg-gray-100 rounded-2xl mb-3">
+                                                <Loader2 className="animate-spin text-gray-400" size={32} />
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                                            <RefreshCw size={11} className="animate-spin" />
+                                            <span>Đang tự động kiểm tra thanh toán...</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Link dự phòng */}
+                                    {paymentData?.checkoutUrl && (
+                                        <a 
+                                            href={paymentData.checkoutUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
+                                        >
+                                            <ExternalLink size={14} />
+                                            Mở trang thanh toán PayOS
+                                            <ChevronRight size={13} className="text-gray-400" />
+                                        </a>
+                                    )}
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
@@ -287,16 +350,24 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
 
                 <div className="space-y-1 mb-6 text-sm" style={{ color: '#374151' }}>
                     <div className="flex justify-between">
-                        <span>Giờ vào bàn (nhập HĐ):</span>
+                        <span>Bàn:</span>
+                        <span className="font-bold uppercase">{tableName || `BÀN ${tableId}`}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span>Giờ vào:</span>
                         <span className="font-medium">{(billData?.createdAt || billData?.orderTime) ? dayjs(billData.createdAt || billData.orderTime).format('DD/MM/YYYY HH:mm') : '--'}</span>
                     </div>
                     <div className="flex justify-between">
-                        <span>Thời gian in/xuất:</span>
+                        <span>Thời gian in:</span>
                         <span className="font-medium">{dayjs().format('DD/MM/YYYY HH:mm')}</span>
                     </div>
                     <div className="flex justify-between">
+                        <span>PTTT:</span>
+                        <span className="font-bold">{isCash ? 'TIỀN MẶT' : 'CHUYỂN KHOẢN (QR)'}</span>
+                    </div>
+                    <div className="flex justify-between">
                         <span>Trạng thái:</span>
-                        <span className="font-bold">{status === 'PAID' ? 'Đã thanh toán (QR)' : 'Chờ chuyển khoản (QR)'}</span>
+                        <span className="font-bold">{isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'}</span>
                     </div>
                 </div>
 
@@ -321,7 +392,7 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
                 <div className="py-2 space-y-1" style={{ borderBottom: '1px solid #eee' }}>
                     <div className="flex justify-between items-center text-sm">
                         <span style={{ color: '#6b7280' }}>Tạm tính:</span>
-                        <span className="font-bold">{formatCurrency(billData.subTotal || billData.totalAmount)}</span>
+                        <span className="font-bold">{formatCurrency(billData?.subTotal || billData?.totalAmount)}</span>
                     </div>
                 </div>
 
@@ -339,10 +410,10 @@ export default function TablePaymentModal({ isOpen, onClose, paymentData, billDa
 
                 <div className="flex justify-between items-center mb-8">
                     <span className="text-lg font-black tracking-wide">TỔNG CỘNG</span>
-                    <span className="text-2xl font-black">{formatCurrency(paymentData.amount)}</span>
+                    <span className="text-2xl font-black">{formatCurrency(displayAmount)}</span>
                 </div>
 
-                {paymentData.qrCode && (
+                {!isCash && paymentData?.qrCode && (
                     <div className="flex flex-col items-center justify-center p-4 rounded-xl" style={{ backgroundColor: '#f9fafb' }}>
                         <p className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: '#6b7280' }}>Mã QR Chuyển Khoản</p>
                         <QRCodeCanvas 
