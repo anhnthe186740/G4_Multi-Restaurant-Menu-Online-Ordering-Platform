@@ -162,7 +162,7 @@ export default function StaffReadyOrders() {
                     <Table size={20} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900 text-lg">Bàn {order.tableName}</h3>
+                    <h3 className="font-bold text-slate-900 text-lg">{order.tableName}</h3>
                     <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium uppercase tracking-wider">
                         <Clock size={10} />
                         <span>{new Date(order.orderTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
