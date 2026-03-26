@@ -1957,21 +1957,12 @@ export const updateItemStatus = async (req, res) => {
       include: { order: { include: { orderTables: { select: { tableID: true }, take: 1 } } } }
     });
 
-    // Nếu món được Served, kiểm tra xem toàn bộ đơn đã xong chưa
+    // Nếu món được Served, đảm bảo trạng thái đơn hàng là "Serving"
     if (status === "Served") {
-      const remaining = await prisma.orderDetail.count({
-        where: {
-          orderID: updated.orderID,
-          itemStatus: { notIn: ["Served", "Cancelled"] }
-        }
+      await prisma.order.update({
+        where: { orderID: updated.orderID },
+        data: { orderStatus: "Serving" }
       });
-
-      if (remaining === 0) {
-        await prisma.order.update({
-          where: { orderID: updated.orderID },
-          data: { orderStatus: "Completed", paymentStatus: "Paid" }
-        });
-      }
     }
 
     // Phát realtime cho trang QR của khách
@@ -2062,19 +2053,10 @@ export const updateMultipleItemStatus = async (req, res) => {
       const orderIDs = [...new Set(affectedDetails.map(d => d.orderID))];
 
       for (const orderID of orderIDs) {
-        const remaining = await prisma.orderDetail.count({
-          where: {
-            orderID,
-            itemStatus: { notIn: ["Served", "Cancelled"] }
-          }
+        await prisma.order.update({
+          where: { orderID },
+          data: { orderStatus: "Serving" }
         });
-
-        if (remaining === 0) {
-          await prisma.order.update({
-            where: { orderID },
-            data: { orderStatus: "Completed", paymentStatus: "Paid" }
-          });
-        }
       }
     }
 

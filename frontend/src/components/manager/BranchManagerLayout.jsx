@@ -12,6 +12,7 @@ export default function BranchManagerLayout({ children, noPadding = false }) {
         if (p.includes('/manager/payment-history')) return 'Lịch sử thanh toán';
         if (p.includes('/manager/service-requests')) return 'Yêu cầu phục vụ';
         if (p.includes('/manager/kds') || p.includes('/kitchen/kds')) return 'Theo dõi bếp';
+        if (p.includes('/staff/ready-orders')) return 'Món ăn chờ giao';
         if (p.includes('/manager/settings')) return 'Cài đặt';
         return 'Trang chủ';
     };
