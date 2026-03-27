@@ -158,12 +158,10 @@ export default function OwnerSettings() {
         try {
             await updateOwnRestaurantInfo({
                 name: form.name,
-                taxCode: form.taxCode,
                 website: form.website,
                 description: form.description,
                 logo: form.logo || undefined,
                 coverImage: form.coverImage || undefined,
-                businessLicense: form.businessLicense || undefined,
             });
             alert("✅ Đã lưu thông tin nhà hàng thành công!");
         } catch (err) {
@@ -402,16 +400,17 @@ export default function OwnerSettings() {
 
                     {/* Pháp lý */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <div className="flex items-center gap-2 mb-5">
-                            <Shield size={16} className="text-blue-500" />
-                            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pháp lý &amp; Giấy phép</h2>
-                        </div>
+                    <div className="flex items-center gap-2 mb-5">
+                        <Shield size={16} className="text-blue-500" />
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pháp lý &amp; Giấy phép</h2>
+                        <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Chỉ đọc</span>
+                    </div>
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Mã số thuế (Tax ID)</label>
                                 <input
-                                    type="text" name="taxCode" value={form.taxCode} onChange={handleChange}
-                                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                                    type="text" name="taxCode" value={form.taxCode} readOnly disabled
+                                    className="w-full h-10 px-3 rounded-lg border border-gray-100 text-sm text-gray-500 bg-gray-50 cursor-not-allowed focus:outline-none"
                                 />
                             </div>
                             <div>
@@ -432,17 +431,17 @@ export default function OwnerSettings() {
                                             )}
                                         </div>
                                     </div>
-                                    <label className="text-sm text-blue-600 font-semibold cursor-pointer hover:text-blue-700 transition">
-                                        {licenseFile ? "Thay đổi" : "Tải lên"}
-                                        <input type="file" accept=".pdf,.jpg,.png" className="hidden" onChange={handleLicenseChange} />
-                                    </label>
+                                    {/* Nút tải lên bị vô hiệu hóa */}
+                                    <span className="text-xs text-gray-400 italic">
+                                        Liên hệ Admin để cập nhật
+                                    </span>
                                 </div>
                                 <div className="mt-3">
                                     <label className="block text-xs text-gray-500 mb-1">Hoặc nhập URL giấy phép</label>
                                     <input
-                                        type="url" name="businessLicense" value={form.businessLicense} onChange={handleChange}
+                                        type="url" name="businessLicense" value={form.businessLicense} readOnly disabled
                                         placeholder="https://... (PDF, ảnh)"
-                                        className="w-full h-9 px-3 rounded-lg border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 placeholder-gray-300"
+                                        className="w-full h-9 px-3 rounded-lg border border-gray-100 text-xs text-gray-500 bg-gray-50 cursor-not-allowed focus:outline-none placeholder-gray-300"
                                     />
                                 </div>
                             </div>
