@@ -6,14 +6,13 @@ export default function AdminSidebar() {
     const navigate = useNavigate();
 
     const menuItems = [
-        { icon: '📊', label: 'Tổng quan', path: '/admin/dashboard' },
-        { icon: '🏪', label: 'Nhà hàng', path: '/admin/restaurants' },
-        { icon: '📝', label: 'Đơn đăng ký', path: '/admin/requests' },
-        { icon: '📦', label: 'Gói dịch vụ', path: '/admin/service-packages' },
-        { icon: '📈', label: 'Báo cáo', path: '/admin/reports' },
-        { icon: '⚙️', label: 'Cài đặt', path: '/admin/settings' },
-        
-        
+        { label: 'Tổng quan', path: '/admin/dashboard' },
+        { label: 'Nhà hàng', path: '/admin/restaurants' },
+        { label: 'Đơn đăng ký', path: '/admin/requests' },
+        { label: 'Gói dịch vụ', path: '/admin/service-packages' },
+        { label: 'Báo cáo', path: '/admin/reports' },
+
+
     ];
 
     const isActive = (path) => location.pathname === path;
@@ -42,7 +41,7 @@ export default function AdminSidebar() {
                     </div>
                     <div>
                         <h1 className="text-white font-bold text-lg leading-none">Admin</h1>
-                        <p className="text-emerald-500 text-[10px] font-bold tracking-widest mt-1">HỆ THỐNG SAAS</p>
+                        <p className="text-emerald-500 text-[10px] font-bold tracking-widest mt-1 uppercase">System</p>
                     </div>
                 </div>
             </div>
@@ -56,15 +55,13 @@ export default function AdminSidebar() {
                             key={index}
                             to={item.path}
                             className={`
-                                flex items-center gap-3 px-4 py-3 rounded-lg transition-all group
+                                flex items-center px-4 py-3 rounded-lg transition-all group
                                 ${active
                                     ? 'bg-gradient-to-r from-emerald-500/20 to-transparent text-emerald-400 border-l-4 border-emerald-500'
                                     : 'text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent'
                                 }
                             `}
                         >
-                            {/* Render emoji as text, not as component */}
-                            <span className="text-lg w-5 text-center">{item.icon}</span>
                             <span className="font-medium text-sm">{item.label}</span>
                         </Link>
                     );

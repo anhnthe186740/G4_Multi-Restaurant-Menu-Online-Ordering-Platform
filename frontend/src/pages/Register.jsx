@@ -79,7 +79,7 @@ export default function Register() {
                 {/* Main */}
                 <main className="flex-1 flex items-center justify-center px-4 py-16 relative">
                     <div className="w-full max-w-[520px] animate-fade-in-up">
-                        
+
                         <div className="glass-card p-8 sm:p-10 rounded-[2.5rem] relative group">
                             {/* Decorative Top Glow */}
                             <div className="absolute -top-px left-20 right-20 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
@@ -87,7 +87,7 @@ export default function Register() {
                             {/* Title Section */}
                             <div className="text-center mb-8">
                                 <h1 className="text-3xl md:text-4xl font-black text-white mb-3 tracking-tight">
-                                    Tham gia <span className="text-gradient">GastroAdmin</span>
+                                    Tham gia <span className="text-gradient"></span>
                                 </h1>
                                 <p className="text-gray-400 text-sm md:text-base">
                                     Hệ thống quản lý nhà hàng chuyên nghiệp thế hệ mới
@@ -96,7 +96,7 @@ export default function Register() {
 
                             {/* Form */}
                             <form className="grid grid-cols-1 sm:grid-cols-2 gap-5" onSubmit={handleSubmit}>
-                                
+
                                 <div className="space-y-2 sm:col-span-2">
                                     <label className="block text-xs font-black tracking-widest uppercase text-gray-500 ml-1">
                                         Email công việc
