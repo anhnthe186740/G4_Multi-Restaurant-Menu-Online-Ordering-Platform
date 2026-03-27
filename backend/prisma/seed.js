@@ -344,16 +344,17 @@ async function main() {
     prisma.category.create({ data: { restaurantID: rest1.restaurantID, name: "Ăn kèm", displayOrder: 3 } }),
   ]);
 
+  const imageBaseUrl = "http://localhost:5000/uploads/menu/";
   await prisma.product.createMany({
     data: [
-      { categoryID: catPho.categoryID, name: "Phở tái", price: 65000, status: "Available", description: "Phở bò tái truyền thống" },
-      { categoryID: catPho.categoryID, name: "Phở chín", price: 65000, status: "Available", description: "Phở bò chín mềm" },
-      { categoryID: catPho.categoryID, name: "Phở gà", price: 60000, status: "Available", description: "Phở gà ta nước trong" },
-      { categoryID: catPho.categoryID, name: "Phở đặc biệt", price: 85000, status: "Available", description: "Tổng hợp tái, nạm, gầu, gân" },
-      { categoryID: catDrink.categoryID, name: "Trà đá", price: 10000, status: "Available" },
-      { categoryID: catDrink.categoryID, name: "Nước ngọt Pepsi", price: 20000, status: "Available" },
-      { categoryID: catDrink.categoryID, name: "Bia Hà Nội", price: 30000, status: "Available" },
-      { categoryID: catSide.categoryID, name: "Quẩy", price: 10000, status: "Available" },
+      { categoryID: catPho.categoryID, name: "Phở tái", price: 65000, status: "Available", description: "Phở bò tái truyền thống", imageURL: `${imageBaseUrl}PhoTai.jpg` },
+      { categoryID: catPho.categoryID, name: "Phở chín", price: 65000, status: "Available", description: "Phở bò chín mềm", imageURL: `${imageBaseUrl}Tai_nam.jpg` },
+      { categoryID: catPho.categoryID, name: "Phở gà", price: 60000, status: "Available", description: "Phở gà ta nước trong", imageURL: `${imageBaseUrl}PhoGa.jpg` },
+      { categoryID: catPho.categoryID, name: "Phở đặc biệt", price: 85000, status: "Available", description: "Tổng hợp tái, nạm, gầu, gân", imageURL: `${imageBaseUrl}Phodacbiet.jpg` },
+      { categoryID: catDrink.categoryID, name: "Trà đá", price: 10000, status: "Available", imageURL: `${imageBaseUrl}Tra_da.jpg` },
+      { categoryID: catDrink.categoryID, name: "Nước ngọt Pepsi", price: 20000, status: "Available", imageURL: `${imageBaseUrl}Pepsi.jpg` },
+      { categoryID: catDrink.categoryID, name: "Bia Hà Nội", price: 30000, status: "Available", imageURL: `${imageBaseUrl}Bia.jpg` },
+      { categoryID: catSide.categoryID, name: "Quẩy", price: 10000, status: "Available", imageURL: `${imageBaseUrl}quay.jpg` },
       { categoryID: catSide.categoryID, name: "Trứng luộc", price: 15000, status: "Available" },
       { categoryID: catSide.categoryID, name: "Giò lụa", price: 25000, status: "Available" },
     ],
