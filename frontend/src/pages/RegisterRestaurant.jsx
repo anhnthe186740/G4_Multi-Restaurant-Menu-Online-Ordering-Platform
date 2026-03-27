@@ -201,7 +201,25 @@ export default function RegisterRestaurant() {
         e.preventDefault();
         setErrorMsg("");
         if (!form.ownerName.trim() || !form.restaurantName.trim() || !form.email.trim()) {
-            setErrorMsg("Vui lòng điền đầy đủ các trường bắt buộc (*)");
+            setErrorMsg("Vui lòng điền đầy đủ các thông tin cá nhân và nhà hàng (*)");
+            return;
+        }
+
+        // Validate MST (10 hoặc 13 chữ số)
+        const taxRegex = /^\d{10}(\d{3})?$/;
+        const cleanTax = form.taxCode.replace(/-/g, "").trim();
+        if (!cleanTax) {
+            setErrorMsg("Mã số thuế là bắt buộc");
+            return;
+        }
+        if (!taxRegex.test(cleanTax)) {
+            setErrorMsg("Mã số thuế không hợp lệ (phải có 10 hoặc 13 chữ số)");
+            return;
+        }
+
+        // Validate Giấy phép kinh doanh
+        if (!form.businessLicense) {
+            setErrorMsg("Vui lòng tải lên hoặc dán link Giấy phép kinh doanh");
             return;
         }
         setSubmitting(true);
@@ -359,6 +377,7 @@ export default function RegisterRestaurant() {
                                     </label>
                                     <input
                                         type="text" name="restaurantName" value={form.restaurantName} onChange={handleChange}
+                                        required
                                         placeholder="VD: Phở Hà Nội"
                                         className="w-full h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/40"
                                     />
@@ -382,15 +401,20 @@ export default function RegisterRestaurant() {
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Mã số thuế (Tax ID)</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                                        Mã số thuế (Tax ID) <span className="text-red-400">*</span>
+                                    </label>
                                     <input
                                         type="text" name="taxCode" value={form.taxCode} onChange={handleChange}
+                                        required
                                         placeholder="0123456789"
                                         className="w-full h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/40"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Giấy phép kinh doanh</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                                        Giấy phép kinh doanh <span className="text-red-400">*</span>
+                                    </label>
                                     <div className="flex items-center justify-between px-4 py-3 rounded-lg border border-white/10 bg-white/5">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">

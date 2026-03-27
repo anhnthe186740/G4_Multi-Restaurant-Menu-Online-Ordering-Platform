@@ -12,6 +12,28 @@ export const createRegistrationRequest = async (req, res) => {
             return res.status(400).json({ message: "Họ tên chủ sở hữu và Tên nhà hàng là bắt buộc" });
         }
 
+        // Server-side validation cho extra form data (trong note payload)
+        const PREFIX = "__FORM_DATA__:";
+        if (note && note.startsWith(PREFIX)) {
+            try {
+                const extraData = JSON.parse(note.slice(PREFIX.length));
+                const taxRegex = /^\d{10}(\d{3})?$/;
+                const cleanTax = (extraData.taxCode || "").replace(/-/g, "").trim();
+
+                if (!cleanTax) {
+                    return res.status(400).json({ message: "Mã số thuế là bắt buộc" });
+                }
+                if (!taxRegex.test(cleanTax)) {
+                    return res.status(400).json({ message: "Mã số thuế không hợp lệ (10 hoặc 13 chữ số)" });
+                }
+                if (!extraData.businessLicense) {
+                    return res.status(400).json({ message: "Giấy phép kinh doanh là bắt buộc" });
+                }
+            } catch (e) {
+                // Nếu lỗi parse JSON, bỏ qua hoặc xử lý nếu cần
+            }
+        }
+
         // Gộp email + phone vào contactInfo
         const contactParts = [];
         if (email) contactParts.push(email);
