@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -71,6 +72,7 @@ function StatCard({ icon: Icon, label, value, sub, growth, color }) {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════ */
 export default function BranchManagerDashboard() {
+    const navigate = useNavigate();
     const [period, setPeriod]           = useState('today');
     const [loading, setLoading]         = useState(true);
     const [stats, setStats]             = useState(null);
@@ -354,7 +356,10 @@ export default function BranchManagerDashboard() {
                                             </div>
                                         </div>
                                     ))}
-                                    <button className="w-full text-center text-blue-600 text-sm font-semibold mt-4 hover:text-blue-700 transition-colors">
+                                     <button 
+                                        onClick={() => navigate('/manager/menu')}
+                                        className="w-full text-center text-blue-600 text-sm font-semibold mt-4 hover:text-blue-700 transition-colors cursor-pointer"
+                                    >
                                         Xem tất cả thực đơn
                                     </button>
                                 </div>
