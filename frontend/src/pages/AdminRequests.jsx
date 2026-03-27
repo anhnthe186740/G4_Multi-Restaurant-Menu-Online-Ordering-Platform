@@ -156,6 +156,12 @@ export default function AdminRequests() {
     // ── reject ─────────────────────────────────────────────────────────────────
     const handleReject = async () => {
         if (!selected || actionLoading) return;
+
+        if (!rejectNote || !rejectNote.trim()) {
+            showToast("Vui lòng nhập lý do từ chối", "error");
+            return;
+        }
+
         setActionLoading(true);
         try {
             await rejectRegistrationRequest(selected.requestID, rejectNote);
@@ -539,12 +545,12 @@ export default function AdminRequests() {
                                         {/* Ghi chú từ chối */}
                                         <div>
                                             <label className="text-slate-500 text-xs uppercase tracking-wider font-semibold block mb-2">
-                                                Ghi chú từ chối (nếu có)
+                                                Lý do từ chối (bắt buộc)
                                             </label>
                                             <textarea
                                                 value={rejectNote}
                                                 onChange={e => setRejectNote(e.target.value)}
-                                                placeholder="Nhập lý do từ chối yêu cầu..."
+                                                placeholder="Vui lòng nhập lý do cụ thể để từ chối yêu cầu này..."
                                                 rows={4}
                                                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50 resize-none"
                                             />

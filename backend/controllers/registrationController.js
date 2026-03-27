@@ -335,6 +335,10 @@ export const rejectRequest = async (req, res) => {
             return res.status(400).json({ message: "Yêu cầu này đã được xử lý" });
         }
 
+        if (!adminNote || !adminNote.trim()) {
+            return res.status(400).json({ message: "Lý do từ chối là bắt buộc" });
+        }
+
         await prisma.registrationRequest.update({
             where: { requestID: parseInt(id) },
             data: {
