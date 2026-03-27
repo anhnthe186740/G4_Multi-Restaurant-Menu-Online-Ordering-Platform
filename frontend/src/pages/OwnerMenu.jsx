@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import RestaurantOwnerLayout from '../components/owner/RestaurantOwnerLayout';
 import {
     BookOpen, Plus, Search, RefreshCw, Pencil, Trash2,
-    X, CheckCircle2, XCircle, Tag, DollarSign,
+    X, CheckCircle2, XCircle, Tag,
     EyeOff, ChevronDown, ImageIcon, AlertCircle,
 } from 'lucide-react';
 import {
@@ -159,7 +159,7 @@ export default function OwnerMenu() {
             if (form.imageFile) {
                 const data = new FormData();
                 data.append('file', form.imageFile);
-                const res = await uploadOwnerFile(data);
+                const res = await uploadOwnerFile(data, "menu");
                 imageURL = res.data.url;
             }
 
@@ -206,6 +206,12 @@ export default function OwnerMenu() {
         } finally {
             setDeleting(false);
         }
+    };
+
+    /* ---------- category added ---------- */
+    const handleCategoryAdded = async (newId) => {
+        await loadData();
+        setForm(prev => ({ ...prev, categoryId: newId }));
     };
 
     /* ---------- counts ---------- */
@@ -371,6 +377,7 @@ export default function OwnerMenu() {
                     formError={formError}
                     saving={saving}
                     categories={categories}
+                    onCategoryAdded={handleCategoryAdded}
                     onClose={() => setShowForm(false)}
                     onSave={handleSave}
                 />
@@ -460,8 +467,29 @@ function MenuItemRow({ item, categories, onEdit, onDelete }) {
 /* ============================================================
    FORM MODAL (Add / Edit)
    ============================================================ */
-function FormModal({ isEdit, form, setForm, formError, saving, categories, onClose, onSave }) {
+function FormModal({ isEdit, form, setForm, formError, saving, categories, onCategoryAdded, onClose, onSave }) {
     const set = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
+
+    const [showAddCat, setShowAddCat] = useState(false);
+    const [newCatName, setNewCatName] = useState('');
+    const [addingCat, setAddingCat] = useState(false);
+
+    const handleSaveCat = async () => {
+        if (!newCatName.trim()) return;
+        setAddingCat(true);
+        try {
+            const res = await createOwnerMenuCategory({ name: newCatName.trim() });
+            if (onCategoryAdded) {
+                await onCategoryAdded(res.data.category.categoryID);
+            }
+            setShowAddCat(false);
+            setNewCatName('');
+        } catch (err) {
+            console.error('Failed to create category:', err);
+        } finally {
+            setAddingCat(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -498,7 +526,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onClo
                             value={form.name}
                             onChange={set('name')}
                             placeholder="VD: Gà nướng muối ớt"
-                            className="w-full px-3.5 py-2.5 text-sm text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                            className="w-full px-3.5 py-2.5 text-sm text-black border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                         />
                     </div>
 
@@ -510,7 +538,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onClo
                             onChange={set('description')}
                             rows={3}
                             placeholder="Mô tả ngắn về món ăn..."
-                            className="w-full px-3.5 py-2.5 text-sm text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 resize-none"
+                            className="w-full px-3.5 py-2.5 text-sm text-black border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 resize-none"
                         />
                     </div>
 
@@ -519,14 +547,14 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onClo
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Giá (VNĐ) <span className="text-red-500">*</span></label>
                             <div className="relative">
-                                <DollarSign size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">đ</span>
                                 <input
                                     type="number"
                                     min="0"
                                     value={form.price}
                                     onChange={set('price')}
                                     placeholder="0"
-                                    className="w-full pl-9 pr-3.5 py-2.5 text-sm text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                                    className="w-full pl-9 pr-3.5 py-2.5 text-sm text-black border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                                 />
                             </div>
                         </div>
@@ -536,13 +564,58 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onClo
                                 <select
                                     value={form.categoryId ?? ''}
                                     onChange={set('categoryId')}
-                                    className="w-full appearance-none px-3.5 py-2.5 text-sm text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white pr-8"
+                                    className="w-full appearance-none px-3.5 py-2.5 text-sm text-black border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white pr-8"
                                 >
+                                    <option value="" disabled>-- Chọn --</option>
                                     {categories.map(c => (
                                         <option key={c.categoryID} value={c.categoryID}>{c.name}</option>
                                     ))}
                                 </select>
                                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
+                            <div className="mt-1.5 flex justify-end">
+                                {!showAddCat ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddCat(true)}
+                                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    >
+                                        <Plus size={12} />
+                                        Thêm danh mục mới
+                                    </button>
+                                ) : (
+                                    <div className="flex flex-col w-full gap-2.5 bg-blue-50/50 p-3 rounded-xl border border-blue-100 mt-2 shadow-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                                            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Danh mục mới</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={newCatName}
+                                            onChange={e => setNewCatName(e.target.value)}
+                                            placeholder="Tên danh mục mới..."
+                                            className="w-full px-3 py-2 text-sm text-black border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white placeholder:text-gray-400"
+                                            autoFocus
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAddCat(false)}
+                                                className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                                            >
+                                                Hủy
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveCat}
+                                                disabled={addingCat || !newCatName.trim()}
+                                                className="text-xs px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold shadow-sm shadow-blue-100 transition-all active:scale-95"
+                                            >
+                                                {addingCat ? 'Đang lưu...' : 'Lưu'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

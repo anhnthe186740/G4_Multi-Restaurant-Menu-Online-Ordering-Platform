@@ -1667,7 +1667,8 @@ export const uploadBranchCoverImage = async (req, res) => {
       return res.status(404).json({ message: "Chi nhánh không tồn tại." });
     }
 
-    const coverImageURL = `/uploads/${req.file.filename}`;
+    const folder = req.query.folder || "";
+    const coverImageURL = folder ? `/uploads/${folder}/${req.file.filename}` : `/uploads/${req.file.filename}`;
 
     await prisma.restaurant.update({
       where: { restaurantID: branch.restaurantID },

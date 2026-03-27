@@ -134,11 +134,12 @@ export default function RegisterRestaurant() {
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
     // Upload file lên server, trả về URL thực
-    const uploadToServer = async (file) => {
+    const uploadToServer = async (file, folder = "") => {
         const formData = new FormData();
         formData.append("file", file);
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/upload", {
+        const url = folder ? `http://localhost:5000/api/upload?folder=${folder}` : "http://localhost:5000/api/upload";
+        const res = await fetch(url, {
             method: "POST",
             headers: token ? { Authorization: `Bearer ${token}` } : {},
             body: formData,
@@ -162,7 +163,7 @@ export default function RegisterRestaurant() {
         else if (type === "logo") setLogoPreview(blobUrl);
         setUploadingImg(type);
         try {
-            const serverUrl = await uploadToServer(file);
+            const serverUrl = await uploadToServer(file, "registrations");
             if (type === "cover") {
                 setCoverPreview(serverUrl);
                 setForm(prev => ({ ...prev, coverImage: serverUrl }));
@@ -185,7 +186,7 @@ export default function RegisterRestaurant() {
         setLicenseFile({ name: file.name, date: new Date().toLocaleDateString("vi-VN"), uploading: true });
         setUploadingImg("license");
         try {
-            const serverUrl = await uploadToServer(file);
+            const serverUrl = await uploadToServer(file, "registrations");
             setLicenseFile({ name: file.name, date: new Date().toLocaleDateString("vi-VN"), uploading: false });
             setForm(prev => ({ ...prev, businessLicense: serverUrl }));
         } catch (err) {

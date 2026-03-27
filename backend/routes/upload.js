@@ -14,7 +14,8 @@ router.post("/", verifyToken, upload.single("file"), (req, res) => {
         return res.status(400).json({ message: "Không có file được tải lên" });
     }
     const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const url = `${baseUrl}/uploads/${req.file.filename}`;
+    const folder = req.query.folder ? `${req.query.folder}/` : "";
+    const url = `${baseUrl}/uploads/${folder}${req.file.filename}`;
     res.json({ url, filename: req.file.filename });
 });
 
