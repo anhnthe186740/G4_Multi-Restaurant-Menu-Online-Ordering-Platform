@@ -41,7 +41,7 @@ export const getManagerPaymentHistory  = (params)   => managerAxios.get("manager
 
 // Branch Info
 export const getManagerBranchInfo = () => managerAxios.get("manager/branch-info");
-export const updateManagerBranchCover = (formData) => managerAxios.patch("manager/branch-info/cover", formData, {
+export const updateManagerBranchCover = (formData) => managerAxios.patch("manager/branch-info/cover?folder=branches", formData, {
     headers: { "Content-Type": "multipart/form-data" }
 });
 

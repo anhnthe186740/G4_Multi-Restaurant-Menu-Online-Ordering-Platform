@@ -14,12 +14,19 @@ if (!fs.existsSync(uploadDir)) {
 
 // Cấu hình multer: lưu vào uploads/, tên file = timestamp + originalname
 const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadDir),
+    destination: (req, _file, cb) => {
+        const folder = req.query.folder || "";
+        const targetDir = path.join(uploadDir, folder);
+        if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+        cb(null, targetDir);
+    },
     filename: (_req, file, cb) => {
         const ext = path.extname(file.originalname);
         const base = path.basename(file.originalname, ext)
             .replace(/\s+/g, "_")
-            .replace(/[^a-zA-Z0-9_-]/g, "");
+            .replace(/[^a-zA-Z0-9_-]/g);
         cb(null, `${Date.now()}_${base}${ext}`);
     },
 });

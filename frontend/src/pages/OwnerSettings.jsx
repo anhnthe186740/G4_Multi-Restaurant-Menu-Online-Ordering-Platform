@@ -90,11 +90,12 @@ export default function OwnerSettings() {
         setForm({ ...form, [e.target.name]: e.target.value });
 
     // Upload file lên server, trả về URL thực
-    const uploadToServer = async (file) => {
+    const uploadToServer = async (file, folder = "") => {
         const formData = new FormData();
         formData.append("file", file);
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/upload", {
+        const url = folder ? `http://localhost:5000/api/upload?folder=${folder}` : "http://localhost:5000/api/upload";
+        const res = await fetch(url, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
             body: formData,
@@ -120,7 +121,7 @@ export default function OwnerSettings() {
         // Upload lên server
         setUploadingImg(type);
         try {
-            const serverUrl = await uploadToServer(file);
+            const serverUrl = await uploadToServer(file, "profiles");
             if (type === "cover") {
                 setCoverPreview(serverUrl);
                 setForm(prev => ({ ...prev, coverImage: serverUrl }));
@@ -143,7 +144,7 @@ export default function OwnerSettings() {
         const today = new Date().toLocaleDateString("vi-VN");
         setLicenseFile({ name: file.name, date: today, uploading: true });
         try {
-            const serverUrl = await uploadToServer(file);
+            const serverUrl = await uploadToServer(file, "profiles");
             setLicenseFile({ name: file.name, date: today, uploading: false });
             setForm(prev => ({ ...prev, businessLicense: serverUrl }));
         } catch (err) {
