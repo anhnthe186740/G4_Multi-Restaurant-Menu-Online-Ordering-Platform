@@ -12,7 +12,7 @@ export default function PackageChart({ data }) {
     return (
         <div className="bg-[#0f1612] rounded-xl border border-[#1a2b22] p-6">
             <h3 className="text-lg font-bold text-white mb-4">
-                📦 Phân bố gói dịch vụ
+                Phân bố gói dịch vụ
             </h3>
 
             {chartData.length === 0 ? (

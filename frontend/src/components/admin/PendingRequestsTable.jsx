@@ -14,7 +14,7 @@ export default function PendingRequestsTable({ requests }) {
         return (
             <div className="bg-[#0f1612] rounded-xl border border-[#1a2b22] p-6">
                 <h3 className="text-lg font-bold text-white mb-4">
-                    📝 Đơn đăng ký chờ duyệt
+                     Đơn đăng ký chờ duyệt
                 </h3>
                 <div className="text-center py-8 text-gray-500">
                     Không có đơn đăng ký nào đang chờ

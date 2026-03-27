@@ -17,7 +17,7 @@ export default function HeroSection() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
-                        SaaS Thế Hệ Mới
+                        Hệ thống Thế Hệ Mới
                     </div>
                     
                     <h1 className="text-5xl md:text-7xl font-black text-white leading-[1.1] mb-8 tracking-tight">
