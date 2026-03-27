@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Logo from "./Logo";
 
 export default function Footer() {
   return (
@@ -8,14 +9,7 @@ export default function Footer() {
           
           {/* Brand */}
           <div className="col-span-2 lg:col-span-2">
-            <Link to="/" className="flex items-center gap-3 font-bold text-white text-2xl mb-6">
-              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
-                </svg>
-              </div>
-              RestoManager
-            </Link>
+            <Logo size="md" className="mb-6" />
             <p className="max-w-xs text-sm leading-relaxed mb-8">
               Giải pháp vận hành nhà hàng thông minh nhất hiện nay. Giúp bạn số hóa quy trình và tối đa hóa lợi nhuận.
             </p>
@@ -62,7 +56,7 @@ export default function Footer() {
         </div>
 
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs">© 2024 RestoManager. Powered by Antigravity.</p>
+          <p className="text-xs">© 2026 GastroAdmin. Powered by Antigravity.</p>
           <div className="flex gap-8 text-xs font-bold uppercase tracking-widest leading-none">
             <a href="#" className="hover:text-white transition-colors border-b border-transparent hover:border-white">Tiếng Việt</a>
             <a href="#" className="hover:text-white transition-colors border-b border-transparent hover:border-white">English</a>

@@ -827,7 +827,12 @@ export const updateOwnerRestaurantInfo = async (req, res) => {
     const { name, description, website, taxCode, logo, coverImage, businessLicense } = req.body;
     const data = {};
     if (name !== undefined) data.name = name;
-    if (description !== undefined) data.description = description;
+    if (description !== undefined) {
+      if (description.length > 250) {
+        return res.status(400).json({ message: "Mô tả không được vượt quá 250 ký tự" });
+      }
+      data.description = description;
+    }
     if (website !== undefined) data.website = website;
     if (taxCode !== undefined) data.taxCode = taxCode;
     if (logo !== undefined) data.logo = logo;

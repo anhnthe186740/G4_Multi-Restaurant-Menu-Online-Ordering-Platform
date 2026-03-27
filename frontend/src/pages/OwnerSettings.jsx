@@ -46,7 +46,7 @@ export default function OwnerSettings() {
     const [pwLoading, setPwLoading] = useState(false);
     const [pwMessage, setPwMessage] = useState("");
     const [pwError, setPwError] = useState("");
-    
+
     // OTP Form Step
     const [isOtpStep, setIsOtpStep] = useState(false);
     const [otpCountdown, setOtpCountdown] = useState(0);
@@ -214,7 +214,7 @@ export default function OwnerSettings() {
         setPwMessage("");
         setPwError("");
         if (!pwForm.otp || pwForm.otp.length !== 6) { setPwError("Mã OTP phải gồm 6 chữ số"); return; }
-        
+
         setPwLoading(true);
         try {
             const token = localStorage.getItem("token");
@@ -223,7 +223,7 @@ export default function OwnerSettings() {
                 newPassword: pwForm.newPassword,
                 otp: pwForm.otp,
             }, { headers: { Authorization: `Bearer ${token}` } });
-            
+
             setPwMessage(res.data.message);
             // Reset toàn bộ form
             setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "", otp: "" });
@@ -273,12 +273,11 @@ export default function OwnerSettings() {
                         <Save size={16} />
                         {saving ? "Đang lưu..." : "Lưu thay đổi"}
                     </button>
-                    <button type="button" onClick={() => navigate("/owner/review")}>review</button>
-                       
-                       <table>
 
-                          
-                         </table>
+                    <table>
+
+
+                    </table>
                 </div>
 
                 {/* ===== BỘ NHẬN DIỆN HÌNH ẢNH ===== */}
@@ -400,11 +399,11 @@ export default function OwnerSettings() {
 
                     {/* Pháp lý */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <div className="flex items-center gap-2 mb-5">
-                        <Shield size={16} className="text-blue-500" />
-                        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pháp lý &amp; Giấy phép</h2>
-                        <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Chỉ đọc</span>
-                    </div>
+                        <div className="flex items-center gap-2 mb-5">
+                            <Shield size={16} className="text-blue-500" />
+                            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pháp lý &amp; Giấy phép</h2>
+                            <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Chỉ đọc</span>
+                        </div>
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Mã số thuế (Tax ID)</label>
@@ -461,10 +460,11 @@ export default function OwnerSettings() {
                         value={form.description}
                         onChange={handleChange}
                         rows={4}
+                        maxLength={500}
                         placeholder="Mô tả về nhà hàng của bạn..."
                         className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/40 placeholder-gray-300"
                     />
-                    <p className="text-xs text-gray-400 mt-1 text-right">{form.description.length} / 500 ký tự</p>
+                    <p className="text-xs text-gray-400 mt-1 text-right">{form.description.length} / 250 ký tự</p>
                 </div>
 
                 {/* ===== THÔNG TIN CHỦ SỞ HỮU (read-only) ===== */}
@@ -564,7 +564,7 @@ export default function OwnerSettings() {
                                     >
                                         &larr; Quay lại
                                     </button>
-                                    
+
                                     <button
                                         type="button"
                                         onClick={handleRequestOtp}
@@ -587,7 +587,7 @@ export default function OwnerSettings() {
                                 ❌ {pwError}
                             </div>
                         )}
-                        
+
                         {!isOtpStep ? (
                             <button
                                 type="submit"

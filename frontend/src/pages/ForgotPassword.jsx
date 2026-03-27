@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import Logo from "../components/layout/Logo";
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState("");
@@ -37,14 +38,7 @@ const ForgotPassword = () => {
                 
                 {/* Logo Section */}
                 <div className="flex flex-col items-center mb-10 group">
-                    <Link to="/" className="flex items-center gap-3 font-black text-3xl tracking-tighter hover:opacity-80 transition-all">
-                        <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-500/40 group-hover:scale-110 transition-transform duration-500">
-                            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
-                            </svg>
-                        </div>
-                        <span className="text-white">RestoManager</span>
-                    </Link>
+                    <Logo size="lg" showText={true} />
                 </div>
 
                 <div className="glass-card p-8 sm:p-10 rounded-[2.5rem] relative overflow-hidden group">
@@ -135,7 +129,7 @@ const ForgotPassword = () => {
                 </div>
 
                 <footer className="mt-12 text-center text-[10px] font-bold tracking-[0.2em] text-gray-600 uppercase">
-                    © 2026 RestoManager. Digital Excellence.
+                    © 2026 GastroAdmin. Digital Excellence.
                 </footer>
             </div>
         </div>
