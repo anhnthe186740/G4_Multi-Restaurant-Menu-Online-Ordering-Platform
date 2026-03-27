@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { io } from "socket.io-client";
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -71,6 +73,7 @@ function StatCard({ icon: Icon, label, value, sub, growth, color }) {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════ */
 export default function BranchManagerDashboard() {
+    const navigate = useNavigate();
     const [period, setPeriod]           = useState('today');
     const [loading, setLoading]         = useState(true);
     const [stats, setStats]             = useState(null);
@@ -98,6 +101,31 @@ export default function BranchManagerDashboard() {
     }, []);  // eslint-disable-line
 
     useEffect(() => { loadAll(period); }, [period]); // eslint-disable-line
+
+    // real-time updates via Socket.io
+    useEffect(() => {
+        const socket = io(`http://${window.location.hostname}:5000`);
+
+        socket.on("tableUpdate", (data) => {
+            console.log("📢 Dashboard received tableUpdate signal:", data);
+            loadAll(period);
+        });
+
+        socket.on("orderItemStatusChanged", (data) => {
+            console.log("📢 Dashboard received orderItemStatusChanged signal:", data);
+            loadAll(period);
+        });
+
+        // Lắng nghe thêm cả yêu cầu phục vụ nếu cần
+        socket.on("serviceRequestCreated", (data) => {
+            console.log("📢 Dashboard received serviceRequestCreated signal:", data);
+            loadAll(period);
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [period, loadAll]);
 
     const handlePeriod = (p) => { setPeriod(p); };
 
@@ -354,7 +382,10 @@ export default function BranchManagerDashboard() {
                                             </div>
                                         </div>
                                     ))}
-                                    <button className="w-full text-center text-blue-600 text-sm font-semibold mt-4 hover:text-blue-700 transition-colors">
+                                     <button 
+                                        onClick={() => navigate('/manager/menu')}
+                                        className="w-full text-center text-blue-600 text-sm font-semibold mt-4 hover:text-blue-700 transition-colors cursor-pointer"
+                                    >
                                         Xem tất cả thực đơn
                                     </button>
                                 </div>
