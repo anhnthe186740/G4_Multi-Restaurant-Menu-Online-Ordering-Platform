@@ -249,9 +249,9 @@ export const getManagerRevenueTrend = async (req, res) => {
 
     const results = await prisma.$queryRaw`
       SELECT
-        DATE_FORMAT(orderTime, '%Y-%m') AS month,
-        SUM(totalAmount)                AS revenue,
-        COUNT(*)                        AS orders
+        DATE_FORMAT(DATE_ADD(orderTime, INTERVAL 7 HOUR), '%Y-%m') AS month,
+        SUM(totalAmount)                                          AS revenue,
+        COUNT(*)                                                  AS orders
       FROM Orders
       WHERE branchID = ${branchID}
         AND orderStatus = 'Completed'
@@ -366,13 +366,13 @@ export const getManagerOrdersHeatmap = async (req, res) => {
 
     const results = await prisma.$queryRaw`
       SELECT
-        WEEKDAY(orderTime)                 AS dayOfWeek,
-        HOUR(orderTime)                    AS hour,
-        COUNT(*)                           AS count
+        WEEKDAY(DATE_ADD(orderTime, INTERVAL 7 HOUR)) AS dayOfWeek,
+        HOUR(DATE_ADD(orderTime, INTERVAL 7 HOUR))    AS hour,
+        COUNT(*)                                      AS count
       FROM Orders
       WHERE branchID = ${branchID}
         AND orderTime >= ${since}
-      GROUP BY WEEKDAY(orderTime), HOUR(orderTime)
+      GROUP BY dayOfWeek, hour
       ORDER BY dayOfWeek, hour
     `;
 
@@ -2124,7 +2124,7 @@ export const cancelOrderItem = async (req, res) => {
         });
       }
 
-      // Tính lại tổng tiền
+      // Tính lại tổng tiền món không bị huỷ
       const remainingDetails = await tx.orderDetail.findMany({
         where: { orderID, itemStatus: { not: "Cancelled" } },
         select: { quantity: true, unitPrice: true },
@@ -2134,10 +2134,28 @@ export const cancelOrderItem = async (req, res) => {
         0
       );
 
+      // Nếu không còn món nào, huỷ luôn đơn hàng
+      const isFullCancelled = remainingDetails.length === 0;
+
       await tx.order.update({
         where: { orderID },
-        data: { totalAmount: newTotal },
+        data: { 
+          totalAmount: newTotal,
+          ...(isFullCancelled ? { orderStatus: "Cancelled" } : {})
+        },
       });
+
+      // Nếu huỷ hết đơn, giải phóng tất cả bàn liên quan
+      if (isFullCancelled) {
+        const orderTables = await tx.orderTable.findMany({ where: { orderID } });
+        const tableIds = orderTables.map(ot => ot.tableID);
+        if (tableIds.length > 0) {
+          await tx.table.updateMany({
+            where: { tableID: { in: tableIds } },
+            data: { status: "Available", mergedGroupId: null }
+          });
+        }
+      }
     });
 
     const io = req.app.get("io");

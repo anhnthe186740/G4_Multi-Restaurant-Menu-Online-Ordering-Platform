@@ -464,7 +464,24 @@ export const cancelPublicOrderItem = async (req, res) => {
             select: { quantity: true, unitPrice: true },
         });
         const newTotal = remainingItems.reduce((s, d) => s + d.quantity * parseFloat(d.unitPrice), 0);
-        await prisma.order.update({ where: { orderID }, data: { totalAmount: newTotal } });
+
+        const isFullCancelled = remainingItems.length === 0;
+
+        await prisma.order.update({ 
+            where: { orderID }, 
+            data: { 
+                totalAmount: newTotal,
+                ...(isFullCancelled ? { orderStatus: "Cancelled" } : {})
+            } 
+        });
+
+        // Nếu huỷ sạch món, giải phóng bàn luôn
+        if (isFullCancelled) {
+            await prisma.table.update({
+                where: { tableID: tId },
+                data: { status: "Available" }
+            });
+        }
 
         // 5. Phát tín hiệu realtime
         const io = req.app.get("io");

@@ -152,14 +152,14 @@ export default function OwnerBranchSettings() {
         }
     };
 
-    const handleDelete = async () => {
+    const handleDeletePerm = async () => {
         setDeleting(true);
         try {
             await deleteOwnerBranch(id);
-            showToast('Đã xóa chi nhánh thành công!');
+            showToast('Chi nhánh đã được tạm dừng vĩnh viễn!');
             setTimeout(() => navigate('/owner/branches'), 1000);
         } catch (err) {
-            showToast(err.response?.data?.message || 'Không thể xóa chi nhánh', 'error');
+            showToast(err.response?.data?.message || 'Không thể thực hiện thao tác', 'error');
         } finally {
             setDeleting(false);
             setShowDeleteConfirm(false);
@@ -194,33 +194,28 @@ export default function OwnerBranchSettings() {
                 </div>
             )}
 
-            {/* Delete confirm modal */}
+            {/* Confirmation Modal for Permanent Pause (TC3.9) */}
             {showDeleteConfirm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                                <AlertTriangle size={20} className="text-red-600" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-900">Xác nhận xóa chi nhánh</h3>
-                                <p className="text-sm text-gray-500 mt-0.5">Hành động này không thể hoàn tác.</p>
-                            </div>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
+                        <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle size={28} className="text-red-600" />
                         </div>
-                        <p className="text-sm text-gray-600 mb-5">
-                            Bạn có chắc muốn xóa chi nhánh <strong>{branch?.name}</strong>?
-                            Toàn bộ dữ liệu liên quan (bàn, đơn hàng...) sẽ bị xóa vĩnh viễn.
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Xác nhận tạm dừng vĩnh viễn</h3>
+                        <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                            Bạn có chắc chắn muốn <span className="text-red-600 font-bold italic">tạm dừng vĩnh viễn</span> chi nhánh <strong className="text-gray-900">{branch?.name}</strong>?<br/>
+                            Hành động này sẽ đánh dấu chi nhánh ngừng hoạt động vĩnh viễn. Dữ liệu doanh thu vẫn sẽ được bảo toàn trong hệ thống.
                         </p>
                         <div className="flex gap-3">
                             <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
-                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">
-                                Hủy bỏ
+                                className="flex-1 border border-gray-200 text-gray-700 rounded-xl py-3 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">
+                                Quay lại
                             </button>
-                            <button onClick={handleDelete} disabled={deleting}
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                            <button onClick={handleDeletePerm} disabled={deleting}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
                                 {deleting
-                                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xóa...</>
-                                    : <><Trash2 size={15} /> Xóa chi nhánh</>}
+                                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xử lý...</>
+                                    : 'Xác nhận tạm dừng'}
                             </button>
                         </div>
                     </div>
@@ -523,6 +518,42 @@ export default function OwnerBranchSettings() {
                                 ok={isActive}
                             />
                             <SummaryRow label="Thời gian chuẩn bị TB" value="15 phút" ok={true} />
+                        </div>
+                    </div>
+
+                    {/* ── Danger Zone (TC3.9) ── */}
+                    <div className="bg-white rounded-2xl border-2 border-red-50 shadow-sm p-5 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
+                            <AlertTriangle size={80} className="text-red-600" />
+                        </div>
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                                    <AlertTriangle size={16} className="text-red-500" />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-red-600 text-sm tracking-tight uppercase">Vùng nguy hiểm (Danger Zone)</h2>
+                                    <p className="text-[11px] text-gray-400">Các hành động này có thể ảnh hưởng vĩnh viễn đến chi nhánh</p>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-red-50/50 rounded-xl border border-red-100 p-4">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-bold text-gray-900 mb-0.5">Tạm dừng vĩnh viễn chi nhánh</p>
+                                        <p className="text-xs text-gray-500 leading-relaxed">
+                                            Ngừng mọi hoạt động của chi nhánh này. <br/>
+                                            Dữ liệu doanh thu <span className="font-semibold text-gray-700 italic">vẫn được giữ lại</span> để báo cáo.
+                                        </p>
+                                    </div>
+                                    <button 
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className="shrink-0 px-4 py-2 bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95"
+                                    >
+                                        Thực hiện
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
