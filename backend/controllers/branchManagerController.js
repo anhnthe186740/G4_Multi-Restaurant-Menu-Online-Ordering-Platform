@@ -249,9 +249,9 @@ export const getManagerRevenueTrend = async (req, res) => {
 
     const results = await prisma.$queryRaw`
       SELECT
-        DATE_FORMAT(orderTime, '%Y-%m') AS month,
-        SUM(totalAmount)                AS revenue,
-        COUNT(*)                        AS orders
+        DATE_FORMAT(DATE_ADD(orderTime, INTERVAL 7 HOUR), '%Y-%m') AS month,
+        SUM(totalAmount)                                          AS revenue,
+        COUNT(*)                                                  AS orders
       FROM Orders
       WHERE branchID = ${branchID}
         AND orderStatus = 'Completed'
@@ -366,13 +366,13 @@ export const getManagerOrdersHeatmap = async (req, res) => {
 
     const results = await prisma.$queryRaw`
       SELECT
-        WEEKDAY(orderTime)                 AS dayOfWeek,
-        HOUR(orderTime)                    AS hour,
-        COUNT(*)                           AS count
+        WEEKDAY(DATE_ADD(orderTime, INTERVAL 7 HOUR)) AS dayOfWeek,
+        HOUR(DATE_ADD(orderTime, INTERVAL 7 HOUR))    AS hour,
+        COUNT(*)                                      AS count
       FROM Orders
       WHERE branchID = ${branchID}
         AND orderTime >= ${since}
-      GROUP BY WEEKDAY(orderTime), HOUR(orderTime)
+      GROUP BY dayOfWeek, hour
       ORDER BY dayOfWeek, hour
     `;
 
