@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from "socket.io-client";
 import BranchManagerLayout from '../components/manager/BranchManagerLayout';
@@ -83,49 +83,65 @@ export default function BranchManagerDashboard() {
     const [heatmap, setHeatmap]         = useState([]);
     const [exporting, setExporting]     = useState(false);
 
-    const loadAll = useCallback(async (p = period) => {
-        setLoading(true);
-        const [s, r, o, t, h] = await Promise.allSettled([
-            getManagerDashboardStats(p),
-            getManagerRevenueTrend(),
-            getManagerOrderStatus(p),
-            getManagerTopProducts(),
-            getManagerOrdersHeatmap(),
-        ]);
-        if (s.status === 'fulfilled') setStats(s.value.data);
-        if (r.status === 'fulfilled') setRevenueTrend(r.value.data);
-        if (o.status === 'fulfilled') setOrderStatus(o.value.data);
-        if (t.status === 'fulfilled') setTopProducts(t.value.data);
-        if (h.status === 'fulfilled') setHeatmap(h.value.data);
-        setLoading(false);
-    }, []);  // eslint-disable-line
+    const periodRef = useRef(period);
+    useEffect(() => {
+        periodRef.current = period;
+    }, [period]);
 
-    useEffect(() => { loadAll(period); }, [period]); // eslint-disable-line
+    const loadAll = useCallback(async (p) => {
+        const targetPeriod = p || periodRef.current;
+        console.log(`🔄 Dashboard loading data for period: ${targetPeriod}...`);
+        
+        setLoading(true);
+        try {
+            const [s, r, o, t, h] = await Promise.allSettled([
+                getManagerDashboardStats(targetPeriod),
+                getManagerRevenueTrend(),
+                getManagerOrderStatus(targetPeriod),
+                getManagerTopProducts(),
+                getManagerOrdersHeatmap(),
+            ]);
+            
+            if (s.status === 'fulfilled') setStats(s.value.data);
+            if (r.status === 'fulfilled') setRevenueTrend(r.value.data);
+            if (o.status === 'fulfilled') setOrderStatus(o.value.data);
+            if (t.status === 'fulfilled') setTopProducts(t.value.data);
+            if (h.status === 'fulfilled') {
+                console.log("📈 Heatmap data updated:", h.value.data.length, "days");
+                setHeatmap(h.value.data);
+            }
+        } catch (error) {
+            console.error("❌ Error loading dashboard data:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []); 
+
+    useEffect(() => { 
+        loadAll(period); 
+    }, [period, loadAll]); 
 
     // real-time updates via Socket.io
     useEffect(() => {
         const socket = io(`http://${window.location.hostname}:5000`);
 
-        socket.on("tableUpdate", (data) => {
-            console.log("📢 Dashboard received tableUpdate signal:", data);
-            loadAll(period);
-        });
+        const refresh = (eventName, data) => {
+            // Nếu có branchID trong data, chỉ refresh nếu khớp với chi nhánh hiện tại
+            if (data?.branchID && stats?.branchID && parseInt(data.branchID) !== parseInt(stats.branchID)) {
+                return;
+            }
+            console.log(`🔔 Dashboard triggered refresh by ${eventName}`);
+            setTimeout(() => loadAll(), 500);
+        };
 
-        socket.on("orderItemStatusChanged", (data) => {
-            console.log("📢 Dashboard received orderItemStatusChanged signal:", data);
-            loadAll(period);
-        });
-
-        // Lắng nghe thêm cả yêu cầu phục vụ nếu cần
-        socket.on("serviceRequestCreated", (data) => {
-            console.log("📢 Dashboard received serviceRequestCreated signal:", data);
-            loadAll(period);
-        });
+        socket.on("tableUpdate", (data) => refresh("tableUpdate", data));
+        socket.on("orderItemStatusChanged", (data) => refresh("orderItemStatusChanged", data));
+        socket.on("serviceRequestCreated", (data) => refresh("serviceRequestCreated", data));
 
         return () => {
             socket.disconnect();
         };
-    }, [period, loadAll]);
+    }, [loadAll]);
 
     const handlePeriod = (p) => { setPeriod(p); };
 
