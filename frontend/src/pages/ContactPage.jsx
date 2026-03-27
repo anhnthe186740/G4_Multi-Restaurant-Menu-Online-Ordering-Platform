@@ -5,7 +5,7 @@ export default function ContactPage() {
 
   const faqs = [
     { q: "Tôi có thể dùng thử trước khi mua không?", a: "Tất nhiên! Chúng tôi cung cấp chương trình dùng thử miễn phí 14 ngày đầy đủ tính năng để bạn trải nghiệm trước khi quyết định." },
-    { q: "Hệ thống có hỗ trợ cài đặt tận nơi không?", a: "RestoManager hỗ trợ cài đặt từ xa và hướng dẫn tận nơi tại các thành phố lớn như Hà Nội, TP.HCM, Đà Nẵng." },
+    { q: "Hệ thống có hỗ trợ cài đặt tận nơi không?", a: "GastroAdmin hỗ trợ cài đặt từ xa và hướng dẫn tận nơi tại các thành phố lớn như Hà Nội, TP.HCM, Đà Nẵng." },
     { q: "Dữ liệu của nhà hàng có được bảo mật không?", a: "Chúng tôi sử dụng hạ tầng đám mây của AWS với công nghệ mã hóa dữ liệu đa lớp, đảm bảo dữ liệu của bạn an toàn 100%." }
   ];
 
@@ -17,7 +17,7 @@ export default function ContactPage() {
             Kết nối với <span className="text-green-500">chúng tôi</span>
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
-            Mọi ý kiến đóng góp và thắc mắc của bạn là nguồn động lực để RestoManager ngày càng hoàn thiện hơn. 
+            Mọi ý kiến đóng góp và thắc mắc của bạn là nguồn động lực để GastroAdmin ngày càng hoàn thiện hơn. 
             Chúng tôi sẽ phản hồi lại bạn trong vòng 24h làm việc.
           </p>
         </div>
@@ -31,7 +31,7 @@ export default function ContactPage() {
               <span className="material-symbols-outlined text-orange-500 text-2xl">mail</span>
               <div>
                 <h3 className="font-bold text-white mb-1">Email hỗ trợ</h3>
-                <p className="text-gray-400 text-sm">support@restomanager.vn</p>
+                <p className="text-gray-400 text-sm">support@gastroadmin.vn</p>
               </div>
             </div>
 

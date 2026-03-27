@@ -54,7 +54,7 @@ export default function HeroSection() {
                         </div>
                         <div className="text-sm">
                             <p className="text-white font-bold">+800 nhà hàng</p>
-                            <p className="text-gray-500">đã tin dùng RestoManager</p>
+                            <p className="text-gray-500">đã tin dùng GastroAdmin</p>
                         </div>
                     </div>
                 </div>

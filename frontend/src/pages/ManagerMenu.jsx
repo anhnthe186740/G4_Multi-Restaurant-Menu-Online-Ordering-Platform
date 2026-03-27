@@ -9,26 +9,6 @@ import {
 const formatPrice = (n) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
-/* ─── Helper: stock label ──────────────────────────────────── */
-function StockBadge({ isAvailable, quantity }) {
-    if (!isAvailable)
-        return (
-            <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                HẾT HÀNG
-            </span>
-        );
-    if (quantity === 0)
-        return (
-            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                CÒN HÀNG
-            </span>
-        );
-    return (
-        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-            CÒN HÀNG
-        </span>
-    );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN PAGE
@@ -94,13 +74,6 @@ export default function ManagerMenu() {
         }));
     };
 
-    /* ── quantity change ── */
-    const handleQuantity = (productID, value) => {
-        const qty = Math.max(0, parseInt(value) || 0);
-        setItems(prev => prev.map(it =>
-            it.productID === productID ? { ...it, quantity: qty } : it
-        ));
-    };
 
     /* ── save menu ── */
     const handleSave = async () => {
@@ -144,7 +117,7 @@ export default function ManagerMenu() {
                         <h1 className="text-2xl font-bold text-gray-900">Quản lý Thực đơn</h1>
                     </div>
                     <p className="text-gray-500 text-sm">
-                        Cập nhật trạng thái kinh doanh và số lượng tồn kho của chi nhánh.
+                        Cập nhật trạng thái kinh doanh của các món ăn tại chi nhánh.
                         {' '}<span className="text-emerald-600 font-semibold">{availCount} đang bán</span>
                         {' / '}<span className="text-gray-400">{items.length} tổng</span>
                     </p>
@@ -232,7 +205,6 @@ export default function ManagerMenu() {
                             key={item.productID}
                             item={item}
                             onToggle={() => handleToggle(item.productID)}
-                            onQuantityChange={(v) => handleQuantity(item.productID, v)}
                         />
                     ))}
                 </div>
@@ -244,7 +216,7 @@ export default function ManagerMenu() {
 /* ═══════════════════════════════════════════════════════════════
    FOOD CARD
 ═══════════════════════════════════════════════════════════════ */
-function FoodCard({ item, onToggle, onQuantityChange }) {
+function FoodCard({ item, onToggle }) {
     const [imgErr, setImgErr] = useState(false);
 
     // Derive category label abbreviation for badge
@@ -319,25 +291,6 @@ function FoodCard({ item, onToggle, onQuantityChange }) {
                     </button>
                 </div>
 
-                {/* ── Quantity row ── */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">TỒN KHO</p>
-                        <StockBadge isAvailable={item.isAvailable} quantity={item.quantity} />
-                    </div>
-                    <input
-                        type="number"
-                        min={0}
-                        value={item.quantity}
-                        disabled={!item.isAvailable}
-                        onChange={e => onQuantityChange(e.target.value)}
-                        className={`w-20 text-center text-sm font-bold border rounded-lg py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors
-                            ${item.isAvailable
-                                ? 'border-gray-200 bg-white text-gray-900 hover:border-blue-300'
-                                : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
-                            }`}
-                    />
-                </div>
             </div>
         </div>
     );

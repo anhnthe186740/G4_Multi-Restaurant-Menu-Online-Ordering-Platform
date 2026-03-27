@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import Logo from "./Logo";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -32,16 +33,7 @@ export default function Header() {
       <div className="max-w-[1200px] mx-auto flex items-center justify-between px-6 py-4">
 
         {/* LOGO */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="flex items-center gap-3 font-bold text-white text-xl">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
-              </svg>
-            </div>
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300">RestoManager</span>
-          </div>
-        </Link>
+        <Logo size="md" />
 
         {/* NAV LINKS */}
         <nav className="hidden md:flex items-center gap-10">

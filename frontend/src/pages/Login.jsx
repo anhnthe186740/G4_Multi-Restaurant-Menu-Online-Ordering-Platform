@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginApi, loginWithGoogleApi } from "../api/authApi";
 import { useGoogleLogin } from '@react-oauth/google';
+import Logo from "../components/layout/Logo";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -123,14 +124,7 @@ export default function Login() {
                     backdrop-blur-xl
                     border-b border-white/5
                 ">
-                    <Link to="/" className="flex items-center gap-3 font-bold text-2xl tracking-tight hover:opacity-80 transition-opacity group">
-                        <div className="w-11 h-11 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
-                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M20 8H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-3c0-1.1-.9-2-2-2zm0 7H4c-1.1 0-2 .9-2 2v1c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2zM3 5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2H5c-1.1 0-2 .9-2 2z" />
-                            </svg>
-                        </div>
-                        <span className="text-white">RestoManager</span>
-                    </Link>
+                    <Logo size="lg" showText={true} />
 
                     <Link
                         to="/register"
@@ -314,7 +308,7 @@ export default function Login() {
 
                 {/* Footer */}
                 <footer className="py-10 text-center text-[10px] font-bold tracking-[0.2em] text-gray-600 uppercase">
-                    © 2026 RestoManager. Digital Excellence.
+                    © 2026 GastroAdmin. Digital Excellence.
                 </footer>
             </div>
         </div>
