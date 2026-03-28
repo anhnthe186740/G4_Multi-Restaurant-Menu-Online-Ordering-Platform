@@ -21,43 +21,43 @@ const EMPTY_FORM = { name: '', description: '', price: '', categoryId: '', isAva
 const formatPrice = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
 /* ============================================================
-   MAIN PAGE
+   TRANG CHÍNH
    ============================================================ */
 export default function OwnerMenu() {
-    // data
-    const [items, setItems] = useState([]);                           // menu items
-    const [categories, setCategories] = useState([]);                 // raw categories from API
+    // dữ liệu
+    const [items, setItems] = useState([]);                           // hàm xử lý món ăn
+    const [categories, setCategories] = useState([]);                 // hàm xử lý danh mục
     const categoryTabs = useMemo(() => [
         { id: 0, label: 'Tất cả' },
         ...categories.map(c => ({ id: c.categoryID, label: c.name }))
     ], [categories]);
 
-    // filters / UI state
+    // bộ lọc / trạng thái giao diện
     const [activeCat, setActiveCat] = useState(0);
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null);
 
-    // loading / error flags
+    // cờ đang tải / lỗi
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    // Modal state
+    // trạng thái Modal
     const [showForm, setShowForm] = useState(false);
-    const [editItem, setEditItem] = useState(null); // null = add, object = edit
+    const [editItem, setEditItem] = useState(null); // null = thêm mới, object = chỉnh sửa
     const [form, setForm] = useState(EMPTY_FORM);
     const [formError, setFormError] = useState('');
 
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    /* ---------- helpers ---------- */
+    /* ---------- hàm hỗ trợ ---------- */
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
     };
 
-    /* ---------- data fetching ---------- */
+    /* ---------- lấy dữ liệu ---------- */
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
@@ -67,12 +67,12 @@ export default function OwnerMenu() {
                 getOwnerMenuItems()
             ]);
             setCategories(catRes.data);
-            // normalize items: backend returns productID, but rest of UI expects id
+            // 
             setItems(itemRes.data.map(p => ({
                 ...p,
                 id: p.productID,
-                categoryId: p.categoryID,          // normalize naming for UI
-                // include imageURL and add timestamp param to bust cache when refetching
+                categoryId: p.categoryID,          // chuẩn hóa tên cho giao diện
+                // bao gồm imageURL và thêm tham số timestamp để tránh cache khi tải lại
                 image: p.imageURL ? `${p.imageURL}?t=${Date.now()}` : '',
                 imageURL: p.imageURL || '',
             })));
@@ -88,7 +88,7 @@ export default function OwnerMenu() {
         loadData();
     }, [loadData]);
 
-    /* ---------- sample category seeder ---------- */
+    /* ---------- trình tạo danh mục mẫu ---------- */
     const seedCategories = async () => {
         const samples = [
             { name: 'Món chính' },
@@ -110,7 +110,7 @@ export default function OwnerMenu() {
         }
     };
 
-    /* ---------- filtered list ---------- */
+    /* ---------- danh sách đã lọc ---------- */
     const filtered = useMemo(() => {
         return items.filter(it => {
             const matchCat = activeCat === 0 || it.categoryId === activeCat;
@@ -119,7 +119,7 @@ export default function OwnerMenu() {
         });
     }, [items, activeCat, search]);
 
-    /* ---------- open add modal ---------- */
+    /* ---------- mở modal thêm mới ---------- */
     const openAdd = () => {
         setEditItem(null);
         setForm(EMPTY_FORM);
@@ -127,7 +127,7 @@ export default function OwnerMenu() {
         setShowForm(true);
     };
 
-    /* ---------- open edit modal ---------- */
+    /* ---------- mở modal chỉnh sửa ---------- */
     const openEdit = (item) => {
         setEditItem(item);
         setForm({
@@ -143,7 +143,7 @@ export default function OwnerMenu() {
         setShowForm(true);
     };
 
-    /* ---------- save form ---------- */
+    /* ---------- lưu form ---------- */
     const handleSave = async () => {
         if (!form.name.trim()) { setFormError('Vui lòng nhập tên món.'); return; }
         if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0) {
@@ -154,7 +154,7 @@ export default function OwnerMenu() {
         }
         setSaving(true);
         try {
-            // handle image upload if file selected
+            // xử lý tải ảnh lên nếu có chọn tệp
             let imageURL = form.imageURL;
             if (form.imageFile) {
                 const data = new FormData();
@@ -179,19 +179,19 @@ export default function OwnerMenu() {
                 showToast('Đã thêm món ăn mới!');
             }
             setShowForm(false);
-            loadData(); // refresh list after save
+            loadData(); // làm mới danh sách sau khi lưu
         } catch (err) {
             console.error('save error', err);
             const msg = err.response?.data?.message || 'Không thể lưu món ăn.';
             setFormError(msg);
             showToast(msg, 'error');
-            // do not rethrow to prevent uncaught promise
+            // không ném lại lỗi để tránh promise không được bắt
         } finally {
             setSaving(false);
         }
     };
 
-    /* ---------- delete ---------- */
+    /* ---------- xóa ---------- */
     const handleDelete = async () => {
         if (!deleteTarget) return;
         setDeleting(true);
@@ -208,18 +208,18 @@ export default function OwnerMenu() {
         }
     };
 
-    /* ---------- category added ---------- */
+    /* ---------- đã thêm danh mục ---------- */
     const handleCategoryAdded = async (newId) => {
         await loadData();
         setForm(prev => ({ ...prev, categoryId: newId }));
     };
 
-    /* ---------- counts ---------- */
-    // Removed availCount tracking as status management is removed
+    /* ---------- số lượng ---------- */
+    // Đã xóa theo dõi availCount vì quản lý trạng thái đã bị gỡ bỏ
 
     return (
         <RestaurantOwnerLayout>
-            {/* ===== TOAST ===== */}
+            {/* ===== THÔNG BÁO (TOAST) ===== */}
             {toast && (
                 <div className={`fixed top-5 right-5 z-[60] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-sm font-medium
                     ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
@@ -228,7 +228,7 @@ export default function OwnerMenu() {
                 </div>
             )}
 
-            {/* ===== HEADER ===== */}
+            {/* ===== TIÊU ĐỀ ===== */}
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <div className="flex items-center gap-2.5 mb-1">
@@ -258,7 +258,7 @@ export default function OwnerMenu() {
                 </div>
             </div>
 
-            {/* ===== CATEGORY TABS ===== */}
+            {/* ===== CÁC TAB DANH MỤC ===== */}
             <div className="flex gap-1 mb-5 overflow-x-auto pb-1 scrollbar-hide">
                 {categoryTabs.map(cat => {
                     const count = cat.id === 0 ? items.length : items.filter(i => i.categoryId === cat.id).length;
@@ -283,7 +283,7 @@ export default function OwnerMenu() {
                 })}
             </div>
 
-            {/* ===== SEARCH ===== */}
+            {/* ===== TÌM KIẾM ===== */}
             <div className="flex gap-3 mb-6">
                 <div className="relative flex-1">
                     <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -297,7 +297,7 @@ export default function OwnerMenu() {
                 </div>
             </div>
 
-            {/* ===== LOADING / ERROR / EMPTY CATEGORIES / LIST ===== */}
+            {/* ===== ĐANG TẢI / LỖI / DANH MỤC TRỐNG / DANH SÁCH ===== */}
             {loading ? (
                 <div className="min-h-[40vh] flex items-center justify-center">
                     <div className="text-center">
@@ -344,7 +344,7 @@ export default function OwnerMenu() {
                 </div>
             ) : (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    {/* Table header */}
+                    {/* Tiêu đề bảng */}
                     <div className="grid items-center px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide"
                         style={{ gridTemplateColumns: '72px 1fr 120px 130px 96px' }}>
                         <div></div>
@@ -353,7 +353,7 @@ export default function OwnerMenu() {
                         <div className="text-right">Giá</div>
                         <div className="text-center">Thao tác</div>
                     </div>
-                    {/* Rows */}
+                    {/* Các dòng */}
                     <div className="divide-y divide-gray-50">
                         {filtered.map(item => (
                             <MenuItemRow
@@ -368,7 +368,7 @@ export default function OwnerMenu() {
                 </div>
             )}
 
-            {/* ===== ADD / EDIT MODAL ===== */}
+            {/* ===== MODAL THÊM / SỬA ===== */}
             {showForm && (
                 <FormModal
                     isEdit={!!editItem}
@@ -383,7 +383,7 @@ export default function OwnerMenu() {
                 />
             )}
 
-            {/* ===== DELETE CONFIRM MODAL ===== */}
+            {/* ===== MODAL XÁC NHẬN XÓA ===== */}
             {deleteTarget && (
                 <DeleteModal
                     item={deleteTarget}
@@ -397,7 +397,7 @@ export default function OwnerMenu() {
 }
 
 /* ============================================================
-   MENU ITEM ROW (horizontal list)
+   DÒNG MÓN ĂN TRONG THỰC ĐƠN (danh sách ngang)
    ============================================================ */
 function MenuItemRow({ item, categories, onEdit, onDelete }) {
     const catLabel = categories.find(c => c.id === item.categoryId)?.label || '';
@@ -408,7 +408,7 @@ function MenuItemRow({ item, categories, onEdit, onDelete }) {
             className={`grid items-center px-5 py-3.5 hover:bg-blue-50/40 transition-colors`}
             style={{ gridTemplateColumns: '72px 1fr 120px 130px 96px' }}
         >
-            {/* Thumbnail — fixed 72×72, object-cover, no stretch */}
+            {/* Ảnh thu nhỏ — cố định 72×72, object-cover, không bị giãn */}
             <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                 {!imgErr && (item.image || item.imageURL) ? (
                     <img
@@ -424,13 +424,13 @@ function MenuItemRow({ item, categories, onEdit, onDelete }) {
                 )}
             </div>
 
-            {/* Name + description */}
+            {/* Tên + mô tả */}
             <div className="pl-3 min-w-0">
                 <p className="font-semibold text-gray-900 text-sm truncate">{item.name}</p>
                 <p className="text-gray-400 text-xs mt-0.5 line-clamp-2 leading-relaxed">{item.description}</p>
             </div>
 
-            {/* Category */}
+            {/* Danh mục */}
             <div className="flex justify-center">
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">
                     <Tag size={9} />
@@ -438,12 +438,12 @@ function MenuItemRow({ item, categories, onEdit, onDelete }) {
                 </span>
             </div>
 
-            {/* Price */}
+            {/* Giá */}
             <div className="text-right">
                 <span className="font-bold text-gray-900 text-sm">{formatPrice(item.price)}</span>
             </div>
 
-            {/* Actions */}
+            {/* Thao tác */}
             <div className="flex items-center justify-center gap-1.5">
                 <button
                     onClick={onEdit}
@@ -465,7 +465,7 @@ function MenuItemRow({ item, categories, onEdit, onDelete }) {
 }
 
 /* ============================================================
-   FORM MODAL (Add / Edit)
+   MODAL FORM (Thêm / Sửa)
    ============================================================ */
 function FormModal({ isEdit, form, setForm, formError, saving, categories, onCategoryAdded, onClose, onSave }) {
     const set = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -494,7 +494,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
     return (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                {/* Modal header */}
+                {/* Tiêu đề modal */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -509,7 +509,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
                     </button>
                 </div>
 
-                {/* Body */}
+                {/* Phần thân */}
                 <div className="px-6 py-5 space-y-4">
                     {formError && (
                         <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
@@ -518,7 +518,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
                         </div>
                     )}
 
-                    {/* Name */}
+                    {/* Tên */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tên món <span className="text-red-500">*</span></label>
                         <input
@@ -530,7 +530,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
                         />
                     </div>
 
-                    {/* Description */}
+                    {/* Mô tả */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mô tả</label>
                         <textarea
@@ -542,7 +542,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
                         />
                     </div>
 
-                    {/* Price + Category row */}
+                    {/* Dòng Giá + Danh mục */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Giá (VNĐ) <span className="text-red-500">*</span></label>
@@ -620,7 +620,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
                         </div>
                     </div>
 
-                    {/* Image upload */}
+                    {/* Tải ảnh lên */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Ảnh món</label>
                         <input
@@ -629,7 +629,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
                             onChange={e => setForm(prev => ({ ...prev, imageFile: e.target.files[0] || null }))}
                             className="w-full text-sm text-gray-900"
                         />
-                        {/* preview from chosen file or existing URL */}
+                        {/* xem trước từ tệp đã chọn hoặc URL hiện có */}
                         {(form.imageFile || form.imageURL) && (
                             <img
                                 src={form.imageFile ? URL.createObjectURL(form.imageFile) : form.imageURL}
@@ -642,7 +642,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
 
                 </div>
 
-                {/* Footer */}
+                {/* Chân trang */}
                 <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2.5">
                     <button
                         onClick={onClose}
@@ -667,7 +667,7 @@ function FormModal({ isEdit, form, setForm, formError, saving, categories, onCat
 }
 
 /* ============================================================
-   DELETE CONFIRM MODAL
+   MODAL XÁC NHẬN XÓA
    ============================================================ */
 function DeleteModal({ item, deleting, onClose, onConfirm }) {
     return (

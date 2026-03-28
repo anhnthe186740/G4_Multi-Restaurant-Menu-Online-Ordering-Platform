@@ -1,8 +1,8 @@
 import nodemailer from "nodemailer";
 
 /**
- * Configure Nodemailer transporter.
- * If credentials are not provided in .env, it uses Ethereal Email for testing.
+ *  hàm cấu hình Nodemailer transporter.
+ * Nếu không có thông tin đăng nhập trong .env, nó sẽ sử dụng Ethereal Email để kiểm tra.
  */
 const getTransporter = async () => {
   const user = process.env.EMAIL_USER;
@@ -18,7 +18,7 @@ const getTransporter = async () => {
       },
     });
   } else {
-    // Falls back to Ethereal Email for auto-testing without config
+    //  sử dụng Ethereal Email để kiểm tra
     const testAccount = await nodemailer.createTestAccount();
     console.log("⚠️ [Email Service] Using Ethereal Demo Mode (No .env config found)");
     console.log(`📧 [Ethereal Credentials] User: ${testAccount.user}, Pass: ${testAccount.pass}`); // Added this
@@ -35,7 +35,7 @@ const getTransporter = async () => {
 };
 
 /**
- * Send a password reset email to the user.
+ *  hàm gửi email đặt lại mật khẩu
  * @param {string} email - Recipient's email
  * @param {string} resetToken - The unique reset token
  */
@@ -66,7 +66,7 @@ export const sendResetEmail = async (email, resetToken) => {
   try {
     const info = await transporter.sendMail(mailOptions);
     
-    // If using Ethereal, log the preview URL
+    //hàm kiểm tra email
     if (nodemailer.getTestMessageUrl(info)) {
       console.log("---------------------------------------------------------");
       console.log("📧 [TEST EMAIL SENT]");
@@ -83,7 +83,7 @@ export const sendResetEmail = async (email, resetToken) => {
   }
 };
 /**
- * Send a notification email after a successful password change.
+ *  hàm gửi email thông báo sau khi đổi mật khẩu thành công
  * @param {string} email - Recipient's email
  */
 export const sendPasswordChangedEmail = async (email) => {
@@ -111,12 +111,12 @@ export const sendPasswordChangedEmail = async (email) => {
     return info;
   } catch (error) {
     console.error("Error sending confirmation email:", error);
-    // We don't throw here to avoid failing the password reset process if only the notification fails
+    //
   }
 };
 
 /**
- * Send a 6-digit OTP email for changing password verification.
+ *  hàm gửi email chứa mã OTP để xác nhận đổi mật khẩu
  * @param {string} email - Recipient's email
  * @param {string} otp - The 6-digit OTP code
  */
@@ -154,7 +154,7 @@ export const sendOtpEmail = async (email, otp) => {
 };
 
 /**
- * Send an email to a newly created account with their credentials.
+ *  hàm gửi email chứa thông tin tài khoản mới cho nhân viên
  * @param {string} email - Recipient's email
  * @param {string} fullName - Full name of the user
  * @param {string} username - Account username
@@ -220,12 +220,12 @@ export const sendNewAccountEmail = async (email, fullName, username, password, r
     return info;
   } catch (error) {
     console.error("Error sending account email:", error);
-    // Silent error to prevent blocking account creation
+    // hàm báo lỗi khi gửi email
   }
 };
 
 /**
- * Send an email notification when a registration request is approved.
+ *  hàm gửi email thông báo khi yêu cầu đăng ký được phê duyệt
  * @param {string} email - Recipient's email
  * @param {string} fullName - Recipient's full name
  * @param {string} restaurantName - The name of the approved restaurant
@@ -237,7 +237,7 @@ export const sendRegistrationApprovedEmail = async (email, fullName, restaurantN
 
   let contentHtml = "";
   if (credentials) {
-    // Content for new users who didn't have an account
+    // hàm kiểm tra thông tin tài khoản
     contentHtml = `
       <p>Chào <strong>${fullName}</strong>,</p>
       <p>Chúc mừng! Đơn đăng ký tham gia hệ thống RMS cho nhà hàng <strong>${restaurantName}</strong> của bạn đã được phê duyệt thành công.</p>
@@ -261,7 +261,7 @@ export const sendRegistrationApprovedEmail = async (email, fullName, restaurantN
       </div>
     `;
   } else {
-    // Content for existing users who already had an account
+    // hàm kiểm tra thông tin tài khoản
     contentHtml = `
       <p>Chào <strong>${fullName}</strong>,</p>
       <p>Chúc mừng! Đơn đăng ký tham gia hệ thống RMS cho nhà hàng <strong>${restaurantName}</strong> của bạn đã được phê duyệt thành công.</p>

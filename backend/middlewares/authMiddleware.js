@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
-
+ 
 /* ================= AUTH MIDDLEWARE ================= */
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];

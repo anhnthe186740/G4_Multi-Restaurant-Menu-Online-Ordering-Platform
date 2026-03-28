@@ -7,25 +7,35 @@ import Logo from "../components/layout/Logo";
 export default function Login() {
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Lấy link muốn chuyển hướng sau khi login (nếu có)
     const searchParams = new URLSearchParams(location.search);
     const redirectPath = searchParams.get("redirect");
-    const [form, setForm] = useState({ email: "", password: "" });
-    const [remember, setRemember] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [lockedInfo, setLockedInfo] = useState(null);
 
+    // Quản lý trạng thái form và UI
+    const [form, setForm] = useState({ email: "", password: "" }); // Thông tin đăng nhập
+    const [remember, setRemember] = useState(false);               // Ghi nhớ email
+    const [loading, setLoading] = useState(false);                 // Trạng thái đang xử lý API
+    const [error, setError] = useState(null);                      // Thông báo lỗi chung
+    const [lockedInfo, setLockedInfo] = useState(null);            // Thông tin khi tài khoản bị khoá
+
+    /**
+     * Xử lý đăng nhập bằng Google OAuth
+     */
     const loginGoogle = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
             setLoading(true);
             setError(null);
             setLockedInfo(null);
             try {
+                // Gửi access_token nhận được từ Google lên server của mình
                 const response = await loginWithGoogleApi(tokenResponse.access_token);
                 if (response?.data?.token) {
+                    // Lưu thông tin vào LocalStorage
                     localStorage.setItem("token", response.data.token);
                     localStorage.setItem("user", JSON.stringify(response.data.user));
 
+                    // Điều hướng người dùng dựa trên phân quyền (Role)
                     const role = response.data.user?.role;
                     if (redirectPath) {
                         navigate(redirectPath);
@@ -43,6 +53,7 @@ export default function Login() {
                 }
             } catch (err) {
                 const data = err.response?.data;
+                // Trường hợp tài khoản bị khoá
                 if (data?.locked) {
                     setLockedInfo({ lockReason: data.lockReason });
                 } else {
@@ -57,10 +68,16 @@ export default function Login() {
         }
     });
 
+    /**
+     * Cập nhật dữ liệu khi người dùng nhập vào ô input
+     */
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
+    /**
+     * Xử lý đăng nhập bằng Email và Mật khẩu truyền thống
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -69,14 +86,17 @@ export default function Login() {
         try {
             const response = await loginApi(form);
             if (response?.data?.token) {
+                // Lưu token và thông tin người dùng
                 localStorage.setItem("token", response.data.token);
                 localStorage.setItem("user", JSON.stringify(response.data.user));
+                
+                // Nếu chọn "Ghi nhớ", lưu email để điền sẵn cho lần sau (logic tuỳ frontend)
                 if (remember) localStorage.setItem("rememberEmail", form.email);
 
-                // Redirect sau khi login
+                // LOGIC ĐIỀU HƯỚNG SAU KHI ĐĂNG NHẬP THÀNH CÔNG
                 const role = response.data.user?.role;
                 if (redirectPath) {
-                    navigate(redirectPath);
+                    navigate(redirectPath); // Ưu tiên quay lại trang mong muốn trước đó
                 } else if (role === "Admin") {
                     navigate("/admin/dashboard");
                 } else if (role === "RestaurantOwner") {
@@ -84,9 +104,9 @@ export default function Login() {
                 } else if (role === "BranchManager") {
                     navigate("/manager/dashboard");
                 } else if (role === "Staff") {
-                    navigate("/manager/tables");
+                    navigate("/manager/tables"); // Nhân viên phục vụ vào sơ đồ bàn
                 } else if (role === "Kitchen") {
-                    navigate("/kitchen/kds");
+                    navigate("/kitchen/kds");     // Bếp vào màn hình KDS
                 } else {
                     navigate("/");
                 }
@@ -96,6 +116,7 @@ export default function Login() {
         } catch (err) {
             const data = err.response?.data;
             if (data?.locked) {
+                // Hiển thị thông báo khoá nếu server trả về status locked
                 setLockedInfo({ lockReason: data.lockReason });
             } else {
                 setError(data?.message || "Email hoặc mật khẩu không đúng");
@@ -108,7 +129,7 @@ export default function Login() {
     return (
         <div className="relative min-h-screen bg-[#020617] text-white font-sans selection:bg-emerald-500/30 selection:text-white overflow-hidden">
 
-            {/* Ambient Background Glows - Matching HeroSection */}
+            {/* Hiệu ứng ánh sáng nền (Glow) - Đồng bộ với HeroSection */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] animate-pulse" />
                 <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] animate-float-slow" />
@@ -116,7 +137,7 @@ export default function Login() {
 
             <div className="relative z-10 flex min-h-screen flex-col">
 
-                {/* Header - Matching Home Header Style */}
+                {/* Thanh Header - Thiết kế mờ kính (Glassmorphism) */}
                 <header className="
                     flex items-center justify-between
                     px-8 py-6
@@ -134,15 +155,15 @@ export default function Login() {
                     </Link>
                 </header>
 
-                {/* Main */}
+                {/* Nội dung chính (Main Content) */}
                 <main className="flex-1 flex items-center justify-center px-4 py-20 relative">
                     <div className="w-full max-w-[460px] animate-fade-in-up">
                         
                         <div className="glass-card p-8 sm:p-12 rounded-[2.5rem] relative group">
-                            {/* Decorative Top Glow */}
+                            {/* Đường kẻ phát sáng phía trên thẻ */}
                             <div className="absolute -top-px left-20 right-20 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
 
-                            {/* Title Section */}
+                            {/* Tiêu đề chào mừng */}
                             <div className="text-center mb-10">
                                 <h1 className="text-3xl md:text-4xl font-black text-white mb-3 tracking-tight">
                                     Chào mừng <span className="text-gradient">quay lại</span>
@@ -171,15 +192,16 @@ export default function Login() {
                                 </div>
                             )}
 
-                            {/* === LỖI THÔNG THƯỜNG === */}
+                            {/* === THÔNG BÁO LỖI THÔNG THƯỜNG === */}
                             {error && (
                                 <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-3 animate-fade-in">
                                     <p className="text-red-400 text-sm font-medium text-center">{error}</p>
                                 </div>
                             )}
 
-                            {/* Form */}
+                            {/* Biểu mẫu đăng nhập (Login Form) */}
                             <form className="space-y-6" onSubmit={handleSubmit}>
+                                {/* Input Email */}
                                 <div className="space-y-2">
                                     <label className="block text-sm font-bold text-gray-300 ml-1">
                                         Email truy cập
@@ -197,6 +219,7 @@ export default function Login() {
                                     />
                                 </div>
 
+                                {/* Input Mật khẩu */}
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center px-1">
                                         <label className="text-sm font-bold text-gray-300">
@@ -219,6 +242,7 @@ export default function Login() {
                                     />
                                 </div>
 
+                                {/* Checkbox Ghi nhớ đăng nhập */}
                                 <div className="flex items-center gap-3 px-1">
                                     <label className="flex items-center gap-3 cursor-pointer group">
                                         <div className="relative flex items-center">
@@ -237,6 +261,7 @@ export default function Login() {
                                     </label>
                                 </div>
 
+                                {/* Nút đăng nhập */}
                                 <button
                                     type="submit"
                                     disabled={loading}
@@ -253,7 +278,7 @@ export default function Login() {
                                 </button>
                             </form>
 
-                            {/* Divider */}
+                            {/* Đường chia cách (Divider) */}
                             <div className="relative my-10 px-4">
                                 <div className="h-px bg-white/5" />
                                 <span className="absolute inset-x-0 -top-2.5 mx-auto w-fit px-4 text-[10px] font-black tracking-widest uppercase bg-[#0f172a] text-gray-500 rounded-full border border-white/5">
@@ -261,7 +286,7 @@ export default function Login() {
                                 </span>
                             </div>
 
-                            {/* Social */}
+                            {/* Nút đăng nhập bằng Google */}
                             <div className="px-1">
                                 <button
                                     type="button"
@@ -281,16 +306,16 @@ export default function Login() {
                                         <path fill="#FBBC05" d="M11.67 28.1c-.5-1.48-.79-3.06-.79-4.7 0-1.64.29-3.22.79-4.7l-6.98-5.42C3.03 16.45 2.5 20.15 2.5 23.4c0 3.25.53 6.95 2.19 10.12l6.98-5.42z" />
                                         <path fill="#34A853" d="M24 46.5c6.48 0 11.93-2.15 15.9-5.87l-7.18-5.57c-2 1.34-4.56 2.14-8.72 2.14-5.87 0-10.9-3.8-12.67-9.06l-6.98 5.42C7.44 40.02 14.98 46.5 24 46.5z" />
                                     </svg>
-                                    Google Account
+                                    Tài khoản Google
                                 </button>
                             </div>
 
-                            {/* Decorative Corner */}
+                            {/* Vùng phát sáng góc dưới trang trí */}
                             <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
 
                         </div>
 
-                        {/* Footer Link */}
+                        {/* Text chuyển sang trang Đăng ký */}
                         <div className="mt-10 text-center animate-fade-in stagger-3">
                             <p className="text-gray-400 text-sm">
                                 Bạn là đối tác mới?{" "}
@@ -306,7 +331,7 @@ export default function Login() {
                     </div>
                 </main>
 
-                {/* Footer */}
+                {/* Phần Chân trang (Footer) */}
                 <footer className="py-10 text-center text-[10px] font-bold tracking-[0.2em] text-gray-600 uppercase">
                     © 2026 GastroAdmin. Digital Excellence.
                 </footer>

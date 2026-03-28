@@ -129,7 +129,7 @@ export const login = async (req, res) => {
         locked: true,
       });
     }
-
+    
     // Nếu đúng → tạo JWT token
     const token = jwt.sign(
       {
@@ -512,4 +512,4 @@ export const changePassword = async (req, res) => {
     console.error("changePassword error:", error);
     res.status(500).json({ message: "Lỗi server" });
   }
-};
+};
