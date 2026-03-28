@@ -11,7 +11,7 @@ const formatPrice = (n) =>
 
 
 /* ═══════════════════════════════════════════════════════════════
-   MAIN PAGE
+   TRANG CHÍNH
 ═══════════════════════════════════════════════════════════════ */
 export default function ManagerMenu() {
     const [items, setItems] = useState([]);
@@ -20,17 +20,17 @@ export default function ManagerMenu() {
     const [error, setError] = useState('');
     const [toast, setToast] = useState(null);
 
-    // Filters
+    // Bộ lọc
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
 
-    /* ── toast helper ── */
+    /* ── hàm hỗ trợ thông báo (toast) ── */
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3500);
     };
 
-    /* ── fetch data ── */
+    /* ── lấy dữ liệu ── */
     const loadMenu = useCallback(async () => {
         try {
             setLoading(true);
@@ -47,7 +47,7 @@ export default function ManagerMenu() {
 
     useEffect(() => { loadMenu(); }, [loadMenu]);
 
-    /* ── derived: unique categories ── */
+    /* ── dữ liệu phái sinh: các danh mục duy nhất ── */
     const categories = useMemo(() => {
         const map = new Map();
         items.forEach(i => {
@@ -56,7 +56,7 @@ export default function ManagerMenu() {
         return [{ id: 'all', name: 'Tất cả danh mục' }, ...Array.from(map, ([id, name]) => ({ id, name }))];
     }, [items]);
 
-    /* ── filtered display list ── */
+    /* ── danh sách hiển thị đã lọc ── */
     const filtered = useMemo(() => {
         return items.filter(it => {
             const matchCat = activeCategory === 'all' || it.categoryID === activeCategory;
@@ -65,7 +65,7 @@ export default function ManagerMenu() {
         });
     }, [items, activeCategory, search]);
 
-    /* ── toggle availability ── */
+    /* ── bật/tắt trạng thái kinh doanh ── */
     const handleToggle = (productID) => {
         setItems(prev => prev.map(it => {
             if (it.productID !== productID) return it;
@@ -75,7 +75,7 @@ export default function ManagerMenu() {
     };
 
 
-    /* ── save menu ── */
+    /* ── lưu thực đơn ── */
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -94,13 +94,13 @@ export default function ManagerMenu() {
         }
     };
 
-    /* ── counts ── */
+    /* ── số lượng ── */
     const availCount = items.filter(i => i.isAvailable).length;
 
-    /* ─────────────────── RENDER ─────────────────── */
+    /* ─────────────────── HIỂN THỊ (RENDER) ─────────────────── */
     return (
         <BranchManagerLayout>
-            {/* ── TOAST ── */}
+            {/* ── THÔNG BÁO (TOAST) ── */}
             {toast && (
                 <div className={`fixed top-5 right-5 z-[60] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-sm font-medium
                     ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
@@ -109,7 +109,7 @@ export default function ManagerMenu() {
                 </div>
             )}
 
-            {/* ── HEADER ── */}
+            {/* ── TIÊU ĐỀ ── */}
             <div className="flex items-center justify-between mb-6 gap-4">
                 <div>
                     <div className="flex items-center gap-2.5 mb-1">
@@ -143,9 +143,9 @@ export default function ManagerMenu() {
                 </div>
             </div>
 
-            {/* ── FILTERS ── */}
+            {/* ── BỘ LỌC ── */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                {/* Search */}
+                {/* Tìm kiếm */}
                 <div className="relative flex-1">
                     <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
@@ -156,7 +156,7 @@ export default function ManagerMenu() {
                         className="w-full pl-9 pr-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white"
                     />
                 </div>
-                {/* Category dropdown */}
+                {/* Danh mục thả xuống */}
                 <div className="relative shrink-0">
                     <select
                         value={activeCategory}
@@ -171,7 +171,7 @@ export default function ManagerMenu() {
                 </div>
             </div>
 
-            {/* ── CONTENT ── */}
+            {/* ── NỘI DUNG ── */}
             {loading ? (
                 <div className="min-h-[40vh] flex items-center justify-center">
                     <div className="text-center">
@@ -214,19 +214,19 @@ export default function ManagerMenu() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   FOOD CARD
+   THẺ MÓN ĂN (FOOD CARD)
 ═══════════════════════════════════════════════════════════════ */
 function FoodCard({ item, onToggle }) {
     const [imgErr, setImgErr] = useState(false);
 
-    // Derive category label abbreviation for badge
+    // Lấy nhãn danh mục cho huy hiệu (badge)
     const catBadge = item.categoryName || '';
 
     return (
         <div className={`bg-white rounded-2xl border overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md
             ${item.isAvailable ? 'border-gray-100' : 'border-gray-100 opacity-75'}`}>
 
-            {/* ── Image ── */}
+            {/* ── Hình ảnh ── */}
             <div className="relative h-44 bg-gray-100 overflow-hidden">
                 {!imgErr && item.imageURL ? (
                     <img
@@ -241,7 +241,7 @@ function FoodCard({ item, onToggle }) {
                     </div>
                 )}
 
-                {/* Out-of-stock overlay */}
+                {/* Lớp phủ hết hàng */}
                 {!item.isAvailable && (
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         <span className="text-white font-bold text-sm tracking-wider bg-black/50 px-3 py-1 rounded-lg">
@@ -250,7 +250,7 @@ function FoodCard({ item, onToggle }) {
                     </div>
                 )}
 
-                {/* Category badge */}
+                {/* Huy hiệu danh mục */}
                 {catBadge && (
                     <span className="absolute top-2 left-2 flex items-center gap-1 text-[10px] font-bold text-white bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full uppercase tracking-wide">
                         <Tag size={8} />
@@ -259,7 +259,7 @@ function FoodCard({ item, onToggle }) {
                 )}
             </div>
 
-            {/* ── Body ── */}
+            {/* ── Phần thân ── */}
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="min-w-0">
@@ -268,7 +268,7 @@ function FoodCard({ item, onToggle }) {
                     </div>
                 </div>
 
-                {/* ── Toggle row ── */}
+                {/* ── Dòng bật/tắt ── */}
                 <div className="flex items-center justify-between mb-3">
                     <div>
                         <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">TRẠNG THÁI</p>
@@ -276,7 +276,7 @@ function FoodCard({ item, onToggle }) {
                             {item.isAvailable ? 'Đang bán' : 'Tạm ngưng'}
                         </p>
                     </div>
-                    {/* Toggle switch */}
+                    {/* Công tắc bật/tắt */}
                     <button
                         onClick={onToggle}
                         className={`relative rounded-full transition-colors duration-300 focus:outline-none shrink-0
